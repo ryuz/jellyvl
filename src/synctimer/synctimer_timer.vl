@@ -18,8 +18,8 @@ module synctimer_timer #(
 
     localparam COUNT_NUM    : u32 = NUMERATOR / DENOMINATOR;
     localparam COUNT_ERR    : u32 = NUMERATOR % DENOMINATOR;
-    localparam COUNTER_WIDTH: u32 = if $clog2(COUNT_NUM) >: 0 {
-        $clog2(COUNT_NUM)
+    localparam COUNTER_WIDTH: u32 = if $clog2(COUNT_NUM + 2) >: 0 {
+        $clog2(COUNT_NUM + 2)
     } else {
         1
     };
@@ -47,11 +47,11 @@ module synctimer_timer #(
             }
         }
         assign adjust_ready = 1'b1;
-    } else {
+    } else  : with_err {
         // 分数の誤差あり
         var err_value: t_count;
         var carry: logic;
-        assign carry = DENOMINATOR as t_count - err_value >= COUNT_ERR;
+        assign carry = err_value >= (DENOMINATOR - COUNT_ERR) as t_count ;
         
         always_ff (clk, reset) {
             if_reset {
