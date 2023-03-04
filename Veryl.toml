@@ -1,0 +1,13 @@
+[project]
+name = "jellyvl"
+version = "0.1.0"
+
+[build]
+clock_type    = "posedge"
+reset_type    = "sync_high"
+filelist_type = "absolute"
+target        = {type = "directory", path = "sv"}
+implicit_parameter_types = ["string"]
+
+#[format]
+#indent_width = 4

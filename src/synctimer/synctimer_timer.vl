@@ -1,0 +1,96 @@
+module synctimer_timer #(
+    parameter NUMERATOR  : u32 = 10,
+    parameter DENOMINATOR: u32 = 3 ,
+    parameter TIMER_WIDTH: u32 = 64,
+) (
+    reset: input logic,
+    clk  : input logic,
+
+    set_time : input logic<TIMER_WIDTH>,
+    set_valid: input logic             ,
+
+    adjust_sign : input  logic,
+    adjust_valid: input  logic,
+    adjust_ready: output logic,
+
+    current_time: output logic<TIMER_WIDTH>,
+) {
+
+    localparam COUNT_NUM    : u32 = NUMERATOR / DENOMINATOR;
+    localparam COUNT_ERR    : u32 = NUMERATOR % DENOMINATOR;
+    localparam COUNTER_WIDTH: u32 = if $clog2(COUNT_NUM) >: 0 {
+        $clog2(COUNT_NUM)
+    } else {
+        1
+    };
+
+    localparam t_count: type = logic<COUNTER_WIDTH>;
+    localparam t_time : type = logic<TIMER_WIDTH>;
+
+    var add_value: t_count;
+
+    if COUNT_ERR == 0 :simple {
+        // 誤差なし
+        always_ff (clk, reset) {
+            if_reset {
+                add_value = '0;
+            } else {
+                add_value = COUNT_NUM as t_count;
+                if adjust_valid && adjust_ready {
+                    if adjust_sign {
+                        add_value = (COUNT_NUM + 1) as t_count;
+                    }
+                    else {
+                        add_value = (COUNT_NUM - 1) as t_count;
+                    }
+                }
+            }
+        }
+        assign adjust_ready = 1'b1;
+    } else {
+        // 分数の誤差あり
+        var err_value: t_count;
+        var carry: logic;
+        assign carry = DENOMINATOR as t_count - err_value >= COUNT_ERR;
+        
+        always_ff (clk, reset) {
+            if_reset {
+                add_value = '0;
+                err_value = '0;
+            } else {
+                if carry {
+                    err_value = err_value - (DENOMINATOR - COUNT_ERR) as t_count;
+                    if adjust_ready {
+                        add_value = COUNT_NUM as t_count;
+                    }
+                    else {
+                        add_value = (COUNT_NUM + 1) as t_count;
+                    }
+                }
+                else {
+                    err_value = err_value + COUNT_ERR as t_count;
+                    if adjust_ready {
+                        add_value = (COUNT_NUM + 1) as t_count;
+                    }
+                    else {
+                        add_value = COUNT_NUM as t_count;
+                    }
+                }
+            }
+        }
+        assign adjust_ready = adjust_valid && (carry == adjust_sign);
+    }
+
+    // timer counter
+    always_ff (clk, reset) {
+        if_reset {
+            current_time = '0;
+        } else {
+            current_time = current_time + add_value as t_time;
+            if set_valid {
+                current_time = set_time;
+            }
+        }
+    }
+}
+
