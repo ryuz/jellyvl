@@ -39,36 +39,32 @@ module divider_unsigned_multicycle #(
     localparam t_quotient   : type = logic<QUOTIENT_WIDTH>;
     localparam t_remainder  : type = logic<REMAINDER_WIDTH>;
     localparam t_shiftreg   : type = logic<DIVISOR_WIDTH + QUOTIENT_WIDTH>;
-    localparam t_subtraction: type = logic<1 + DIVISOR_WIDTH>;
+
+    function MakeDivisor (
+        divisor: input t_divisor,
+    ) -> t_shiftreg {
+        return divisor as t_shiftreg << (QUOTIENT_WIDTH - 1);
+    }
 
     var busy       : logic        ;
     var cycle      : t_cycle      ;
-    var divisor    : t_divisor    ;
+    var divisor    : t_shiftreg   ;
     var shiftreg   : t_shiftreg   ;
-    var shiftreg_in : t_shiftreg;
-    var shiftreg_next : t_shiftreg;
-    var subtraction: t_subtraction;
+    var shiftreg_sub  : t_shiftreg;
 
     var sub_sign : logic    ;
-    var sub_value: t_divisor;
-    assign sub_sign  = subtraction[DIVISOR_WIDTH];
-    assign sub_value = subtraction[DIVISOR_WIDTH - 1:0];
+    assign sub_sign  = shiftreg_sub[DIVISOR_WIDTH + QUOTIENT_WIDTH - 1];
 
-    assign shiftreg_in = s_dividend as t_shiftreg;
-
+    var shiftreg_in : t_shiftreg;
+    var shiftreg_cmp  : t_shiftreg;
+    var shiftreg_next : t_shiftreg;
+    assign shiftreg_in   = s_dividend as t_shiftreg;
+    assign shiftreg_cmp  = if sub_sign { shiftreg } else { shiftreg_sub };
     always_comb {
-        shiftreg_next = shiftreg << 1;
-        if !sub_sign {
-            shiftreg_next[QUOTIENT_WIDTH +: DIVISOR_WIDTH] = sub_value;
-        }
+        shiftreg_next = shiftreg_cmp << 1;
         shiftreg_next[0] = ~sub_sign;
     }
-
-    var sub0: t_subtraction;
-    var sub1: t_subtraction;
-    assign sub0 = shiftreg_next[QUOTIENT_WIDTH-1 +: DIVISOR_WIDTH+1];
-    assign sub1 = {1'b0, divisor};
-
+    
     always_ff (clk, reset) {
         if_reset {
             m_valid     = 1'b0;
@@ -76,13 +72,13 @@ module divider_unsigned_multicycle #(
             cycle       = 'x;
             divisor     = 'x;
             shiftreg    = 'x;
-            subtraction = 'x;
+            shiftreg_sub = 'x;
         } else {
             if (cke && (!m_valid || m_ready)) {
                 if busy {
                     cycle -= 1;
                     m_valid = (cycle == '0);
-                    subtraction = shiftreg_next[QUOTIENT_WIDTH-1 +: DIVISOR_WIDTH+1] - {1'b0, divisor};
+                    shiftreg_sub = shiftreg_next - divisor;
                     shiftreg = shiftreg_next;
                     if m_valid {
                         busy = 1'b0;
@@ -91,9 +87,9 @@ module divider_unsigned_multicycle #(
                     if s_valid && s_ready {
                         busy        = 1'b1;
                         cycle       = (CYCLE - 1) as t_cycle;
-                        divisor     = s_divisor;
+                        divisor     = MakeDivisor(s_divisor);
                         shiftreg    = shiftreg_in;
-                        subtraction = shiftreg_in[QUOTIENT_WIDTH-1 +: DIVISOR_WIDTH+1] - {1'b0, divisor};
+                        shiftreg_sub = shiftreg_in - MakeDivisor(s_divisor);
                     }
                 }
             }
