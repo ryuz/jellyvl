@@ -28,15 +28,15 @@ module synctimer_adjust #(
 ) {
 
     // type
-    localparam t_count  : type = logic<COUNTER_WIDTH>;
-    localparam t_count_q: type = logic<COUNTER_WIDTH + ADJUST_Q>;
-    localparam t_calc   : type = logic<CALC_WIDTH>;
-    localparam t_period : type = signed logic<PERIOD_WIDTH>;
-    localparam t_phase  : type = signed logic<PHASE_WIDTH>;
-    localparam t_error  : type = signed logic<ERROR_WIDTH + ERROR_Q>;
-    localparam t_error_u: type = logic<ERROR_WIDTH + ERROR_Q>;
-    localparam t_adjust : type = logic<ADJUST_WIDTH>;
-    localparam t_adjust_q : type = logic<ADJUST_WIDTH + ADJUST_Q>;
+    localparam t_count   : type = logic<COUNTER_WIDTH>;
+    localparam t_count_q : type = logic<COUNTER_WIDTH + ADJUST_Q>;
+    localparam t_calc    : type = logic<CALC_WIDTH>;
+    localparam t_period  : type = signed logic<PERIOD_WIDTH>;
+    localparam t_phase   : type = signed logic<PHASE_WIDTH>;
+    localparam t_error   : type = signed logic<ERROR_WIDTH + ERROR_Q>;
+    localparam t_error_u : type = logic<ERROR_WIDTH + ERROR_Q>;
+    localparam t_adjust  : type = logic<ADJUST_WIDTH + ADJUST_Q>;
+//  localparam t_adjust_q: type = logic<ADJUST_WIDTH>;
 
     // Low-Pass filter
     localparam t_lpf_calc: type = signed logic<ERROR_WIDTH + ERROR_Q + 2>;
@@ -151,6 +151,11 @@ module synctimer_adjust #(
             }
         }
     }
+    var st1_phase_error_int : t_error;
+    var st1_period_error_int: t_error;
+    assign st1_phase_error_int  = st1_phase_error >>> ERROR_Q;
+    assign st1_period_error_int = st1_period_error >>> ERROR_Q;
+
 
     // stage 2
     var st2_first       : logic  ;
@@ -170,8 +175,9 @@ module synctimer_adjust #(
             if st1_valid {
                 st2_first        = 1'b0;
                 st2_count        = st1_count + 1 as t_count;
-                st2_phase_error  = LowPassFilter(st2_phase_error, st1_phase_error, st2_first);
-                st2_period_error = LowPassFilter(st2_period_error, st1_period_error - st2_phase_error, st2_first);
+                st2_phase_error  = st1_phase_error >>> 2; //LowPassFilter(st2_phase_error, st1_phase_error, st2_first);
+//              st2_period_error = LowPassFilter(st2_period_error, st2_period_error + st1_period_error - st2_phase_error, st2_first);
+                st2_period_error = st2_period_error + ((st1_period_error + st2_phase_error) >>> 2);
             }
             st2_valid = st1_valid;
 
@@ -229,9 +235,9 @@ module synctimer_adjust #(
 
 
     // divider
-    var div_quotient : t_adjust_q;
-    var div_remainder: t_error_u;
-    var div_valid    : logic    ;
+    var div_quotient : t_adjust;
+    var div_remainder: t_error_u ;
+    var div_valid    : logic     ;
 
     var tmp_ready: logic;
     inst i_divider_unsigned_multicycle: divider_unsigned_multicycle #(
@@ -244,9 +250,9 @@ module synctimer_adjust #(
         cke  : 1'b1 ,
 
         s_dividend: st4_count as t_count_q << (ERROR_Q + ADJUST_Q),
-        s_divisor : st4_adjust                     ,
-        s_valid   : st4_valid                      ,
-        s_ready   : tmp_ready                      ,
+        s_divisor : st4_adjust                                  ,
+        s_valid   : st4_valid                                   ,
+        s_ready   : tmp_ready                                   ,
 
         m_quotient : div_quotient ,
         m_remainder: div_remainder,
@@ -256,14 +262,14 @@ module synctimer_adjust #(
 
 
     // adjuster
-    var adj_zero   : logic;
-    var adj_sign   : logic;
-    var adj_pediod : t_adjust_q;
-    var adj_count  : t_adjust_q;
-    var adj_valid  : logic;
+    var adj_zero  : logic     ;
+    var adj_sign  : logic     ;
+    var adj_pediod: t_adjust;
+    var adj_count : t_adjust;
+    var adj_valid : logic     ;
 
-    var adj_count_next  : t_adjust_q;
-    assign adj_count_next = adj_count + (1 << ADJUST_Q)  as t_adjust_q;
+    var adj_count_next: t_adjust;
+    assign adj_count_next = adj_count + (1 << ADJUST_Q) as t_adjust;
 
     always_ff (clk, reset) {
         if_reset {
@@ -272,11 +278,10 @@ module synctimer_adjust #(
             adj_pediod = 'x;
             adj_count  = '0;
             adj_valid  = 1'b0;
-        }
-        else {
+        } else {
             adj_valid = 1'b0;
 
-            adj_count = adj_count_next; 
+            adj_count = adj_count_next;
             if adj_count_next >= adj_pediod {
                 adj_count = adj_count_next - adj_pediod;
                 adj_valid = 1'b1;
@@ -299,14 +304,13 @@ module synctimer_adjust #(
         if_reset {
             adjust_sign  = 'x;
             adjust_valid = 1'b0;
-        }
-        else {
-            if ( adjust_ready ) {
+        } else {
+            if (adjust_ready) {
                 adjust_valid = 1'b0;
             }
 
-            if ( adj_valid ) {
-                adjust_sign = adj_sign;
+            if (adj_valid) {
+                adjust_sign  = adj_sign;
                 adjust_valid = 1'b1;
             }
 
