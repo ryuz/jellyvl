@@ -1,11 +1,13 @@
 module synctimer_adjust #(
-    parameter TIMER_WIDTH  : u32 = 64, // タイマのbit幅
-    parameter COUNTER_WIDTH: u32 = 32, // 自クロックで経過時間カウンタのbit数
-    parameter CALC_WIDTH   : u32 = 34, // タイマのうち計算に使う部分
-    parameter ADJUST_WIDTH : u32 = 24, // 最終的に符号付きで調整演算に使うbit数
-    parameter ADJUST_Q     : u32 = 8 ,
-    parameter PERIOD_WIDTH : u32 = 23, // 周期補正に使うbit数
-    parameter PHASE_WIDTH  : u32 = 22, // 位相補正に使うbit数
+    parameter TIMER_WIDTH  : u32 = 64                     , // タイマのbit幅
+    parameter COUNTER_WIDTH: u32 = 32                     , // 自クロックで経過時間カウンタのbit数
+    parameter CALC_WIDTH   : u32 = 32                     , // タイマのうち計算に使う部分
+    parameter ERROR_WIDTH  : u32 = 32                     , // 誤差計算時のbit幅
+    parameter ERROR_Q      : u32 = 8                      , // 誤差計算時に追加する固定小数点数bit数
+    parameter ADJUST_WIDTH : u32 = COUNTER_WIDTH + ERROR_Q, // 補正周期のbit幅
+    parameter ADJUST_Q     : u32 = ERROR_Q                , // 補正周期に追加する固定小数点数bit数
+    parameter PERIOD_WIDTH : u32 = ERROR_WIDTH            , // 周期補正に使うbit数
+    parameter PHASE_WIDTH  : u32 = ERROR_WIDTH            , // 位相補正に使うbit数
 ) (
     reset: input logic,
     clk  : input logic,
@@ -26,42 +28,45 @@ module synctimer_adjust #(
 ) {
 
     // type
-    localparam t_count   : type = logic<COUNTER_WIDTH>;
-    localparam t_calc    : type = logic<CALC_WIDTH>;
-    localparam t_period  : type = signed logic<PERIOD_WIDTH>;
-    localparam t_phase   : type = signed logic<PHASE_WIDTH>;
-    localparam t_adjust  : type = signed logic<ADJUST_WIDTH + ADJUST_Q>;
-    localparam t_adjust_u: type = logic<ADJUST_WIDTH + ADJUST_Q>;
+    localparam t_count  : type = logic<COUNTER_WIDTH>;
+    localparam t_count_q: type = logic<COUNTER_WIDTH + ADJUST_Q>;
+    localparam t_calc   : type = logic<CALC_WIDTH>;
+    localparam t_period : type = signed logic<PERIOD_WIDTH>;
+    localparam t_phase  : type = signed logic<PHASE_WIDTH>;
+    localparam t_error  : type = signed logic<ERROR_WIDTH + ERROR_Q>;
+    localparam t_error_u: type = logic<ERROR_WIDTH + ERROR_Q>;
+    localparam t_adjust : type = logic<ADJUST_WIDTH>;
+    localparam t_adjust_q : type = logic<ADJUST_WIDTH + ADJUST_Q>;
 
     // Low-Pass filter
-    localparam t_lpf_calc: type = signed logic<ADJUST_WIDTH + ADJUST_Q + 2>;
+    localparam t_lpf_calc: type = signed logic<ERROR_WIDTH + ERROR_Q + 2>;
     function LowPassFilter (
-        previus: input t_adjust,
-        current: input t_adjust,
-        first  : input logic   ,
-    ) -> t_adjust {
+        previus: input t_error,
+        current: input t_error,
+        first  : input logic  ,
+    ) -> t_error {
         var p: t_lpf_calc;
         var c: t_lpf_calc;
         p = previus as t_lpf_calc;
         c = current as t_lpf_calc;
         if first {
-            return c as t_adjust;
+            return c as t_error;
         } else {
-            return ((p * 3 as t_lpf_calc + c) >> 2) as t_adjust;
+            return ((p * 3 as t_lpf_calc + c) >> 2) as t_error;
         }
     }
 
     // 固定小数点変換
     function PhaseToAdjust (
         phase: input t_phase,
-    ) -> t_adjust {
-        return phase as t_adjust <<< ADJUST_Q;
+    ) -> t_error {
+        return phase as t_error <<< ERROR_Q;
     }
 
     function PeriodToAdjust (
         period: input t_period,
-    ) -> t_adjust {
-        return period as t_adjust <<< ADJUST_Q;
+    ) -> t_error {
+        return period as t_error <<< ERROR_Q;
     }
 
 
@@ -109,11 +114,11 @@ module synctimer_adjust #(
 
 
     // stage 1
-    var st1_first       : logic   ;
-    var st1_count       : t_count ; // 自クロックでの経過時刻計測
-    var st1_phase_error : t_adjust;
-    var st1_period_error: t_adjust;
-    var st1_valid       : logic   ;
+    var st1_first       : logic  ;
+    var st1_count       : t_count; // 自クロックでの経過時刻計測
+    var st1_phase_error : t_error;
+    var st1_period_error: t_error;
+    var st1_valid       : logic  ;
 
     always_ff (clk, reset) {
         if_reset {
@@ -148,11 +153,11 @@ module synctimer_adjust #(
     }
 
     // stage 2
-    var st2_first       : logic   ;
-    var st2_count       : t_count ;
-    var st2_phase_error : t_adjust;
-    var st2_period_error: t_adjust;
-    var st2_valid       : logic   ;
+    var st2_first       : logic  ;
+    var st2_count       : t_count;
+    var st2_phase_error : t_error;
+    var st2_period_error: t_error;
+    var st2_valid       : logic  ;
 
     always_ff (clk, reset) {
         if_reset {
@@ -164,7 +169,7 @@ module synctimer_adjust #(
         } else {
             if st1_valid {
                 st2_first        = 1'b0;
-                st2_count        = st1_count;
+                st2_count        = st1_count + 1 as t_count;
                 st2_phase_error  = LowPassFilter(st2_phase_error, st1_phase_error, st2_first);
                 st2_period_error = LowPassFilter(st2_period_error, st1_period_error - st2_phase_error, st2_first);
             }
@@ -177,9 +182,9 @@ module synctimer_adjust #(
     }
 
     // stage 3
-    var st3_adjust: t_adjust;
-    var st3_count : t_count ;
-    var st3_valid : logic   ;
+    var st3_adjust: t_error;
+    var st3_count : t_count;
+    var st3_valid : logic  ;
 
     always_ff (clk, reset) {
         if_reset {
@@ -194,11 +199,11 @@ module synctimer_adjust #(
     }
 
     // stage 3
-    var st4_sign  : logic     ;
-    var st4_zero  : logic     ;
-    var st4_adjust: t_adjust_u;
-    var st4_count : t_adjust_u;
-    var st4_valid : logic     ;
+    var st4_sign  : logic    ;
+    var st4_zero  : logic    ;
+    var st4_adjust: t_error_u;
+    var st4_count : t_error_u;
+    var st4_valid : logic    ;
 
     always_ff (clk, reset) {
         if_reset {
@@ -208,34 +213,40 @@ module synctimer_adjust #(
             st4_count  = 'x;
             st4_valid  = 1'b0;
         } else {
-            st4_sign   = st3_adjust <: 0;
-            st4_zero   = st3_adjust == 0;
-            st4_adjust = if st3_adjust <: 0 {
-                (-st3_adjust) as t_adjust_u
-            } else {
-                st3_adjust as t_adjust_u
-            };
-            st4_count = st4_count as t_adjust_u;
+            if st3_valid {
+                st4_sign   = st3_adjust <: 0;
+                st4_zero   = st3_adjust == 0;
+                st4_adjust = if st3_adjust <: 0 {
+                    (-st3_adjust) as t_error_u
+                } else {
+                    st3_adjust as t_error_u
+                };
+                st4_count = st3_count as t_error_u;
+            }
             st4_valid = st3_valid;
         }
     }
 
-    var div_quotient : t_adjust_u;
-    var div_remainder: t_adjust_u;
-    var div_valid    : logic     ;
+
+    // divider
+    var div_quotient : t_adjust_q;
+    var div_remainder: t_error_u;
+    var div_valid    : logic    ;
 
     var tmp_ready: logic;
-    inst i_unsigned_divide_multicycle: jelly_unsigned_divide_multicycle #(
-        DATA_WIDTH: ADJUST_WIDTH + ADJUST_Q + ADJUST_Q,
+    inst i_divider_unsigned_multicycle: divider_unsigned_multicycle #(
+        DIVIDEND_WIDTH: COUNTER_WIDTH + ERROR_Q,
+        DIVISOR_WIDTH : ERROR_WIDTH + ERROR_Q  ,
+        QUOTIENT_WIDTH: ADJUST_WIDTH + ADJUST_Q,
     ) (
         reset: reset,
         clk  : clk  ,
         cke  : 1'b1 ,
 
-        s_data0: st4_count ,
-        s_data1: st4_adjust,
-        s_valid: st4_valid ,
-        s_ready: tmp_ready ,
+        s_dividend: st4_count as t_count_q << (ERROR_Q + ADJUST_Q),
+        s_divisor : st4_adjust                     ,
+        s_valid   : st4_valid                      ,
+        s_ready   : tmp_ready                      ,
 
         m_quotient : div_quotient ,
         m_remainder: div_remainder,
@@ -243,4 +254,62 @@ module synctimer_adjust #(
         m_ready    : 1'b1         ,
     );
 
+
+    // adjuster
+    var adj_zero   : logic;
+    var adj_sign   : logic;
+    var adj_pediod : t_adjust_q;
+    var adj_count  : t_adjust_q;
+    var adj_valid  : logic;
+
+    var adj_count_next  : t_adjust_q;
+    assign adj_count_next = adj_count + (1 << ADJUST_Q)  as t_adjust_q;
+
+    always_ff (clk, reset) {
+        if_reset {
+            adj_zero   = 1'b1;
+            adj_sign   = 'x;
+            adj_pediod = 'x;
+            adj_count  = '0;
+            adj_valid  = 1'b0;
+        }
+        else {
+            adj_valid = 1'b0;
+
+            adj_count = adj_count_next; 
+            if adj_count_next >= adj_pediod {
+                adj_count = adj_count_next - adj_pediod;
+                adj_valid = 1'b1;
+            }
+            if adj_zero {
+                adj_count = '0;
+                adj_valid = 1'b0;
+            }
+
+            if div_valid {
+                adj_zero   = st4_zero;
+                adj_sign   = st4_sign;
+                adj_pediod = div_quotient;
+            }
+        }
+    }
+
+    // output
+    always_ff (clk, reset) {
+        if_reset {
+            adjust_sign  = 'x;
+            adjust_valid = 1'b0;
+        }
+        else {
+            if ( adjust_ready ) {
+                adjust_valid = 1'b0;
+            }
+
+            if ( adj_valid ) {
+                adjust_sign = adj_sign;
+                adjust_valid = 1'b1;
+            }
+
+        }
+    }
 }
