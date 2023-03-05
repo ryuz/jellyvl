@@ -39,20 +39,19 @@ module synctimer_timer #(
                 if adjust_valid && adjust_ready {
                     if adjust_sign {
                         add_value = (COUNT_NUM + 1) as t_count;
-                    }
-                    else {
+                    } else {
                         add_value = (COUNT_NUM - 1) as t_count;
                     }
                 }
             }
         }
         assign adjust_ready = 1'b1;
-    } else  : with_err {
+    } else :with_err {
         // 分数の誤差あり
         var err_value: t_count;
-        var carry: logic;
-        assign carry = err_value >= (DENOMINATOR - COUNT_ERR) as t_count ;
-        
+        var carry    : logic  ;
+        assign carry     = err_value >= (DENOMINATOR - COUNT_ERR) as t_count;
+
         always_ff (clk, reset) {
             if_reset {
                 add_value = '0;
@@ -62,17 +61,14 @@ module synctimer_timer #(
                     err_value = err_value - (DENOMINATOR - COUNT_ERR) as t_count;
                     if adjust_ready {
                         add_value = COUNT_NUM as t_count;
-                    }
-                    else {
+                    } else {
                         add_value = (COUNT_NUM + 1) as t_count;
                     }
-                }
-                else {
+                } else {
                     err_value = err_value + COUNT_ERR as t_count;
                     if adjust_ready {
                         add_value = (COUNT_NUM + 1) as t_count;
-                    }
-                    else {
+                    } else {
                         add_value = COUNT_NUM as t_count;
                     }
                 }
@@ -93,4 +89,3 @@ module synctimer_timer #(
         }
     }
 }
-
