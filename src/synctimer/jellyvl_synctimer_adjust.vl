@@ -160,24 +160,24 @@ module synctimer_adjust #(
     // stage 2
     var st2_first       : logic  ;
     var st2_count       : t_count;
-    var st2_phase_error : t_error;
-    var st2_period_error: t_error;
+    var st2_phase_adjust : t_error;
+    var st2_period_adjust: t_error;
     var st2_valid       : logic  ;
 
     always_ff (clk, reset) {
         if_reset {
             st2_first        = 1'b1;
             st2_count        = 'x;
-            st2_phase_error  = '0;
-            st2_period_error = '0;
+            st2_phase_adjust  = '0;
+            st2_period_adjust = '0;
             st2_valid        = 1'b0;
         } else {
             if st1_valid {
                 st2_first        = 1'b0;
                 st2_count        = st1_count + 1 as t_count;
-                st2_phase_error  = st1_phase_error >>> 2; //LowPassFilter(st2_phase_error, st1_phase_error, st2_first);
-//              st2_period_error = LowPassFilter(st2_period_error, st2_period_error + st1_period_error - st2_phase_error, st2_first);
-                st2_period_error = st2_period_error + ((st1_period_error + st2_phase_error) >>> 2);
+                st2_phase_adjust  = st1_phase_error >>> 2; //LowPassFilter(st2_phase_adjust, st1_phase_error, st2_first);
+//              st2_period_adjust = LowPassFilter(st2_period_adjust, st2_period_adjust + st1_period_error - st2_phase_adjust, st2_first);
+                st2_period_adjust = st2_period_adjust + ((st1_period_error + st2_phase_adjust) >>> 2);
             }
             st2_valid = st1_valid;
 
@@ -198,7 +198,7 @@ module synctimer_adjust #(
             st3_count  = 'x;
             st3_valid  = 1'b0;
         } else {
-            st3_adjust = st2_period_error + st2_phase_error;
+            st3_adjust = st2_period_adjust + st2_phase_adjust;
             st3_count  = st2_count;
             st3_valid  = st2_valid;
         }
