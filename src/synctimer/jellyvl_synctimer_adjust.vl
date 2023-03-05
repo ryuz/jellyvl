@@ -47,7 +47,7 @@ module synctimer_adjust #(
         if first {
             return c as t_adjust;
         } else {
-            return ((p * 3 as t_phase_iir + c) >> 2) as t_adjust;
+            return ((p * 3 as t_lpf_calc + c) >> 2) as t_adjust;
         }
     }
 
@@ -99,7 +99,7 @@ module synctimer_adjust #(
                 st0_correct_period       = current_correct_time - st0_previus_correct_time;
 
                 st0_first       = 1'b0;
-                st0_phase_error = (current_local_time - current_local_time) as t_phase;
+                st0_phase_error = (current_correct_time - current_local_time) as t_phase;
                 if !(st0_first || correct_force) {
                     st0_valid = 1'b1;
                 }
@@ -124,9 +124,12 @@ module synctimer_adjust #(
             st1_valid        = 1'b0;
         } else {
             st1_count += 1 as t_count;
+            if st1_valid {
+                st1_count = '0;
+            }
+
             if st0_valid {
                 st1_first       = 1'b0;
-                st1_count       = '0;
                 st1_phase_error = PhaseToAdjust(st0_phase_error);
                 if st0_phase_error <= param_phase_min {
                     st1_phase_error = PhaseToAdjust(param_phase_min);
@@ -134,7 +137,7 @@ module synctimer_adjust #(
                 if st0_phase_error >= param_phase_max {
                     st1_phase_error = PhaseToAdjust(param_phase_max);
                 }
-                st1_period_error = PeriodToAdjust((st0_local_period - st0_correct_period) as t_period);
+                st1_period_error = PeriodToAdjust((st0_correct_period - st0_local_period) as t_period);
             }
             st1_valid = st0_valid && !st1_first;
 
@@ -223,7 +226,7 @@ module synctimer_adjust #(
 
     var tmp_ready: logic;
     inst i_unsigned_divide_multicycle: jelly_unsigned_divide_multicycle #(
-        DATA_WIDTH: ADJUST_WIDTH + ADJUST_Q,
+        DATA_WIDTH: ADJUST_WIDTH + ADJUST_Q + ADJUST_Q,
     ) (
         reset: reset,
         clk  : clk  ,
