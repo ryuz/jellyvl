@@ -1,3 +1,5 @@
+
+// 調整機構
 module synctimer_adjust #(
     parameter TIMER_WIDTH  : u32 = 64                     , // タイマのbit幅
     parameter COUNTER_WIDTH: u32 = 32                     , // 自クロックで経過時間カウンタのbit数
@@ -36,25 +38,7 @@ module synctimer_adjust #(
     localparam t_error   : type = signed logic<ERROR_WIDTH + ERROR_Q>;
     localparam t_error_u : type = logic<ERROR_WIDTH + ERROR_Q>;
     localparam t_adjust  : type = logic<ADJUST_WIDTH + ADJUST_Q>;
-//  localparam t_adjust_q: type = logic<ADJUST_WIDTH>;
 
-    // Low-Pass filter
-    localparam t_lpf_calc: type = signed logic<ERROR_WIDTH + ERROR_Q + 2>;
-    function LowPassFilter (
-        previus: input t_error,
-        current: input t_error,
-        first  : input logic  ,
-    ) -> t_error {
-        var p: t_lpf_calc;
-        var c: t_lpf_calc;
-        p = previus as t_lpf_calc;
-        c = current as t_lpf_calc;
-        if first {
-            return c as t_error;
-        } else {
-            return ((p * 3 as t_lpf_calc + c) >> 2) as t_error;
-        }
-    }
 
     // 固定小数点変換
     function PhaseToAdjust (
@@ -175,9 +159,12 @@ module synctimer_adjust #(
             if st1_valid {
                 st2_first        = 1'b0;
                 st2_count        = st1_count + 1 as t_count;
-                st2_phase_adjust  = st1_phase_error >>> 2; //LowPassFilter(st2_phase_adjust, st1_phase_error, st2_first);
-//              st2_period_adjust = LowPassFilter(st2_period_adjust, st2_period_adjust + st1_period_error - st2_phase_adjust, st2_first);
-                st2_period_adjust = st2_period_adjust + ((st1_period_error + st2_phase_adjust) >>> 2);
+
+                // ゲインを 1/4 とすることで発振を抑える
+                st2_phase_adjust  = st1_phase_error >>> 2;
+
+                // st0_local_period に前回位相補正が含まれているのでその分相殺して加算(同じくゲイン 1/4 としてLPF)
+                st2_period_adjust += (st1_period_error + st2_phase_adjust) >>> 2;
             }
             st2_valid = st1_valid;
 

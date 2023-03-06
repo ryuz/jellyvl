@@ -1,3 +1,5 @@
+
+// 調整機構
 module jellyvl_synctimer_adjust #(
     parameter int unsigned TIMER_WIDTH   = 64                     , // タイマのbit幅
     parameter int unsigned COUNTER_WIDTH = 32                     , // 自クロックで経過時間カウンタのbit数
@@ -36,25 +38,7 @@ module jellyvl_synctimer_adjust #(
     localparam type t_error   = logic signed [ERROR_WIDTH + ERROR_Q-1:0];
     localparam type t_error_u = logic [ERROR_WIDTH + ERROR_Q-1:0];
     localparam type t_adjust  = logic [ADJUST_WIDTH + ADJUST_Q-1:0];
-    //  localparam t_adjust_q: type = logic<ADJUST_WIDTH>;
 
-    // Low-Pass filter
-    localparam type t_lpf_calc = logic signed [ERROR_WIDTH + ERROR_Q + 2-1:0];
-    function automatic t_error LowPassFilter(
-        input t_error previus,
-        input t_error current,
-        input logic   first  
-    ) ;
-        t_lpf_calc p;
-        t_lpf_calc c;
-        p = t_lpf_calc'(previus);
-        c = t_lpf_calc'(current);
-        if (first) begin
-            return t_error'(c);
-        end else begin
-            return t_error'(((p * t_lpf_calc'(3) + c) >> 2));
-        end
-    endfunction
 
     // 固定小数点変換
     function automatic t_error PhaseToAdjust(
@@ -173,10 +157,13 @@ module jellyvl_synctimer_adjust #(
             st2_valid         <= 1'b0;
         end else begin
             if (st1_valid) begin
-                st2_first        <= 1'b0;
-                st2_count        <= st1_count + t_count'(1);
-                st2_phase_adjust <= st1_phase_error >>> 2; //LowPassFilter(st2_phase_adjust, st1_phase_error, st2_first);
-                //              st2_period_adjust = LowPassFilter(st2_period_adjust, st2_period_adjust + st1_period_error - st2_phase_adjust, st2_first);
+                st2_first <= 1'b0;
+                st2_count <= st1_count + t_count'(1);
+
+                // ゲインを 1/4 とすることで発振を抑える
+                st2_phase_adjust <= st1_phase_error >>> 2;
+
+                // st0_local_period に前回位相補正が含まれているのでその分相殺して加算(同じくゲイン 1/4 としてLPF)
                 st2_period_adjust <= st2_period_adjust + ((st1_period_error + st2_phase_adjust) >>> 2);
             end
             st2_valid <= st1_valid;

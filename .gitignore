@@ -6,9 +6,9 @@ _*
 !.gitignore
 
 dependencies/
-sv/
+#sv/
 
 
 *.f
-*.sv
+#*.sv
 
