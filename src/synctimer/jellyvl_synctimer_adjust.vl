@@ -30,14 +30,14 @@ module synctimer_adjust #(
 ) {
 
     // type
-    localparam t_count   : type = logic<COUNTER_WIDTH>;
-    localparam t_count_q : type = logic<COUNTER_WIDTH + ADJUST_Q>;
-    localparam t_calc    : type = logic<CALC_WIDTH>;
-    localparam t_period  : type = signed logic<PERIOD_WIDTH>;
-    localparam t_phase   : type = signed logic<PHASE_WIDTH>;
-    localparam t_error   : type = signed logic<ERROR_WIDTH + ERROR_Q>;
-    localparam t_error_u : type = logic<ERROR_WIDTH + ERROR_Q>;
-    localparam t_adjust  : type = logic<ADJUST_WIDTH + ADJUST_Q>;
+    localparam t_count  : type = logic<COUNTER_WIDTH>;
+    localparam t_count_q: type = logic<COUNTER_WIDTH + ADJUST_Q>;
+    localparam t_calc   : type = logic<CALC_WIDTH>;
+    localparam t_period : type = signed logic<PERIOD_WIDTH>;
+    localparam t_phase  : type = signed logic<PHASE_WIDTH>;
+    localparam t_error  : type = signed logic<ERROR_WIDTH + ERROR_Q>;
+    localparam t_error_u: type = logic<ERROR_WIDTH + ERROR_Q>;
+    localparam t_adjust : type = logic<ADJUST_WIDTH + ADJUST_Q>;
 
 
     // 固定小数点変換
@@ -142,26 +142,26 @@ module synctimer_adjust #(
 
 
     // stage 2
-    var st2_first       : logic  ;
-    var st2_count       : t_count;
+    var st2_first        : logic  ;
+    var st2_count        : t_count;
     var st2_phase_adjust : t_error;
     var st2_period_adjust: t_error;
-    var st2_valid       : logic  ;
+    var st2_valid        : logic  ;
 
     always_ff (clk, reset) {
         if_reset {
-            st2_first        = 1'b1;
-            st2_count        = 'x;
+            st2_first         = 1'b1;
+            st2_count         = 'x;
             st2_phase_adjust  = '0;
             st2_period_adjust = '0;
-            st2_valid        = 1'b0;
+            st2_valid         = 1'b0;
         } else {
             if st1_valid {
-                st2_first        = 1'b0;
-                st2_count        = st1_count + 1 as t_count;
+                st2_first = 1'b0;
+                st2_count = st1_count + 1 as t_count;
 
                 // ゲインを 1/4 とすることで発振を抑える
-                st2_phase_adjust  = st1_phase_error >>> 2;
+                st2_phase_adjust = st1_phase_error >>> 2;
 
                 // st0_local_period に前回位相補正が含まれているのでその分相殺して加算(同じくゲイン 1/4 としてLPF)
                 st2_period_adjust += (st1_period_error + st2_phase_adjust) >>> 2;
@@ -222,9 +222,9 @@ module synctimer_adjust #(
 
 
     // divider
-    var div_quotient : t_adjust;
-    var div_remainder: t_error_u ;
-    var div_valid    : logic     ;
+    var div_quotient : t_adjust ;
+    var div_remainder: t_error_u;
+    var div_valid    : logic    ;
 
     var tmp_ready: logic;
     inst i_divider_unsigned_multicycle: divider_unsigned_multicycle #(
@@ -249,11 +249,11 @@ module synctimer_adjust #(
 
 
     // adjuster
-    var adj_zero  : logic     ;
-    var adj_sign  : logic     ;
+    var adj_zero  : logic   ;
+    var adj_sign  : logic   ;
     var adj_pediod: t_adjust;
     var adj_count : t_adjust;
-    var adj_valid : logic     ;
+    var adj_valid : logic   ;
 
     var adj_count_next: t_adjust;
     assign adj_count_next = adj_count + (1 << ADJUST_Q) as t_adjust;

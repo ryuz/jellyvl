@@ -1,0 +1,231 @@
+module etherneco_tx (
+    reset: input logic,
+    clk  : input logic,
+
+    in_start : input logic    ,
+    in_length: input logic<16>,
+
+    in_cancel: input logic,
+
+    s_last : input  logic   ,
+    s_data : input  logic<8>,
+    s_valid: input  logic   ,
+    s_ready: output logic   ,
+
+    m_first: output logic   ,
+    m_last : output logic   ,
+    m_data : output logic<8>,
+    m_valid: output logic   ,
+    m_ready: input  logic   ,
+) {
+
+    enum STATE: logic<6> {
+        IDLE = 6'b000000,
+        PREAMBLE = 6'b000001,
+        LENGTH = 6'b000010,
+        PAYLOAD = 6'b000100,
+        PADDING = 6'b001000,
+        FCS = 6'b010000,
+        ERROR = 6'b100000,
+    }
+
+    localparam t_length: type = logic<16>;
+
+    var cke: logic;
+    assign cke = !m_valid || m_ready;
+
+    var state     : STATE      ;
+    var count     : t_length   ;
+    var length    : t_length   ;
+    var crc_update: logic      ;
+    var tx_first  : logic      ;
+    var tx_last   : logic      ;
+    var tx_data   : logic   <8>;
+    var tx_valid  : logic      ;
+
+    var count_next: t_length;
+    assign count_next = count + 1'b1;
+
+    always_ff (clk, reset) {
+        if_reset {
+            state      = STATE::IDLE;
+            count      = 'x;
+            length     = 'x;
+            crc_update = 'x;
+            tx_first   = 'x;
+            tx_last    = 'x;
+            tx_data    = 'x;
+            tx_valid   = '0;
+        } else if cke {
+            if tx_valid {
+                count = count_next;
+            }
+
+            case state {
+                STATE::IDLE: {
+                    count      = 'x;
+                    length     = in_length;
+                    crc_update = 'x;
+                    tx_first   = 1'bx;
+                    tx_last    = 1'bx;
+                    tx_data    = 8'hxx;
+                    tx_valid   = 1'b0;
+                    if in_start {
+                        state    = STATE::PREAMBLE;
+                        count    = '0;
+                        length   = in_length;
+                        tx_first = 1'b1;
+                        tx_last  = 1'b0;
+                        tx_data  = 8'h55;
+                        tx_valid = 1'b1;
+                    }
+                }
+
+                STATE::PREAMBLE: {
+                    crc_update = 'x;
+                    tx_first   = 1'b0;
+                    tx_last    = 1'b0;
+                    tx_data    = 8'h55;
+                    tx_valid   = 1'b1;
+                    if count[3:0] == 3'd6 {
+                        state      = STATE::LENGTH;
+                        count      = '0;
+                        crc_update = 1'b1;
+                        tx_first   = 1'b0;
+                        tx_last    = 1'b0;
+                        tx_data    = 8'hd5;
+                        tx_valid   = 1'b1;
+                    }
+                }
+
+                STATE::LENGTH: {
+                    crc_update = 1'b0;
+                    tx_first   = 1'b0;
+                    tx_last    = 1'b0;
+                    tx_data    = length[7:0];
+                    tx_valid   = 1'b1;
+                    if count[0] == 1'd1 {
+                        state   = STATE::PAYLOAD;
+                        count   = '0;
+                        tx_data = length[15:8];
+                    }
+                }
+
+                STATE::PAYLOAD: {
+                    tx_first = 1'b0;
+                    tx_last  = 1'b0;
+                    tx_data  = s_data;
+                    tx_valid = 1'b1;
+                    if s_last {
+                        state = STATE::PADDING;
+                    }
+                    if count_next == length {
+                        state = STATE::FCS;
+                        count = '0;
+                    }
+                }
+
+                STATE::PADDING: {
+                    tx_first = 1'b0;
+                    tx_last  = 1'b0;
+                    tx_data  = 8'h00;
+                    tx_valid = 1'b1;
+                    if count_next == length {
+                        state = STATE::FCS;
+                        count = '0;
+                    }
+                }
+
+                STATE::FCS: {
+                    crc_update = 1'bx;
+                    tx_first   = 1'b0;
+                    tx_last    = (count == 3 as t_length);
+                    tx_data    = 'x;
+                    tx_valid   = 1'b1;
+                    if tx_last {
+                        state    = STATE::IDLE;
+                        count    = 'x;
+                        tx_first = 'x;
+                        tx_last  = 'x;
+                        tx_data  = 'x;
+                        tx_valid = 1'b0;
+                    }
+                }
+
+                default: {
+                    state      = STATE::IDLE;
+                    count      = 'x;
+                    length     = 'x;
+                    crc_update = 'x;
+                    tx_first   = 1'bx;
+                    tx_last    = 1'bx;
+                    tx_data    = 'x;
+                    tx_valid   = 1'b1;
+                }
+            }
+
+            if (tx_valid && !tx_last && in_cancel) || (state == STATE::PAYLOAD && !s_valid) || (state == STATE::PAYLOAD && count_next == length && !s_last) {
+                state      = STATE::ERROR;
+                count      = 'x;
+                length     = 'x;
+                crc_update = 'x;
+                tx_first   = 1'b0;
+                tx_last    = 1'b1;
+                tx_data    = 8'h00;
+                tx_valid   = 1'b1;
+            }
+        }
+    }
+
+
+    // CRC
+    var crc_data : logic<8> ;
+    var crc_valid: logic    ;
+    var crc_value: logic<32>;
+    assign crc_data  = tx_data;
+    assign crc_valid = tx_valid && (state == STATE::LENGTH || state == STATE::PAYLOAD || state == STATE::PADDING);
+
+    inst u_cacl_crc: jelly2_calc_crc #(
+        DATA_WIDTH: 8           ,
+        CRC_WIDTH : 32          ,
+        POLY_REPS : 32'h04C11DB7,
+        REVERSED  : 0           ,
+    ) (
+        reset: reset,
+        clk  : clk  ,
+        cke  : cke  ,
+
+        in_update: crc_update,
+        in_data  : crc_data  ,
+        in_valid : crc_valid ,
+
+        out_crc: crc_value,
+    );
+
+    var out_data: logic<32>;
+    assign m_data   = out_data[7:0];
+
+    always_ff (clk, reset) {
+        if_reset {
+            out_data = 'x;
+            m_first  = 'x;
+            m_last   = 'x;
+            m_valid  = 1'b0;
+        } else if cke {
+            if state == STATE::FCS {
+                if count[1:0] == '0 {
+                    out_data = crc_value;
+                } else {
+                    out_data = out_data >> 8;
+                }
+            } else {
+                out_data = {24'hxxxxxx, tx_data};
+            }
+
+            m_first = tx_first;
+            m_last  = tx_last;
+            m_valid = tx_valid;
+        }
+    }
+
+}
