@@ -2,10 +2,10 @@ module etherneco_tx (
     reset: input logic,
     clk  : input logic,
 
-    in_start : input logic    ,
-    in_length: input logic<16>,
+    tx_start : input logic    ,
+    tx_length: input logic<16>, // 転送サイズより1小さい値を指定(AXI方式)
 
-    in_cancel: input logic,
+    tx_cancel: input logic,
 
     s_last : input  logic   ,
     s_data : input  logic<8>,
@@ -30,161 +30,281 @@ module etherneco_tx (
     }
 
     localparam t_length: type = logic<16>;
+    localparam t_count : type = logic<3>;
 
     var cke: logic;
     assign cke = !m_valid || m_ready;
 
-    var state     : STATE      ;
-    var count     : t_length   ;
-    var length    : t_length   ;
-    var crc_update: logic      ;
-    var tx_first  : logic      ;
-    var tx_last   : logic      ;
-    var tx_data   : logic   <8>;
-    var tx_valid  : logic      ;
 
-    var count_next: t_length;
-    assign count_next = count + 1'b1;
+    // ----------------------------
+    //  stage 0
+    // ----------------------------
+
+    var st0_state : STATE   ;
+    var st0_count : t_count ;
+    var st0_length: t_length;
+    var st0_first : logic   ;
+    var st0_last  : logic   ;
+
+    var st0_count_next: t_count;
+    assign st0_count_next = st0_count + 1'b1;
+
+    var st0_length_next: t_length;
+    assign st0_length_next = st0_length - 1'b1;
 
     always_ff (clk, reset) {
         if_reset {
-            state      = STATE::IDLE;
-            count      = 'x;
-            length     = 'x;
-            crc_update = 'x;
-            tx_first   = 'x;
-            tx_last    = 'x;
-            tx_data    = 'x;
-            tx_valid   = '0;
-        } else if cke {
-            if tx_valid {
-                count = count_next;
-            }
+            st0_state  = STATE::IDLE;
+            st0_count  = 'x;
+            st0_length = 'x;
+            st0_first  = 1'bx;
+            st0_last   = 1'bx;
 
-            case state {
+        } else if cke {
+
+            st0_count = st0_count_next;
+            case st0_state {
                 STATE::IDLE: {
-                    count      = 'x;
-                    length     = in_length;
-                    crc_update = 'x;
-                    tx_first   = 1'bx;
-                    tx_last    = 1'bx;
-                    tx_data    = 8'hxx;
-                    tx_valid   = 1'b0;
-                    if in_start {
-                        state    = STATE::PREAMBLE;
-                        count    = '0;
-                        length   = in_length;
-                        tx_first = 1'b1;
-                        tx_last  = 1'b0;
-                        tx_data  = 8'h55;
-                        tx_valid = 1'b1;
+                    st0_count  = 'x;
+                    st0_length = 'x;
+                    st0_first  = 1'bx;
+                    st0_last   = 1'bx;
+                    if tx_start {
+                        st0_state  = STATE::PREAMBLE;
+                        st0_count  = '0;
+                        st0_length = tx_length;
+                        st0_first  = 1'b0;
+                        st0_last   = 1'b0;
                     }
                 }
 
                 STATE::PREAMBLE: {
-                    crc_update = 'x;
-                    tx_first   = 1'b0;
-                    tx_last    = 1'b0;
-                    tx_data    = 8'h55;
-                    tx_valid   = 1'b1;
-                    if count[3:0] == 3'd6 {
-                        state      = STATE::LENGTH;
-                        count      = '0;
-                        tx_first   = 1'b0;
-                        tx_last    = 1'b0;
-                        tx_data    = 8'hd5;
-                        tx_valid   = 1'b1;
+                    st0_first = 1'b0;
+                    st0_last  = 1'b0;
+                    if st0_count == 3'd6 {
+                        st0_state = STATE::LENGTH;
+                        st0_count = '0;
+                        st0_first = 1'b1;
+                        st0_last  = 1'b0;
                     }
                 }
 
                 STATE::LENGTH: {
-                    crc_update = (count[0] != 1'd0);
-                    tx_first   = 1'b0;
-                    tx_last    = 1'b0;
-                    tx_data    = length[7:0];
-                    tx_valid   = 1'b1;
-                    if count[0] == 1'd1 {
-                        state   = STATE::PAYLOAD;
-                        count   = '0;
-                        tx_data = length[15:8];
+                    st0_first = 1'b0;
+                    st0_last  = (st0_count[0] == 1'd0);
+                    if st0_last {
+                        st0_state = STATE::PAYLOAD;
+                        st0_count = '0;
+                        st0_first = 1'b1;
+                        st0_last  = st0_length == 16'd0;
                     }
                 }
 
                 STATE::PAYLOAD: {
-                    tx_first = 1'b0;
-                    tx_last  = 1'b0;
-                    tx_data  = s_data;
-                    tx_valid = 1'b1;
+                    st0_length = st0_length_next;
+                    st0_first  = 1'b0;
+                    st0_last   = (st0_length_next == 0);
                     if s_last {
-                        state = STATE::PADDING;
+                        st0_state = STATE::PADDING;
                     }
-                    if count_next == length {
-                        state = STATE::FCS;
-                        count = '0;
+                    if st0_last {
+                        st0_state  = STATE::FCS;
+                        st0_count  = '0;
+                        st0_length = 'x;
+                        st0_first  = 1'b1;
+                        st0_last   = 1'b0;
                     }
                 }
 
                 STATE::PADDING: {
-                    tx_first = 1'b0;
-                    tx_last  = 1'b0;
-                    tx_data  = 8'h00;
-                    tx_valid = 1'b1;
-                    if count_next == length {
-                        state = STATE::FCS;
-                        count = '0;
+                    st0_length = st0_length_next;
+                    st0_first  = 1'b0;
+                    st0_last   = (st0_length_next == 0);
+                    if st0_last {
+                        st0_state  = STATE::FCS;
+                        st0_count  = '0;
+                        st0_length = 'x;
+                        st0_first  = 1'b1;
+                        st0_last   = 1'b0;
                     }
                 }
 
                 STATE::FCS: {
-                    crc_update = 1'bx;
-                    tx_first   = 1'b0;
-                    tx_last    = (count == 3 as t_length);
-                    tx_data    = 'x;
-                    tx_valid   = 1'b1;
-                    if tx_last {
-                        state    = STATE::IDLE;
-                        count    = 'x;
-                        tx_first = 'x;
-                        tx_last  = 'x;
-                        tx_data  = 'x;
-                        tx_valid = 1'b0;
+                    st0_length = 'x;
+                    st0_first  = 1'b0;
+                    st0_last   = st0_count == 3'd2;
+                    if st0_last {
+                        st0_state = STATE::IDLE;
+                        st0_count = 'x;
                     }
                 }
 
                 default: {
-                    state      = STATE::IDLE;
-                    count      = 'x;
-                    length     = 'x;
-                    crc_update = 'x;
-                    tx_first   = 1'bx;
-                    tx_last    = 1'bx;
-                    tx_data    = 'x;
-                    tx_valid   = 1'b1;
+                    st0_state  = STATE::IDLE;
+                    st0_count  = 'x;
+                    st0_length = 'x;
+                    st0_first  = 1'bx;
+                    st0_last   = 1'bx;
                 }
             }
 
-            if (tx_valid && !tx_last && in_cancel) || (state == STATE::PAYLOAD && !s_valid) || (state == STATE::PAYLOAD && count_next == length && !s_last) {
-                state      = STATE::ERROR;
-                count      = 'x;
-                length     = 'x;
-                crc_update = 'x;
-                tx_first   = 1'b0;
-                tx_last    = 1'b1;
-                tx_data    = 8'h00;
-                tx_valid   = 1'b1;
+            // エラーチェック
+            if (st0_state == STATE::PAYLOAD && !s_valid) // 転送中アンダーフロー
+             || (st0_state == STATE::PAYLOAD && st0_last && !s_last) { // オーバーフロー
+                st0_state  = STATE::ERROR;
+                st0_count  = 'x;
+                st0_length = 'x;
+                st0_first  = 1'bx;
+                st0_last   = 1'bx;
+            }
+
+            if tx_cancel {
+                st0_state  = STATE::IDLE;
+                st0_count  = 'x;
+                st0_length = 'x;
+                st0_first  = 1'bx;
+                st0_last   = 1'bx;
             }
         }
     }
 
-    assign s_ready = cke && (state == STATE::PAYLOAD);
+    assign s_ready = cke && (st0_state == STATE::PAYLOAD);
 
+
+    // ----------------------------
+    //  stage 1
+    // ----------------------------
+
+    var st1_state: STATE   ;
+    var st1_first: logic   ;
+    var st1_last : logic   ;
+    var st1_data : logic<8>;
+    var st1_valid: logic   ;
+
+    always_ff (clk, reset) {
+        if_reset {
+            st1_state = STATE::IDLE;
+            st1_first = 'x;
+            st1_last  = 'x;
+            st1_data  = 'x;
+            st1_valid = '0;
+        } else if cke {
+
+            // stage1
+            st1_state = st0_state;
+            st1_first = st0_first;
+            st1_last  = st0_last;
+            st1_data  = 'x;
+            st1_valid = 1'b0;
+
+            case st0_state {
+                STATE::IDLE: {
+                    // ここだけ追い越しして1cycle稼ぐ
+                    if tx_start {
+                        st1_state = STATE::PREAMBLE;
+                        st1_first = 1'b1;
+                        st1_last  = 1'b0;
+                        st1_data  = 8'h55;
+                        st1_valid = 1'b1;
+                    }
+                }
+
+                STATE::PREAMBLE: {
+                    st1_data = if st0_last {
+                        8'hd5
+                    } else {
+                        8'h55
+                    };
+                    st1_valid = 1'b1;
+                }
+
+                STATE::LENGTH: {
+                    st1_data = if st0_count[0] {
+                        st0_length[15:8]
+                    } else {
+                        st0_length[7:0]
+                    };
+                    st1_valid = 1'b1;
+                }
+
+                STATE::PAYLOAD: {
+                    st1_data  = s_data;
+                    st1_valid = 1'b1;
+                }
+
+                STATE::PADDING: {
+                    st1_data  = 8'h00;
+                    st1_valid = 1'b1;
+                }
+
+                STATE::FCS: {
+                    st1_data  = 'x;
+                    st1_valid = 1'b1;
+                }
+
+                default: {}
+            }
+
+            // キャンセル
+            if tx_cancel {
+                if st1_valid && !(st1_last && st1_state == STATE::FCS) {
+                    st1_state = STATE::ERROR;
+                    st1_first = 1'b1;
+                    st1_last  = 1'b1;
+                    st1_data  = 8'h00;
+                    st1_valid = 1'b1;
+                } else {
+                    st1_state = STATE::IDLE;
+                    st1_first = 1'bx;
+                    st1_last  = 1'bx;
+                    st1_data  = 'x;
+                    st1_valid = 1'b0;
+                }
+            }
+        }
+    }
+
+
+    // ----------------------------
+    //  stage 2
+    // ----------------------------
+
+    var st2_state: STATE    ;
+    var st2_first: logic    ;
+    var st2_last : logic    ;
+    var st2_crc  : logic<32>;
+    var st2_data : logic<8> ;
+    //    var st2_valid: logic    ;
+
+    always_ff (clk, reset) {
+        if_reset {
+            st2_state = STATE::IDLE;
+            st2_first = 1'bx;
+            st2_last  = 1'bx;
+            st2_data  = 'x;
+            //            st2_valid = 1'b0;
+        } else if cke {
+            st2_state = st1_state;
+            st2_first = st1_first;
+            st2_last  = st1_last;
+            st2_data  = st1_data;
+            //            st2_valid  = st1_valid;
+
+            if tx_cancel {
+                st2_state = STATE::IDLE;
+                st2_first = 1'bx;
+                st2_last  = 1'bx;
+                st2_data  = 'x;
+                //                st2_valid = 1'b0;
+            }
+        }
+    }
 
     // CRC
-    var crc_data : logic<8> ;
-    var crc_valid: logic    ;
-    var crc_value: logic<32>;
-    assign crc_data  = tx_data;
-    assign crc_valid = tx_valid && (state == STATE::LENGTH || state == STATE::PAYLOAD || state == STATE::PADDING);
+    var crc_update: logic    ;
+    var crc_data  : logic<8> ;
+    var crc_valid : logic    ;
+    var crc_value : logic<32>;
 
     inst u_cacl_crc: jelly2_calc_crc #(
         DATA_WIDTH: 8           ,
@@ -203,30 +323,59 @@ module etherneco_tx (
         out_crc: crc_value,
     );
 
-    var out_data: logic<32>;
-    assign m_data   = out_data[7:0];
+    assign crc_update = !(st1_state == STATE::LENGTH && st1_first);
+    assign crc_data   = st1_data;
+    assign crc_valid  = (st1_state == STATE::LENGTH || st1_state == STATE::PAYLOAD || st1_state == STATE::PADDING);
+    assign st2_crc    = crc_value;
+
+
+
+    // ----------------------------
+    //  stage 3
+    // ----------------------------
+
+    var st3_state: STATE    ;
+    var st3_first: logic    ;
+    var st3_last : logic    ;
+    var st3_data : logic<32>;
+    var st3_valid: logic    ;
 
     always_ff (clk, reset) {
         if_reset {
-            out_data = 'x;
-            m_first  = 'x;
-            m_last   = 'x;
-            m_valid  = 1'b0;
+            st3_state = STATE::IDLE;
+            st3_first = 1'bx;
+            st3_last  = 1'bx;
+            st3_data  = 'x;
+            st3_valid = 1'b0;
+
         } else if cke {
-            if state == STATE::FCS {
-                if count[1:0] == '0 {
-                    out_data = crc_value;
+            st3_state = st2_state;
+            st3_first = st2_first && st2_state == STATE::PREAMBLE;
+            st3_last  = st2_last && st2_state == STATE::FCS;
+            if st2_state == STATE::FCS {
+                if st2_first {
+                    st3_data = st2_crc;
                 } else {
-                    out_data = out_data >> 8;
+                    st3_data >>= 8;
                 }
             } else {
-                out_data = {24'hxxxxxx, tx_data};
+                st3_data = st2_data;
             }
+            st3_valid = (st2_state != STATE::IDLE);
 
-            m_first = tx_first;
-            m_last  = tx_last;
-            m_valid = tx_valid;
+            if (tx_cancel && st3_valid && !st3_last) || st2_state == STATE::ERROR {
+                st3_state = STATE::ERROR;
+                st3_first = 1'b0;
+                st3_last  = 1'b1;
+                st3_data  = 8'h00;
+                st3_valid = 1'b1;
+            }
         }
     }
+
+    assign m_first = st3_first;
+    assign m_last  = st3_last;
+    assign m_data  = st3_data[7:0];
+    assign m_valid = st3_valid;
 
 }

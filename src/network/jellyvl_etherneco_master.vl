@@ -74,10 +74,10 @@ module etherneco_master #(
         reset: reset,
         clk  : clk  ,
 
-        in_start : timsync_trigger,
-        in_length: 16'd32         ,
+        tx_start : timsync_trigger,
+        tx_length: 16'd11         ,
 
-        in_cancel: 1'b0,
+        tx_cancel: 1'b0,
 
         s_last : inner_tx_last ,
         s_data : inner_tx_data ,
