@@ -1,0 +1,116 @@
+module etherneco_master #(
+    parameter TIMER_WIDTH: u32 = 64, // タイマのbit幅
+    parameter NUMERATOR  : u32 = 8 , // クロック周期の分子
+    parameter DENOMINATOR: u32 = 1 , // クロック周期の分母
+) (
+    reset: input logic,
+    clk  : input logic,
+
+    current_time: output logic<TIMER_WIDTH>,
+
+    s_inner_rx_first: input  logic   ,
+    s_inner_rx_last : input  logic   ,
+    s_inner_rx_data : input  logic<8>,
+    s_inner_rx_valid: input  logic   ,
+    s_inner_rx_ready: output logic   ,
+
+    m_inner_tx_first: output logic   ,
+    m_inner_tx_last : output logic   ,
+    m_inner_tx_data : output logic<8>,
+    m_inner_tx_valid: output logic   ,
+    m_inner_tx_ready: input  logic   ,
+
+    s_outer_rx_first: input  logic   ,
+    s_outer_rx_last : input  logic   ,
+    s_outer_rx_data : input  logic<8>,
+    s_outer_rx_valid: input  logic   ,
+    s_outer_rx_ready: output logic   ,
+
+    m_outer_tx_first: output logic   ,
+    m_outer_tx_last : output logic   ,
+    m_outer_tx_data : output logic<8>,
+    m_outer_tx_valid: output logic   ,
+    m_outer_tx_ready: input  logic   ,
+) {
+
+    localparam PERIOD_WIDTH: u32 = 32;
+
+    var timsync_trigger : logic;
+    var timsync_override: logic;
+
+    // 通信タイミング生成
+    inst u_periodic_trigger: periodic_trigger #(
+        TIMER_WIDTH : TIMER_WIDTH ,
+        PERIOD_WIDTH: PERIOD_WIDTH,
+    ) (
+        reset: reset,
+        clk  : clk  ,
+
+        enable: 1'b1     ,
+        phase : '0       ,
+        period: 32'd20000,
+
+        current_time: current_time,
+
+        trigger: timsync_trigger,
+    );
+
+    always_ff (clk, reset) {
+        if_reset {
+            timsync_override = 1'b1;
+        } else {
+            if timsync_trigger {
+                timsync_override = 1'b0;
+            }
+        }
+    }
+
+    var inner_tx_last : logic   ;
+    var inner_tx_data : logic<8>;
+    var inner_tx_valid: logic   ;
+    var inner_tx_ready: logic   ;
+
+    inst u_etherneco_tx_inner: etherneco_tx (
+        reset: reset,
+        clk  : clk  ,
+
+        in_start : timsync_trigger,
+        in_length: 16'd32         ,
+
+        in_cancel: 1'b0,
+
+        s_last : inner_tx_last ,
+        s_data : inner_tx_data ,
+        s_valid: inner_tx_valid,
+        s_ready: inner_tx_ready,
+
+        m_first: m_inner_tx_first,
+        m_last : m_inner_tx_last ,
+        m_data : m_inner_tx_data ,
+        m_valid: m_inner_tx_valid,
+        m_ready: m_inner_tx_ready,
+    );
+
+
+
+    // タイマ合わせマスター
+    inst u_etherneco_synctimer_master: etherneco_synctimer_master #(
+        TIMER_WIDTH: TIMER_WIDTH,
+        NUMERATOR  : NUMERATOR  ,
+        DENOMINATOR: DENOMINATOR,
+    ) (
+        reset: reset,
+        clk  : clk  ,
+
+        current_time: current_time,
+
+        start   : timsync_trigger ,
+        override: timsync_override,
+
+        m_last : inner_tx_last ,
+        m_data : inner_tx_data ,
+        m_valid: inner_tx_valid,
+        m_ready: inner_tx_ready,
+    );
+
+}

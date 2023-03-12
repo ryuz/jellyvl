@@ -19,9 +19,9 @@ module synctimer_adjust #(
 
     local_time: input logic<TIMER_WIDTH>,
 
-    correct_force: input logic             ,
-    correct_time : input logic<TIMER_WIDTH>,
-    correct_valid: input logic             ,
+    correct_override: input logic             ,
+    correct_time    : input logic<TIMER_WIDTH>,
+    correct_valid   : input logic             ,
 
     adjust_sign : output logic,
     adjust_valid: output logic,
@@ -89,7 +89,7 @@ module synctimer_adjust #(
 
                 st0_first       = 1'b0;
                 st0_phase_error = (current_correct_time - current_local_time) as t_phase;
-                if !(st0_first || correct_force) {
+                if !(st0_first || correct_override) {
                     st0_valid = 1'b1;
                 }
             }
@@ -130,7 +130,7 @@ module synctimer_adjust #(
             }
             st1_valid = st0_valid && !st1_first;
 
-            if correct_valid && correct_force {
+            if correct_valid && correct_override {
                 st1_first = 1'b1;
             }
         }
@@ -168,7 +168,7 @@ module synctimer_adjust #(
             }
             st2_valid = st1_valid;
 
-            if correct_valid && correct_force {
+            if correct_valid && correct_override {
                 st2_first = 1'b1;
             }
         }

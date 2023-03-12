@@ -22,9 +22,9 @@ module jellyvl_synctimer_core #(
 
     output logic [TIMER_WIDTH-1:0] current_time,
 
-    input logic                   correct_force,
-    input logic [TIMER_WIDTH-1:0] correct_time ,
-    input logic                   correct_valid
+    input logic                   correct_override,
+    input logic [TIMER_WIDTH-1:0] correct_time    ,
+    input logic                   correct_valid   
 
 );
 
@@ -46,7 +46,7 @@ module jellyvl_synctimer_core #(
         ) : (
             correct_time
         ))),
-        .set_valid (set_valid | (correct_valid & correct_force)),
+        .set_valid (set_valid | (correct_valid & correct_override)),
         .
         adjust_sign  (adjust_sign ),
         .adjust_valid (adjust_valid),
@@ -75,9 +75,9 @@ module jellyvl_synctimer_core #(
         .
         local_time (current_time),
         .
-        correct_force (correct_force),
-        .correct_time  (correct_time ),
-        .correct_valid (correct_valid),
+        correct_override (correct_override),
+        .correct_time     (correct_time    ),
+        .correct_valid    (correct_valid   ),
         .
         adjust_sign  (adjust_sign ),
         .adjust_valid (adjust_valid),

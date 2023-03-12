@@ -1,0 +1,88 @@
+module etherneco_synctimer_master #(
+    parameter TIMER_WIDTH: u32 = 64, // タイマのbit幅
+    parameter NUMERATOR  : u32 = 10, // クロック周期の分子
+    parameter DENOMINATOR: u32 = 3 , // クロック周期の分母
+
+) (
+    reset: input logic,
+    clk  : input logic,
+
+    current_time: output logic<TIMER_WIDTH>,
+
+    start   : input logic,
+    override: input logic,
+
+    m_last : output logic   ,
+    m_data : output logic<8>,
+    m_valid: output logic   ,
+    m_ready: input  logic   ,
+) {
+
+    localparam LENGTH: u32 = 2 + 8 + 2;
+
+    var last: logic<LENGTH, 1>;
+    var data: logic<LENGTH, 8>;
+
+    always_ff (clk, reset) {
+        if_reset {
+            last    = 'x;
+            data    = 'x;
+            m_valid = 1'b0;
+        } else {
+            if start {
+                // node id
+                data[0] = 8'h00;
+                last[0] = 1'b0;
+
+                // cmd type
+                data[1] = if override {
+                    8'h10
+                } else {
+                    8'h11
+                };
+                last[1] = 1'b0;
+
+                // time
+                data[9:2] = current_time;
+                last[9:2] = 8'h00;
+
+                // offset
+                data[11:10] = 16'h0010;
+                last[11:10] = 2'b10;
+
+                m_valid = 1'b1;
+            } else {
+                if m_valid && m_ready {
+                    data    >>= 8;
+                    last    >>= 1;
+                    m_valid =   !m_last;
+                }
+            }
+        }
+    }
+
+    assign m_data = data[0];
+    assign m_last = last[0];
+
+
+    // タイマ
+    var adjust_ready: logic;
+    inst u_synctimer_timer: synctimer_timer #(
+        NUMERATOR  : NUMERATOR  ,
+        DENOMINATOR: DENOMINATOR,
+        TIMER_WIDTH: TIMER_WIDTH,
+    ) (
+        reset: reset,
+        clk  : clk  ,
+
+        set_time : '0  ,
+        set_valid: 1'b0,
+
+        adjust_sign : 1'b0        ,
+        adjust_valid: 1'b0        ,
+        adjust_ready: adjust_ready,
+
+        current_time: current_time,
+    );
+
+}

@@ -88,18 +88,17 @@ module jellyvl_etherneco_tx (
                     tx_data    <= 8'h55;
                     tx_valid   <= 1'b1;
                     if (count[3:0] == 3'd6) begin
-                        state      <= STATE_LENGTH;
-                        count      <= '0;
-                        crc_update <= 1'b1;
-                        tx_first   <= 1'b0;
-                        tx_last    <= 1'b0;
-                        tx_data    <= 8'hd5;
-                        tx_valid   <= 1'b1;
+                        state    <= STATE_LENGTH;
+                        count    <= '0;
+                        tx_first <= 1'b0;
+                        tx_last  <= 1'b0;
+                        tx_data  <= 8'hd5;
+                        tx_valid <= 1'b1;
                     end
                 end
 
                 STATE_LENGTH: begin
-                    crc_update <= 1'b0;
+                    crc_update <= (count[0] != 1'd0);
                     tx_first   <= 1'b0;
                     tx_last    <= 1'b0;
                     tx_data    <= length[7:0];
@@ -176,6 +175,8 @@ module jellyvl_etherneco_tx (
             end
         end
     end
+
+    assign s_ready = cke && (state == STATE_PAYLOAD);
 
 
     // CRC

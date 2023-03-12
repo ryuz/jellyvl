@@ -22,9 +22,9 @@ module synctimer_core #(
 
     current_time: output logic<TIMER_WIDTH>,
 
-    correct_force: input logic             ,
-    correct_time : input logic<TIMER_WIDTH>,
-    correct_valid: input logic             ,
+    correct_override: input logic             ,
+    correct_time    : input logic<TIMER_WIDTH>,
+    correct_valid   : input logic             ,
 
 ) {
 
@@ -45,8 +45,8 @@ module synctimer_core #(
             set_time
         } else {
             correct_time
-        }    ,
-        set_valid: set_valid | (correct_valid & correct_force),
+        }       ,
+        set_valid: set_valid | (correct_valid & correct_override),
 
         adjust_sign : adjust_sign ,
         adjust_valid: adjust_valid,
@@ -75,9 +75,9 @@ module synctimer_core #(
 
         local_time: current_time,
 
-        correct_force: correct_force,
-        correct_time : correct_time ,
-        correct_valid: correct_valid,
+        correct_override: correct_override,
+        correct_time    : correct_time    ,
+        correct_valid   : correct_valid   ,
 
         adjust_sign : adjust_sign ,
         adjust_valid: adjust_valid,

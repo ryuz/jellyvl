@@ -90,7 +90,6 @@ module etherneco_tx (
                     if count[3:0] == 3'd6 {
                         state      = STATE::LENGTH;
                         count      = '0;
-                        crc_update = 1'b1;
                         tx_first   = 1'b0;
                         tx_last    = 1'b0;
                         tx_data    = 8'hd5;
@@ -99,7 +98,7 @@ module etherneco_tx (
                 }
 
                 STATE::LENGTH: {
-                    crc_update = 1'b0;
+                    crc_update = (count[0] != 1'd0);
                     tx_first   = 1'b0;
                     tx_last    = 1'b0;
                     tx_data    = length[7:0];
@@ -176,6 +175,8 @@ module etherneco_tx (
             }
         }
     }
+
+    assign s_ready = cke && (state == STATE::PAYLOAD);
 
 
     // CRC

@@ -19,9 +19,9 @@ module jellyvl_synctimer_adjust #(
 
     input logic [TIMER_WIDTH-1:0] local_time,
 
-    input logic                   correct_force,
-    input logic [TIMER_WIDTH-1:0] correct_time ,
-    input logic                   correct_valid,
+    input logic                   correct_override,
+    input logic [TIMER_WIDTH-1:0] correct_time    ,
+    input logic                   correct_valid   ,
 
     output logic adjust_sign ,
     output logic adjust_valid,
@@ -89,7 +89,7 @@ module jellyvl_synctimer_adjust #(
 
                 st0_first       <= 1'b0;
                 st0_phase_error <= t_phase'((current_correct_time - current_local_time));
-                if (!(st0_first || correct_force)) begin
+                if (!(st0_first || correct_override)) begin
                     st0_valid <= 1'b1;
                 end
             end
@@ -130,7 +130,7 @@ module jellyvl_synctimer_adjust #(
             end
             st1_valid <= st0_valid && !st1_first;
 
-            if (correct_valid && correct_force) begin
+            if (correct_valid && correct_override) begin
                 st1_first <= 1'b1;
             end
         end
@@ -168,7 +168,7 @@ module jellyvl_synctimer_adjust #(
             end
             st2_valid <= st1_valid;
 
-            if (correct_valid && correct_force) begin
+            if (correct_valid && correct_override) begin
                 st2_first <= 1'b1;
             end
         end
