@@ -104,8 +104,8 @@ module jellyvl_etherneco_master #(
         .
         current_time (current_time),
         .
-        start    (timsync_trigger ),
-        .override (timsync_override),
+        sync_start    (timsync_trigger ),
+        .sync_override (timsync_override),
         .
         m_last  (inner_tx_last ),
         .m_data  (inner_tx_data ),

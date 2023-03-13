@@ -80,8 +80,8 @@ module jellyvl_etherneco_tx (
 
                 STATE_PREAMBLE: begin
                     st0_first <= 1'b0;
-                    st0_last  <= 1'b0;
-                    if (st0_count == 3'd6) begin
+                    st0_last  <= (st0_count == 3'd4);
+                    if (st0_last) begin
                         st0_state <= STATE_LENGTH;
                         st0_count <= '0;
                         st0_first <= 1'b1;
@@ -179,7 +179,6 @@ module jellyvl_etherneco_tx (
     logic         st1_first;
     logic         st1_last ;
     logic [8-1:0] st1_data ;
-    logic         st1_valid;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
@@ -187,7 +186,6 @@ module jellyvl_etherneco_tx (
             st1_first <= 'x;
             st1_last  <= 'x;
             st1_data  <= 'x;
-            st1_valid <= '0;
         end else if (cke) begin
 
             // stage1
@@ -195,7 +193,6 @@ module jellyvl_etherneco_tx (
             st1_first <= st0_first;
             st1_last  <= st0_last;
             st1_data  <= 'x;
-            st1_valid <= 1'b0;
 
             case (st0_state)
                 STATE_IDLE: begin
@@ -205,7 +202,6 @@ module jellyvl_etherneco_tx (
                         st1_first <= 1'b1;
                         st1_last  <= 1'b0;
                         st1_data  <= 8'h55;
-                        st1_valid <= 1'b1;
                     end
                 end
 
@@ -215,7 +211,6 @@ module jellyvl_etherneco_tx (
                     ) : (
                         8'h55
                     ));
-                    st1_valid <= 1'b1;
                 end
 
                 STATE_LENGTH: begin
@@ -224,22 +219,18 @@ module jellyvl_etherneco_tx (
                     ) : (
                         st0_length[7:0]
                     ));
-                    st1_valid <= 1'b1;
                 end
 
                 STATE_PAYLOAD: begin
-                    st1_data  <= s_data;
-                    st1_valid <= 1'b1;
+                    st1_data <= s_data;
                 end
 
                 STATE_PADDING: begin
-                    st1_data  <= 8'h00;
-                    st1_valid <= 1'b1;
+                    st1_data <= 8'h00;
                 end
 
                 STATE_FCS: begin
-                    st1_data  <= 'x;
-                    st1_valid <= 1'b1;
+                    st1_data <= 'x;
                 end
 
                 default: begin
@@ -248,19 +239,10 @@ module jellyvl_etherneco_tx (
 
             // キャンセル
             if (tx_cancel) begin
-                if (st1_valid && !(st1_last && st1_state == STATE_FCS)) begin
-                    st1_state <= STATE_ERROR;
-                    st1_first <= 1'b1;
-                    st1_last  <= 1'b1;
-                    st1_data  <= 8'h00;
-                    st1_valid <= 1'b1;
-                end else begin
-                    st1_state <= STATE_IDLE;
-                    st1_first <= 1'bx;
-                    st1_last  <= 1'bx;
-                    st1_data  <= 'x;
-                    st1_valid <= 1'b0;
-                end
+                st1_state <= STATE_IDLE;
+                st1_first <= 1'bx;
+                st1_last  <= 1'bx;
+                st1_data  <= 'x;
             end
         end
     end
@@ -283,20 +265,17 @@ module jellyvl_etherneco_tx (
             st2_first <= 1'bx;
             st2_last  <= 1'bx;
             st2_data  <= 'x;
-            //            st2_valid = 1'b0;
         end else if (cke) begin
             st2_state <= st1_state;
             st2_first <= st1_first;
             st2_last  <= st1_last;
             st2_data  <= st1_data;
-            //            st2_valid  = st1_valid;
 
             if (tx_cancel) begin
                 st2_state <= STATE_IDLE;
                 st2_first <= 1'bx;
                 st2_last  <= 1'bx;
                 st2_data  <= 'x;
-                //                st2_valid = 1'b0;
             end
         end
     end

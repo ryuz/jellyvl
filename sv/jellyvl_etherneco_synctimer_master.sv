@@ -9,8 +9,8 @@ module jellyvl_etherneco_synctimer_master #(
 
     output logic [TIMER_WIDTH-1:0] current_time,
 
-    input logic start   ,
-    input logic override,
+    input logic sync_start   ,
+    input logic sync_override,
 
     output logic         m_last ,
     output logic [8-1:0] m_data ,
@@ -29,13 +29,13 @@ module jellyvl_etherneco_synctimer_master #(
             data    <= 'x;
             m_valid <= 1'b0;
         end else begin
-            if (start) begin
+            if (sync_start) begin
                 // node id
                 data[0] <= 8'h00;
                 last[0] <= 1'b0;
 
                 // cmd type
-                data[1] <= ((override) ? (
+                data[1] <= ((sync_override) ? (
                     8'h10
                 ) : (
                     8'h11
@@ -47,7 +47,7 @@ module jellyvl_etherneco_synctimer_master #(
                 last[9:2] <= 8'h00;
 
                 // offset
-                data[11:10] <= 16'h1234;
+                data[11:10] <= 16'h0010;
                 last[11:10] <= 2'b10;
 
                 m_valid <= 1'b1;

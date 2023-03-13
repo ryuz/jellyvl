@@ -32,6 +32,7 @@ module jellyvl_etherneco_rx #() (
     t_length length    ;
     logic    preamble  ;
     logic    crc_update;
+    logic    crc_check ;
 
     t_length count_next;
     assign count_next = count + 1'b1;
@@ -52,10 +53,12 @@ module jellyvl_etherneco_rx #() (
             length     <= 'x;
             preamble   <= 1'b0;
             crc_update <= 'x;
+            crc_check  <= 1'b0;
         end else begin
-            rx_start <= 1'b0;
-            rx_end   <= 1'b0;
-            rx_error <= 1'b0;
+            rx_start  <= 1'b0;
+            rx_end    <= 1'b0;
+            rx_error  <= 1'b0;
+            crc_check <= 1'b0;
 
             if (s_valid) begin
                 count <= count_next;
@@ -97,8 +100,9 @@ module jellyvl_etherneco_rx #() (
                     end
 
                     STATE_FCS: begin
-                        if (count == 3'd3) begin
-                            state <= STATE_IDLE;
+                        if (count == 3'd5) begin
+                            state     <= STATE_IDLE;
+                            crc_check <= 1'b1;
                         end
                     end
 
@@ -117,12 +121,28 @@ module jellyvl_etherneco_rx #() (
                     rx_start <= (state == STATE_IDLE);
                 end
 
-                if ((s_first && state != STATE_IDLE && state != STATE_ERROR) || (s_last && state != STATE_IDLE && state != STATE_ERROR)) begin
+                if ((s_first && state != STATE_IDLE && state != STATE_ERROR) || (s_last && !(state == STATE_FCS && count == 5) && state != STATE_IDLE && state != STATE_ERROR)) begin
                     state   <= STATE_ERROR;
                     m_first <= 'x;
                     m_last  <= 'x;
                     m_data  <= 'x;
                     m_valid <= 1'b0;
+                end
+            end
+
+            if (state == STATE_ERROR) begin
+                state   <= STATE_IDLE;
+                m_first <= 'x;
+                m_last  <= 'x;
+                m_data  <= 'x;
+                m_valid <= 1'b0;
+            end
+
+            if (crc_check) begin
+                if (crc_value == 32'h2144df1c) begin
+                    rx_end <= 1'b1;
+                end else begin
+                    rx_error <= 1'b1;
                 end
             end
         end

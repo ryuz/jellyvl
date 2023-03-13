@@ -32,6 +32,7 @@ module etherneco_rx #() (
     var length    : t_length;
     var preamble  : logic   ;
     var crc_update: logic   ;
+    var crc_check : logic   ;
 
     var count_next: t_length;
     assign count_next = count + 1'b1;
@@ -52,10 +53,12 @@ module etherneco_rx #() (
             length     = 'x;
             preamble   = 1'b0;
             crc_update = 'x;
+            crc_check  = 1'b0;
         } else {
-            rx_start = 1'b0;
-            rx_end   = 1'b0;
-            rx_error = 1'b0;
+            rx_start  = 1'b0;
+            rx_end    = 1'b0;
+            rx_error  = 1'b0;
+            crc_check = 1'b0;
 
             if s_valid {
                 count = count_next;
@@ -97,8 +100,9 @@ module etherneco_rx #() (
                     }
 
                     STATE::FCS: {
-                        if count == 3'd3 {
-                            state = STATE::IDLE;
+                        if count == 3'd5 {
+                            state     = STATE::IDLE;
+                            crc_check = 1'b1;
                         }
                     }
 
@@ -117,12 +121,28 @@ module etherneco_rx #() (
                     rx_start = (state == STATE::IDLE);
                 }
 
-                if (s_first && state != STATE::IDLE && state != STATE::ERROR) || (s_last && state != STATE::IDLE && state != STATE::ERROR) {
+                if (s_first && state != STATE::IDLE && state != STATE::ERROR) || (s_last && !(state == STATE::FCS && count == 5) && state != STATE::IDLE && state != STATE::ERROR) {
                     state   = STATE::ERROR;
                     m_first = 'x;
                     m_last  = 'x;
                     m_data  = 'x;
                     m_valid = 1'b0;
+                }
+            }
+
+            if state == STATE::ERROR {
+                state   = STATE::IDLE;
+                m_first = 'x;
+                m_last  = 'x;
+                m_data  = 'x;
+                m_valid = 1'b0;
+            }
+
+            if crc_check {
+                if crc_value == 32'h2144df1c {
+                    rx_end = 1'b1;
+                } else {
+                    rx_error = 1'b1;
                 }
             }
         }

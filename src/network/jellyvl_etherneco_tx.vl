@@ -80,8 +80,8 @@ module etherneco_tx (
 
                 STATE::PREAMBLE: {
                     st0_first = 1'b0;
-                    st0_last  = 1'b0;
-                    if st0_count == 3'd6 {
+                    st0_last  = (st0_count == 3'd4);
+                    if st0_last {
                         st0_state = STATE::LENGTH;
                         st0_count = '0;
                         st0_first = 1'b1;
@@ -179,7 +179,6 @@ module etherneco_tx (
     var st1_first: logic   ;
     var st1_last : logic   ;
     var st1_data : logic<8>;
-    var st1_valid: logic   ;
 
     always_ff (clk, reset) {
         if_reset {
@@ -187,7 +186,6 @@ module etherneco_tx (
             st1_first = 'x;
             st1_last  = 'x;
             st1_data  = 'x;
-            st1_valid = '0;
         } else if cke {
 
             // stage1
@@ -195,7 +193,6 @@ module etherneco_tx (
             st1_first = st0_first;
             st1_last  = st0_last;
             st1_data  = 'x;
-            st1_valid = 1'b0;
 
             case st0_state {
                 STATE::IDLE: {
@@ -205,7 +202,6 @@ module etherneco_tx (
                         st1_first = 1'b1;
                         st1_last  = 1'b0;
                         st1_data  = 8'h55;
-                        st1_valid = 1'b1;
                     }
                 }
 
@@ -215,7 +211,6 @@ module etherneco_tx (
                     } else {
                         8'h55
                     };
-                    st1_valid = 1'b1;
                 }
 
                 STATE::LENGTH: {
@@ -224,22 +219,18 @@ module etherneco_tx (
                     } else {
                         st0_length[7:0]
                     };
-                    st1_valid = 1'b1;
                 }
 
                 STATE::PAYLOAD: {
-                    st1_data  = s_data;
-                    st1_valid = 1'b1;
+                    st1_data = s_data;
                 }
 
                 STATE::PADDING: {
-                    st1_data  = 8'h00;
-                    st1_valid = 1'b1;
+                    st1_data = 8'h00;
                 }
 
                 STATE::FCS: {
-                    st1_data  = 'x;
-                    st1_valid = 1'b1;
+                    st1_data = 'x;
                 }
 
                 default: {}
@@ -247,19 +238,10 @@ module etherneco_tx (
 
             // キャンセル
             if tx_cancel {
-                if st1_valid && !(st1_last && st1_state == STATE::FCS) {
-                    st1_state = STATE::ERROR;
-                    st1_first = 1'b1;
-                    st1_last  = 1'b1;
-                    st1_data  = 8'h00;
-                    st1_valid = 1'b1;
-                } else {
-                    st1_state = STATE::IDLE;
-                    st1_first = 1'bx;
-                    st1_last  = 1'bx;
-                    st1_data  = 'x;
-                    st1_valid = 1'b0;
-                }
+                st1_state = STATE::IDLE;
+                st1_first = 1'bx;
+                st1_last  = 1'bx;
+                st1_data  = 'x;
             }
         }
     }
@@ -282,20 +264,17 @@ module etherneco_tx (
             st2_first = 1'bx;
             st2_last  = 1'bx;
             st2_data  = 'x;
-            //            st2_valid = 1'b0;
         } else if cke {
             st2_state = st1_state;
             st2_first = st1_first;
             st2_last  = st1_last;
             st2_data  = st1_data;
-            //            st2_valid  = st1_valid;
 
             if tx_cancel {
                 st2_state = STATE::IDLE;
                 st2_first = 1'bx;
                 st2_last  = 1'bx;
                 st2_data  = 'x;
-                //                st2_valid = 1'b0;
             }
         }
     }
