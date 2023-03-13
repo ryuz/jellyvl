@@ -39,41 +39,48 @@ module etherneco_slave #(
 ) {
 
 
+    // -------------------------------------
+    //  Outer loop (request)
+    // -------------------------------------
+
     // 上流からの受信
-    var up_rx_first: logic   ;
-    var up_rx_last : logic   ;
-    var up_rx_data : logic<8>;
-    var up_rx_valid: logic   ;
+    var outer_rx_first: logic   ;
+    var outer_rx_last : logic   ;
+    var outer_rx_data : logic<8>;
+    var outer_rx_valid: logic   ;
 
-    var up_rx_start: logic;
-    var up_rx_end  : logic;
-    var up_rx_error: logic;
+    var outer_rx_start: logic;
+    var outer_rx_end  : logic;
+    var outer_rx_error: logic;
+    var outer_rx_length:logic<16>;
 
-    inst u_etherneco_rx_up: etherneco_rx (
+    inst u_etherneco_rx_outer: etherneco_rx (
         reset: reset,
         clk  : clk  ,
 
-        rx_start: up_rx_start,
-        rx_end  : up_rx_end  ,
-        rx_error: up_rx_error,
+        rx_start: outer_rx_start,
+        rx_end  : outer_rx_end  ,
+        rx_error: outer_rx_error,
+        rx_length: outer_rx_length,
 
         s_first: s_up_rx_first,
         s_last : s_up_rx_last ,
         s_data : s_up_rx_data ,
         s_valid: s_up_rx_valid,
 
-        m_first: up_rx_first,
-        m_last : up_rx_last ,
-        m_data : up_rx_data ,
-        m_valid: up_rx_valid,
+        m_first: outer_rx_first,
+        m_last : outer_rx_last ,
+        m_data : outer_rx_data ,
+        m_valid: outer_rx_valid,
     );
 
 
     // 同期タイマ(スレーブ)
-    var down_tx_first: logic   ;
-    var down_tx_last : logic   ;
-    var down_tx_data : logic<8>;
-    var down_tx_valid: logic   ;
+    var outer_tx_first: logic   ;
+    var outer_tx_last : logic   ;
+    var outer_tx_data : logic<8>;
+    var outer_tx_valid: logic   ;
+    var outer_tx_ready: logic   ;
 
     inst u_etherneco_synctimer_slave: etherneco_synctimer_slave #(
         TIMER_WIDTH      : TIMER_WIDTH      ,
@@ -93,19 +100,51 @@ module etherneco_slave #(
 
         current_time: current_time,
 
-        rx_start: up_rx_start,
-        rx_error: up_rx_error,
-        rx_end  : up_rx_end  ,
+        rx_start: outer_rx_start,
+        rx_error: outer_rx_error,
+        rx_end  : outer_rx_end  ,
 
-        s_first: up_rx_first,
-        s_last : up_rx_last ,
-        s_data : up_rx_data ,
-        s_valid: up_rx_valid,
+        s_first: outer_rx_first,
+        s_last : outer_rx_last ,
+        s_data : outer_rx_data ,
+        s_valid: outer_rx_valid,
 
-        m_first: down_tx_first,
-        m_last : down_tx_last ,
-        m_data : down_tx_data ,
-        m_valid: down_tx_valid,
+        m_first: outer_tx_first,
+        m_last : outer_tx_last ,
+        m_data : outer_tx_data ,
+        m_valid: outer_tx_valid,
     );
+
+    // さらに下流に流す
+    inst u_etherneco_tx_outer: etherneco_tx #(
+        FIFO_PTR_WIDTH : 5,
+    )
+    (
+        reset: reset,
+        clk  : clk  ,
+
+        tx_start : outer_rx_start,
+        tx_length: outer_rx_length,
+
+        tx_cancel: outer_rx_error,
+
+        s_last : outer_tx_last ,
+        s_data : outer_tx_data ,
+        s_valid: outer_tx_valid,
+        s_ready: outer_tx_ready,
+
+        m_first: m_down_tx_first,
+        m_last : m_down_tx_last ,
+        m_data : m_down_tx_data ,
+        m_valid: m_down_tx_valid,
+        m_ready: m_down_tx_ready,
+    );
+
+
+
+    // -------------------------------------
+    //  Inner loop (response)
+    // -------------------------------------
+
 
 }

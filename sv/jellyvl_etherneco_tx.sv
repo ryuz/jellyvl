@@ -380,16 +380,16 @@ module jellyvl_etherneco_tx #(
                     st3_data <= st3_data >> (8);
                 end
             end else begin
-                st3_data <= st2_data;
+                st3_data[7:0] <= st2_data;
             end
             st3_valid <= (st2_state != STATE_IDLE);
 
             if ((tx_cancel && st3_valid && !st3_last) || st2_state == STATE_ERROR) begin
-                st3_state <= STATE_ERROR;
-                st3_first <= 1'b0;
-                st3_last  <= 1'b1;
-                st3_data  <= 8'h00;
-                st3_valid <= 1'b1;
+                st3_state     <= STATE_ERROR;
+                st3_first     <= 1'b0;
+                st3_last      <= 1'b1;
+                st3_data[7:0] <= 8'h00;
+                st3_valid     <= 1'b1;
             end
         end
     end

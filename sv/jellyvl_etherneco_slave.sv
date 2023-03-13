@@ -39,41 +39,48 @@ module jellyvl_etherneco_slave #(
 );
 
 
+    // -------------------------------------
+    //  Outer loop (request)
+    // -------------------------------------
+
     // 上流からの受信
-    logic         up_rx_first;
-    logic         up_rx_last ;
-    logic [8-1:0] up_rx_data ;
-    logic         up_rx_valid;
+    logic         outer_rx_first;
+    logic         outer_rx_last ;
+    logic [8-1:0] outer_rx_data ;
+    logic         outer_rx_valid;
 
-    logic up_rx_start;
-    logic up_rx_end  ;
-    logic up_rx_error;
+    logic          outer_rx_start ;
+    logic          outer_rx_end   ;
+    logic          outer_rx_error ;
+    logic [16-1:0] outer_rx_length;
 
-    jellyvl_etherneco_rx u_etherneco_rx_up (
+    jellyvl_etherneco_rx u_etherneco_rx_outer (
         .reset (reset),
         .clk   (clk  ),
         .
-        rx_start (up_rx_start),
-        .rx_end   (up_rx_end  ),
-        .rx_error (up_rx_error),
+        rx_start  (outer_rx_start ),
+        .rx_end    (outer_rx_end   ),
+        .rx_error  (outer_rx_error ),
+        .rx_length (outer_rx_length),
         .
         s_first (s_up_rx_first),
         .s_last  (s_up_rx_last ),
         .s_data  (s_up_rx_data ),
         .s_valid (s_up_rx_valid),
         .
-        m_first (up_rx_first),
-        .m_last  (up_rx_last ),
-        .m_data  (up_rx_data ),
-        .m_valid (up_rx_valid)
+        m_first (outer_rx_first),
+        .m_last  (outer_rx_last ),
+        .m_data  (outer_rx_data ),
+        .m_valid (outer_rx_valid)
     );
 
 
     // 同期タイマ(スレーブ)
-    logic         down_tx_first;
-    logic         down_tx_last ;
-    logic [8-1:0] down_tx_data ;
-    logic         down_tx_valid;
+    logic         outer_tx_first;
+    logic         outer_tx_last ;
+    logic [8-1:0] outer_tx_data ;
+    logic         outer_tx_valid;
+    logic         outer_tx_ready;
 
     jellyvl_etherneco_synctimer_slave #(
         .TIMER_WIDTH       (TIMER_WIDTH      ),
@@ -93,19 +100,49 @@ module jellyvl_etherneco_slave #(
         .
         current_time (current_time),
         .
-        rx_start (up_rx_start),
-        .rx_error (up_rx_error),
-        .rx_end   (up_rx_end  ),
+        rx_start (outer_rx_start),
+        .rx_error (outer_rx_error),
+        .rx_end   (outer_rx_end  ),
         .
-        s_first (up_rx_first),
-        .s_last  (up_rx_last ),
-        .s_data  (up_rx_data ),
-        .s_valid (up_rx_valid),
+        s_first (outer_rx_first),
+        .s_last  (outer_rx_last ),
+        .s_data  (outer_rx_data ),
+        .s_valid (outer_rx_valid),
         .
-        m_first (down_tx_first),
-        .m_last  (down_tx_last ),
-        .m_data  (down_tx_data ),
-        .m_valid (down_tx_valid)
+        m_first (outer_tx_first),
+        .m_last  (outer_tx_last ),
+        .m_data  (outer_tx_data ),
+        .m_valid (outer_tx_valid)
     );
+
+    // さらに下流に流す
+    jellyvl_etherneco_tx #(
+        .FIFO_PTR_WIDTH (5)
+    ) u_etherneco_tx_outer (
+        .reset (reset),
+        .clk   (clk  ),
+        .
+        tx_start  (outer_rx_start ),
+        .tx_length (outer_rx_length),
+        .
+        tx_cancel (outer_rx_error),
+        .
+        s_last  (outer_tx_last ),
+        .s_data  (outer_tx_data ),
+        .s_valid (outer_tx_valid),
+        .s_ready (outer_tx_ready),
+        .
+        m_first (m_down_tx_first),
+        .m_last  (m_down_tx_last ),
+        .m_data  (m_down_tx_data ),
+        .m_valid (m_down_tx_valid),
+        .m_ready (m_down_tx_ready)
+    );
+
+
+
+    // -------------------------------------
+    //  Inner loop (response)
+    // -------------------------------------
 
 endmodule

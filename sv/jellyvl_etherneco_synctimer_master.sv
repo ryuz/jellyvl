@@ -18,7 +18,7 @@ module jellyvl_etherneco_synctimer_master #(
     input  logic         m_ready
 );
 
-    localparam int unsigned LENGTH = 2 + 8 + 2;
+    localparam int unsigned LENGTH = 4 + 8 + 1 + 1;
 
     logic [LENGTH-1:0][1-1:0] last;
     logic [LENGTH-1:0][8-1:0] data;
@@ -47,8 +47,8 @@ module jellyvl_etherneco_synctimer_master #(
                 last[9:2] <= 8'h00;
 
                 // offset
-                data[11:10] <= 16'h0010;
-                last[11:10] <= 2'b10;
+                data[13:10] <= 32'd1000;
+                last[13:10] <= 4'b1000;
 
                 m_valid <= 1'b1;
             end else begin

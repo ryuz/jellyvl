@@ -2,9 +2,10 @@ module etherneco_rx #() (
     reset: input logic,
     clk  : input logic,
 
-    rx_start: output logic,
-    rx_end  : output logic,
-    rx_error: output logic,
+    rx_start : output logic,
+    rx_end   : output logic,
+    rx_error : output logic,
+    rx_length: output logic<16>,
 
     s_first: input logic   ,
     s_last : input logic   ,
@@ -37,6 +38,7 @@ module etherneco_rx #() (
     var fcs_last     : logic   ;
     var crc_update   : logic   ;
     var crc_check    : logic   ;
+    var crc_value: logic<32>;
 
     var length_next: t_length;
     assign length_next = length - 1'b1;
@@ -46,6 +48,7 @@ module etherneco_rx #() (
             rx_start = 1'b0;
             rx_end   = 1'b0;
             rx_error = 1'b0;
+            rx_length = 'x;
 
             m_first = 'x;
             m_last  = 'x;
@@ -101,6 +104,7 @@ module etherneco_rx #() (
                             length[15:8]  = s_data;
                             payload_first = 1'b1;
                             payload_last  = ({s_data, length[7:0]} == 16'd0);
+                            rx_length     = {s_data, length[7:0]};
                         }
                     }
 
@@ -169,8 +173,6 @@ module etherneco_rx #() (
             }
         }
     }
-
-    var crc_value: logic<32>;
 
     inst u_cacl_crc: jelly2_calc_crc #(
         DATA_WIDTH: 8           ,

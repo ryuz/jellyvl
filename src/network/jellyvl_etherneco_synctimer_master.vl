@@ -18,7 +18,7 @@ module etherneco_synctimer_master #(
     m_ready: input  logic   ,
 ) {
 
-    localparam LENGTH: u32 = 2 + 8 + 2;
+    localparam LENGTH: u32 = 4 + 8 + 1 + 1;
 
     var last: logic<LENGTH, 1>;
     var data: logic<LENGTH, 8>;
@@ -47,8 +47,8 @@ module etherneco_synctimer_master #(
                 last[9:2] = 8'h00;
 
                 // offset
-                data[11:10] = 16'h0010;
-                last[11:10] = 2'b10;
+                data[13:10] = 32'd1000;
+                last[13:10] = 4'b1000;
 
                 m_valid = 1'b1;
             } else {

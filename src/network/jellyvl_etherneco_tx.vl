@@ -379,7 +379,7 @@ module etherneco_tx #(
                     st3_data >>= 8;
                 }
             } else {
-                st3_data = st2_data;
+                st3_data[7:0] = st2_data;
             }
             st3_valid = (st2_state != STATE::IDLE);
 
@@ -387,7 +387,7 @@ module etherneco_tx #(
                 st3_state = STATE::ERROR;
                 st3_first = 1'b0;
                 st3_last  = 1'b1;
-                st3_data  = 8'h00;
+                st3_data[7:0] = 8'h00;
                 st3_valid = 1'b1;
             }
         }

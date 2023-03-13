@@ -2,9 +2,10 @@ module jellyvl_etherneco_rx #() (
     input logic reset,
     input logic clk  ,
 
-    output logic rx_start,
-    output logic rx_end  ,
-    output logic rx_error,
+    output logic          rx_start ,
+    output logic          rx_end   ,
+    output logic          rx_error ,
+    output logic [16-1:0] rx_length,
 
     input logic         s_first,
     input logic         s_last ,
@@ -28,24 +29,26 @@ module jellyvl_etherneco_rx #() (
     localparam type t_count  = logic [4-1:0];
     localparam type t_length = logic [16-1:0];
 
-    STATE    state        ;
-    t_count  count        ;
-    t_length length       ;
-    logic    preamble     ;
-    logic    payload_first;
-    logic    payload_last ;
-    logic    fcs_last     ;
-    logic    crc_update   ;
-    logic    crc_check    ;
+    STATE             state        ;
+    t_count           count        ;
+    t_length          length       ;
+    logic             preamble     ;
+    logic             payload_first;
+    logic             payload_last ;
+    logic             fcs_last     ;
+    logic             crc_update   ;
+    logic             crc_check    ;
+    logic    [32-1:0] crc_value    ;
 
     t_length length_next;
     assign length_next = length - 1'b1;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
-            rx_start <= 1'b0;
-            rx_end   <= 1'b0;
-            rx_error <= 1'b0;
+            rx_start  <= 1'b0;
+            rx_end    <= 1'b0;
+            rx_error  <= 1'b0;
+            rx_length <= 'x;
 
             m_first <= 'x;
             m_last  <= 'x;
@@ -101,6 +104,7 @@ module jellyvl_etherneco_rx #() (
                             length[15:8]  <= s_data;
                             payload_first <= 1'b1;
                             payload_last  <= ({s_data, length[7:0]} == 16'd0);
+                            rx_length     <= {s_data, length[7:0]};
                         end
                     end
 
@@ -169,8 +173,6 @@ module jellyvl_etherneco_rx #() (
             end
         end
     end
-
-    logic [32-1:0] crc_value;
 
     jelly2_calc_crc #(
         .DATA_WIDTH (8           ),
