@@ -18,7 +18,7 @@ module jellyvl_etherneco_synctimer_master #(
     input  logic         m_ready
 );
 
-    localparam int unsigned LENGTH = 4 + 8 + 1 + 1;
+    localparam int unsigned LENGTH = 4 + 8 + 1;
 
     logic [LENGTH-1:0][1-1:0] last;
     logic [LENGTH-1:0][8-1:0] data;
@@ -30,25 +30,21 @@ module jellyvl_etherneco_synctimer_master #(
             m_valid <= 1'b0;
         end else begin
             if (sync_start) begin
-                // node id
-                data[0] <= 8'h01;
+                // command_id
+                data[0] <= ((sync_override) ? (
+                    8'h01
+                ) : (
+                    8'h00
+                ));
                 last[0] <= 1'b0;
 
-                // cmd type
-                data[1] <= ((sync_override) ? (
-                    8'h10
-                ) : (
-                    8'h11
-                ));
-                last[1] <= 1'b0;
-
                 // time
-                data[9:2] <= current_time;
-                last[9:2] <= 8'h00;
+                data[8:1] <= current_time;
+                last[8:1] <= 8'h00;
 
                 // offset
-                data[13:10] <= 32'd1000;
-                last[13:10] <= 4'b1000;
+                data[12:9] <= 32'd1000;
+                last[12:9] <= 4'b1000;
 
                 m_valid <= 1'b1;
             end else begin

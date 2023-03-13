@@ -29,10 +29,23 @@ module jellyvl_etherneco_master #(
     input  logic         m_up_tx_ready
 );
 
+    // -------------------------------------
+    //  Control
+    // -------------------------------------
+
     localparam int unsigned PERIOD_WIDTH = 32;
 
-    logic timsync_trigger ;
-    logic timsync_override;
+    logic          timsync_trigger ;
+    logic          timsync_override;
+    logic [8-1:0]  request_type    ;
+    logic [8-1:0]  request_node    ;
+    logic [16-1:0] request_length  ;
+
+    // とりあえず時間合わせパケットに固定
+    assign request_type   = 8'h10;
+    assign request_node   = 8'h00;
+    assign request_length = 16'd13 - 16'd1;
+
 
     // 通信タイミング生成
     jellyvl_periodic_trigger #(
@@ -61,33 +74,15 @@ module jellyvl_etherneco_master #(
         end
     end
 
-    logic         down_tx_last ;
-    logic [8-1:0] down_tx_data ;
-    logic         down_tx_valid;
-    logic         down_tx_ready;
 
-    jellyvl_etherneco_tx u_etherneco_tx_down (
-        .reset (reset),
-        .clk   (clk  ),
-        .
-        tx_start  (timsync_trigger),
-        .tx_length (16'd11         ),
-        .
-        tx_cancel (1'b0),
-        .
-        s_last  (down_tx_last ),
-        .s_data  (down_tx_data ),
-        .s_valid (down_tx_valid),
-        .s_ready (down_tx_ready),
-        .
-        m_first (m_down_tx_first),
-        .m_last  (m_down_tx_last ),
-        .m_data  (m_down_tx_data ),
-        .m_valid (m_down_tx_valid),
-        .m_ready (m_down_tx_ready)
-    );
+    // -------------------------------------
+    //  Outer loop (request)
+    // -------------------------------------
 
-
+    logic         outer_tx_last ;
+    logic [8-1:0] outer_tx_data ;
+    logic         outer_tx_valid;
+    logic         outer_tx_ready;
 
     // タイマ合わせマスター
     jellyvl_etherneco_synctimer_master #(
@@ -103,10 +98,40 @@ module jellyvl_etherneco_master #(
         sync_start    (timsync_trigger ),
         .sync_override (timsync_override),
         .
-        m_last  (down_tx_last ),
-        .m_data  (down_tx_data ),
-        .m_valid (down_tx_valid),
-        .m_ready (down_tx_ready)
+        m_last  (outer_tx_last ),
+        .m_data  (outer_tx_data ),
+        .m_valid (outer_tx_valid),
+        .m_ready (outer_tx_ready)
     );
+
+    jellyvl_etherneco_packet_tx u_etherneco_packet_tx_outer (
+        .reset (reset),
+        .clk   (clk  ),
+        .
+        tx_start  (timsync_trigger),
+        .tx_length (request_length ),
+        .tx_type   (request_type   ),
+        .tx_node   (request_node   ),
+        .
+        tx_cancel (1'b0),
+        .
+        s_last  (outer_tx_last ),
+        .s_data  (outer_tx_data ),
+        .s_valid (outer_tx_valid),
+        .s_ready (outer_tx_ready),
+        .
+        m_first (m_down_tx_first),
+        .m_last  (m_down_tx_last ),
+        .m_data  (m_down_tx_data ),
+        .m_valid (m_down_tx_valid),
+        .m_ready (m_down_tx_ready)
+    );
+
+    /*
+    var outer_rx_last : logic   ;
+    var outer_rx_data : logic<8>;
+    var outer_rx_valid: logic   ;
+    var outer_rx_ready: logic   ;
+    */
 
 endmodule

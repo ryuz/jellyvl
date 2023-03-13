@@ -74,7 +74,6 @@ module etherneco_synctimer_slave #(
 
     var busy      : logic      ;
     var count     : t_count    ;
-    var rx_node_id: logic  <8> ;
     var rx_cmd    : logic  <8> ;
     var rx_time   : t_time     ;
     var rx_offset : logic  <16>;
@@ -83,7 +82,6 @@ module etherneco_synctimer_slave #(
         if_reset {
             busy       = 1'b0;
             count      = '0;
-            rx_node_id = 'x;
             rx_cmd     = 'x;
             rx_time    = 'x;
             rx_offset  = 'x;
@@ -106,43 +104,40 @@ module etherneco_synctimer_slave #(
                     if s_first {
                         busy       = 1'b1;
                         count      = '0;
-                        rx_node_id = s_data;
+                        rx_cmd     = s_data;
                         m_data     = s_data + 1;
                         m_valid    = s_valid;
                     }
                 } else {
                     case count as int {
                         0: {
-                            rx_cmd = s_data;
-                        }
-                        1: {
                             rx_time[0 * 8+:8] = s_data;
                         }
-                        2: {
+                        1: {
                             rx_time[1 * 8+:8] = s_data;
                         }
-                        3: {
+                        2: {
                             rx_time[2 * 8+:8] = s_data;
                         }
-                        4: {
+                        3: {
                             rx_time[3 * 8+:8] = s_data;
                         }
-                        5: {
+                        4: {
                             rx_time[4 * 8+:8] = s_data;
                         }
-                        6: {
+                        5: {
                             rx_time[5 * 8+:8] = s_data;
                         }
-                        7: {
+                        6: {
                             rx_time[6 * 8+:8] = s_data;
                         }
-                        8: {
+                        7: {
                             rx_time[7 * 8+:8] = s_data;
                         }
-                        9: {
+                        8: {
                             rx_offset[0 * 8+:8] = s_data;
                         }
-                        10: {
+                        9: {
                             rx_offset[1 * 8+:8] = s_data;
                         }
                         default: {
@@ -171,7 +166,7 @@ module etherneco_synctimer_slave #(
             correct_valid    = 1'b0;
 
             if rx_end {
-                if rx_cmd == 8'h10 {
+                if rx_cmd[0] {
                     correct_override = 1'b1;
                     correct_valid    = 1'b1;
                 } else {

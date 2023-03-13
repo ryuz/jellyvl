@@ -1,4 +1,4 @@
-module etherneco_rx #() (
+module etherneco_packet_rx #() (
     reset: input logic,
     clk  : input logic,
 
@@ -6,6 +6,8 @@ module etherneco_rx #() (
     rx_end   : output logic,
     rx_error : output logic,
     rx_length: output logic<16>,
+    rx_type  : output logic<8>,
+    rx_node  : output logic<8>,
 
     s_first: input logic   ,
     s_last : input logic   ,
@@ -18,12 +20,14 @@ module etherneco_rx #() (
     m_valid: output logic   ,
 ) {
 
-    enum STATE: logic<5> {
-        IDLE = 5'b00000,
-        LENGTH = 5'b00010,
-        PAYLOAD = 5'b00100,
-        FCS = 5'b01000,
-        ERROR = 5'b10000,
+    enum STATE: logic<7> {
+        IDLE    = 7'b0000000,
+        LENGTH  = 7'b0000010,
+        TYPE    = 7'b0000100,
+        NODE    = 7'b0001000,
+        PAYLOAD = 7'b0010000,
+        FCS     = 7'b0100000,
+        ERROR   = 7'b1000000,
     }
 
     localparam t_count : type = logic<4>;
@@ -49,6 +53,8 @@ module etherneco_rx #() (
             rx_end   = 1'b0;
             rx_error = 1'b0;
             rx_length = 'x;
+            rx_type  = 'x;
+            rx_node  = 'x;
 
             m_first = 'x;
             m_last  = 'x;
@@ -69,6 +75,8 @@ module etherneco_rx #() (
             rx_end    = 1'b0;
             rx_error  = 1'b0;
             crc_check = 1'b0;
+            m_first   = 1'bx;
+            m_last    = 1'bx;
             m_data    = s_data;
             m_valid   = 1'b0;
 
@@ -88,8 +96,6 @@ module etherneco_rx #() (
                             count      = '0;
                             crc_update = 1'b0;
                         }
-                        m_first = 1'bx;
-                        m_last  = 1'bx;
                     }
 
                     STATE::LENGTH: {
@@ -99,13 +105,31 @@ module etherneco_rx #() (
                             m_first     = 1'bx;
                             m_last      = 1'bx;
                         } else {
+                            length[15:8]  = s_data;
+                            rx_length     = {s_data, length[7:0]};
+                            state         = STATE::TYPE;
+
+                            /*
                             state         = STATE::PAYLOAD;
                             count         = '0;
                             length[15:8]  = s_data;
                             payload_first = 1'b1;
                             payload_last  = ({s_data, length[7:0]} == 16'd0);
                             rx_length     = {s_data, length[7:0]};
+                            */
                         }
+                    }
+
+                    STATE::TYPE: {
+                        rx_type       = s_data;
+                        state         = STATE::NODE;
+                    }
+
+                    STATE::NODE: {
+                        rx_node       = s_data;
+                        state         = STATE::PAYLOAD;
+                        payload_first = 1'b1;
+                        payload_last  = (length == 16'd0);
                     }
 
                     STATE::PAYLOAD: {

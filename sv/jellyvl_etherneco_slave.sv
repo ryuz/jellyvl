@@ -53,8 +53,10 @@ module jellyvl_etherneco_slave #(
     logic          outer_rx_end   ;
     logic          outer_rx_error ;
     logic [16-1:0] outer_rx_length;
+    logic [8-1:0]  outer_rx_type  ;
+    logic [8-1:0]  outer_rx_node  ;
 
-    jellyvl_etherneco_rx u_etherneco_rx_outer (
+    jellyvl_etherneco_packet_rx u_etherneco_packet_rx_outer (
         .reset (reset),
         .clk   (clk  ),
         .
@@ -62,6 +64,8 @@ module jellyvl_etherneco_slave #(
         .rx_end    (outer_rx_end   ),
         .rx_error  (outer_rx_error ),
         .rx_length (outer_rx_length),
+        .rx_type   (outer_rx_type  ),
+        .rx_node   (outer_rx_node  ),
         .
         s_first (s_up_rx_first),
         .s_last  (s_up_rx_last ),
@@ -116,14 +120,16 @@ module jellyvl_etherneco_slave #(
     );
 
     // さらに下流に流す
-    jellyvl_etherneco_tx #(
+    jellyvl_etherneco_packet_tx #(
         .FIFO_PTR_WIDTH (5)
-    ) u_etherneco_tx_outer (
+    ) u_etherneco_packet_tx_outer (
         .reset (reset),
         .clk   (clk  ),
         .
-        tx_start  (outer_rx_start ),
-        .tx_length (outer_rx_length),
+        tx_start  (outer_rx_start      ),
+        .tx_length (outer_rx_length     ),
+        .tx_type   (outer_rx_type       ),
+        .tx_node   (outer_rx_node + 1'b1),
         .
         tx_cancel (outer_rx_error),
         .

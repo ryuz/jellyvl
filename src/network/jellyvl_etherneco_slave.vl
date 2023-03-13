@@ -53,8 +53,10 @@ module etherneco_slave #(
     var outer_rx_end  : logic;
     var outer_rx_error: logic;
     var outer_rx_length:logic<16>;
+    var outer_rx_type  :logic<8>;
+    var outer_rx_node  :logic<8>;
 
-    inst u_etherneco_rx_outer: etherneco_rx (
+    inst u_etherneco_packet_rx_outer: etherneco_packet_rx (
         reset: reset,
         clk  : clk  ,
 
@@ -62,6 +64,8 @@ module etherneco_slave #(
         rx_end  : outer_rx_end  ,
         rx_error: outer_rx_error,
         rx_length: outer_rx_length,
+        rx_type: outer_rx_type,
+        rx_node: outer_rx_node,
 
         s_first: s_up_rx_first,
         s_last : s_up_rx_last ,
@@ -116,7 +120,7 @@ module etherneco_slave #(
     );
 
     // さらに下流に流す
-    inst u_etherneco_tx_outer: etherneco_tx #(
+    inst u_etherneco_packet_tx_outer: etherneco_packet_tx #(
         FIFO_PTR_WIDTH : 5,
     )
     (
@@ -125,6 +129,8 @@ module etherneco_slave #(
 
         tx_start : outer_rx_start,
         tx_length: outer_rx_length,
+        tx_type: outer_rx_type,
+        tx_node: outer_rx_node + 1'b1,
 
         tx_cancel: outer_rx_error,
 

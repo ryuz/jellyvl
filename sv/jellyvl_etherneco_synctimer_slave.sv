@@ -72,21 +72,19 @@ module jellyvl_etherneco_synctimer_slave #(
 
     localparam type t_count = logic [16-1:0];
 
-    logic            busy      ;
-    t_count          count     ;
-    logic   [8-1:0]  rx_node_id;
-    logic   [8-1:0]  rx_cmd    ;
-    t_time           rx_time   ;
-    logic   [16-1:0] rx_offset ;
+    logic            busy     ;
+    t_count          count    ;
+    logic   [8-1:0]  rx_cmd   ;
+    t_time           rx_time  ;
+    logic   [16-1:0] rx_offset;
 
     always_ff @ (posedge clk) begin
         if (local_reset) begin
-            busy       <= 1'b0;
-            count      <= '0;
-            rx_node_id <= 'x;
-            rx_cmd     <= 'x;
-            rx_time    <= 'x;
-            rx_offset  <= 'x;
+            busy      <= 1'b0;
+            count     <= '0;
+            rx_cmd    <= 'x;
+            rx_time   <= 'x;
+            rx_offset <= 'x;
 
             m_first <= 'x;
             m_last  <= 'x;
@@ -104,45 +102,42 @@ module jellyvl_etherneco_synctimer_slave #(
                 if (!busy) begin
                     m_valid <= 1'b0;
                     if (s_first) begin
-                        busy       <= 1'b1;
-                        count      <= '0;
-                        rx_node_id <= s_data;
-                        m_data     <= s_data + 1;
-                        m_valid    <= s_valid;
+                        busy    <= 1'b1;
+                        count   <= '0;
+                        rx_cmd  <= s_data;
+                        m_data  <= s_data + 1;
+                        m_valid <= s_valid;
                     end
                 end else begin
                     case (int'(count))
                         0: begin
-                            rx_cmd <= s_data;
-                        end
-                        1: begin
                             rx_time[0 * 8+:8] <= s_data;
                         end
-                        2: begin
+                        1: begin
                             rx_time[1 * 8+:8] <= s_data;
                         end
-                        3: begin
+                        2: begin
                             rx_time[2 * 8+:8] <= s_data;
                         end
-                        4: begin
+                        3: begin
                             rx_time[3 * 8+:8] <= s_data;
                         end
-                        5: begin
+                        4: begin
                             rx_time[4 * 8+:8] <= s_data;
                         end
-                        6: begin
+                        5: begin
                             rx_time[5 * 8+:8] <= s_data;
                         end
-                        7: begin
+                        6: begin
                             rx_time[6 * 8+:8] <= s_data;
                         end
-                        8: begin
+                        7: begin
                             rx_time[7 * 8+:8] <= s_data;
                         end
-                        9: begin
+                        8: begin
                             rx_offset[0 * 8+:8] <= s_data;
                         end
-                        10: begin
+                        9: begin
                             rx_offset[1 * 8+:8] <= s_data;
                         end
                         default: begin
@@ -171,7 +166,7 @@ module jellyvl_etherneco_synctimer_slave #(
             correct_valid    <= 1'b0;
 
             if (rx_end) begin
-                if (rx_cmd == 8'h10) begin
+                if (rx_cmd[0]) begin
                     correct_override <= 1'b1;
                     correct_valid    <= 1'b1;
                 end else begin

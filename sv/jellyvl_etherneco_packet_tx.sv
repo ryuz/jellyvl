@@ -1,4 +1,4 @@
-module jellyvl_etherneco_tx #(
+module jellyvl_etherneco_packet_tx #(
     parameter int unsigned FIFO_PTR_WIDTH = 0
 ) (
     input logic reset,
@@ -6,6 +6,8 @@ module jellyvl_etherneco_tx #(
 
     input logic          tx_start ,
     input logic [16-1:0] tx_length, // 転送サイズより1小さい値を指定(AXI方式)
+    input logic [8-1:0]  tx_type  ,
+    input logic [8-1:0]  tx_node  ,
 
     input logic tx_cancel,
 
@@ -60,14 +62,16 @@ module jellyvl_etherneco_tx #(
     //  core
     // -------------------------
     typedef 
-    enum logic [6-1:0] {
-        STATE_IDLE = 6'b000000,
-        STATE_PREAMBLE = 6'b000001,
-        STATE_LENGTH = 6'b000010,
-        STATE_PAYLOAD = 6'b000100,
-        STATE_PADDING = 6'b001000,
-        STATE_FCS = 6'b010000,
-        STATE_ERROR = 6'b100000
+    enum logic [8-1:0] {
+        STATE_IDLE = 8'b00000000,
+        STATE_PREAMBLE = 8'b00000001,
+        STATE_LENGTH = 8'b00000010,
+        STATE_TYPE = 8'b00000100,
+        STATE_NODE = 8'b00001000,
+        STATE_PAYLOAD = 8'b00010000,
+        STATE_PADDING = 8'b00100000,
+        STATE_FCS = 8'b01000000,
+        STATE_ERROR = 8'b10000000
     } STATE;
 
     localparam type t_length = logic [16-1:0];
@@ -134,11 +138,25 @@ module jellyvl_etherneco_tx #(
                     st0_first <= 1'b0;
                     st0_last  <= (st0_count[0] == 1'd0);
                     if (st0_last) begin
-                        st0_state <= STATE_PAYLOAD;
+                        st0_state <= STATE_TYPE;
                         st0_count <= '0;
                         st0_first <= 1'b1;
-                        st0_last  <= st0_length == 16'd0;
+                        st0_last  <= 1'b1;
                     end
+                end
+
+                STATE_TYPE: begin
+                    st0_first <= 1'b1;
+                    st0_last  <= 1'b1;
+                    st0_state <= STATE_NODE;
+                    st0_count <= '0;
+                end
+
+                STATE_NODE: begin
+                    st0_state <= STATE_PAYLOAD;
+                    st0_count <= '0;
+                    st0_first <= 1'b1;
+                    st0_last  <= st0_length == 16'd0;
                 end
 
                 STATE_PAYLOAD: begin
@@ -263,6 +281,14 @@ module jellyvl_etherneco_tx #(
                     ));
                 end
 
+                STATE_TYPE: begin
+                    st1_data <= tx_type;
+                end
+
+                STATE_NODE: begin
+                    st1_data <= tx_node;
+                end
+
                 STATE_PAYLOAD: begin
                     st1_data <= fifo_data;
                 end
@@ -346,7 +372,7 @@ module jellyvl_etherneco_tx #(
 
     assign crc_update = !(st1_state == STATE_LENGTH && st1_first);
     assign crc_data   = st1_data;
-    assign crc_valid  = (st1_state == STATE_LENGTH || st1_state == STATE_PAYLOAD || st1_state == STATE_PADDING);
+    assign crc_valid  = (st1_state == STATE_LENGTH || st1_state == STATE_TYPE || st1_state == STATE_NODE || st1_state == STATE_PAYLOAD || st1_state == STATE_PADDING);
     assign st2_crc    = crc_value;
 
 

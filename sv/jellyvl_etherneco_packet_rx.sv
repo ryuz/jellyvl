@@ -1,4 +1,4 @@
-module jellyvl_etherneco_rx #() (
+module jellyvl_etherneco_packet_rx #() (
     input logic reset,
     input logic clk  ,
 
@@ -6,6 +6,8 @@ module jellyvl_etherneco_rx #() (
     output logic          rx_end   ,
     output logic          rx_error ,
     output logic [16-1:0] rx_length,
+    output logic [8-1:0]  rx_type  ,
+    output logic [8-1:0]  rx_node  ,
 
     input logic         s_first,
     input logic         s_last ,
@@ -18,12 +20,14 @@ module jellyvl_etherneco_rx #() (
     output logic         m_valid
 );
     typedef 
-    enum logic [5-1:0] {
-        STATE_IDLE = 5'b00000,
-        STATE_LENGTH = 5'b00010,
-        STATE_PAYLOAD = 5'b00100,
-        STATE_FCS = 5'b01000,
-        STATE_ERROR = 5'b10000
+    enum logic [7-1:0] {
+        STATE_IDLE = 7'b0000000,
+        STATE_LENGTH = 7'b0000010,
+        STATE_TYPE = 7'b0000100,
+        STATE_NODE = 7'b0001000,
+        STATE_PAYLOAD = 7'b0010000,
+        STATE_FCS = 7'b0100000,
+        STATE_ERROR = 7'b1000000
     } STATE;
 
     localparam type t_count  = logic [4-1:0];
@@ -49,6 +53,8 @@ module jellyvl_etherneco_rx #() (
             rx_end    <= 1'b0;
             rx_error  <= 1'b0;
             rx_length <= 'x;
+            rx_type   <= 'x;
+            rx_node   <= 'x;
 
             m_first <= 'x;
             m_last  <= 'x;
@@ -69,6 +75,8 @@ module jellyvl_etherneco_rx #() (
             rx_end    <= 1'b0;
             rx_error  <= 1'b0;
             crc_check <= 1'b0;
+            m_first   <= 1'bx;
+            m_last    <= 1'bx;
             m_data    <= s_data;
             m_valid   <= 1'b0;
 
@@ -88,8 +96,6 @@ module jellyvl_etherneco_rx #() (
                             count      <= '0;
                             crc_update <= 1'b0;
                         end
-                        m_first <= 1'bx;
-                        m_last  <= 1'bx;
                     end
 
                     STATE_LENGTH: begin
@@ -99,13 +105,32 @@ module jellyvl_etherneco_rx #() (
                             m_first     <= 1'bx;
                             m_last      <= 1'bx;
                         end else begin
-                            state         <= STATE_PAYLOAD;
-                            count         <= '0;
-                            length[15:8]  <= s_data;
-                            payload_first <= 1'b1;
-                            payload_last  <= ({s_data, length[7:0]} == 16'd0);
-                            rx_length     <= {s_data, length[7:0]};
+                            length[15:8] <= s_data;
+                            rx_length    <= {s_data, length[7:0]};
+                            state        <= STATE_TYPE;
+
+                            /*
+                            state         = STATE::PAYLOAD;
+                            count         = '0;
+                            length[15:8]  = s_data;
+                            payload_first = 1'b1;
+                            payload_last  = ({s_data, length[7:0]} == 16'd0);
+                            rx_length     = {s_data, length[7:0]};
+                            */
+
                         end
+                    end
+
+                    STATE_TYPE: begin
+                        rx_type <= s_data;
+                        state   <= STATE_NODE;
+                    end
+
+                    STATE_NODE: begin
+                        rx_node       <= s_data;
+                        state         <= STATE_PAYLOAD;
+                        payload_first <= 1'b1;
+                        payload_last  <= (length == 16'd0);
                     end
 
                     STATE_PAYLOAD: begin
