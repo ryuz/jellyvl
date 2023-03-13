@@ -16,20 +16,41 @@ module jellyvl_etherneco_synctimer_slave #(
 
     output logic [TIMER_WIDTH-1:0] current_time,
 
-    input logic rx_start,
-    input logic rx_error,
-    input logic rx_end  ,
+    input logic [8-1:0] node_id,
 
-    input logic         s_first,
-    input logic         s_last ,
-    input logic [8-1:0] s_data ,
-    input logic         s_valid,
+    input logic outer_rx_start,
+    input logic outer_rx_error,
+    input logic outer_rx_end  ,
 
-    output logic         m_first,
-    output logic         m_last ,
-    output logic [8-1:0] m_data ,
-    output logic         m_valid
+    input logic         s_outer_rx_first,
+    input logic         s_outer_rx_last ,
+    input logic [8-1:0] s_outer_rx_data ,
+    input logic         s_outer_rx_valid,
+
+    output logic         m_outer_tx_first,
+    output logic         m_outer_tx_last ,
+    output logic [8-1:0] m_outer_tx_data ,
+    output logic         m_outer_tx_valid,
+
+    input logic inner_rx_start,
+    input logic inner_rx_error,
+    input logic inner_rx_end  ,
+
+    input logic         s_inner_rx_first,
+    input logic         s_inner_rx_last ,
+    input logic [8-1:0] s_inner_rx_data ,
+    input logic         s_inner_rx_valid,
+
+    output logic         m_inner_tx_first,
+    output logic         m_inner_tx_last ,
+    output logic [8-1:0] m_inner_tx_data ,
+    output logic         m_inner_tx_valid
+
 );
+
+    // -------------------------
+    //  Timer
+    // -------------------------
 
     localparam type t_adj_phase = logic signed [ADJ_PHASE_WIDTH-1:0];
     localparam type t_time      = logic [TIMER_WIDTH-1:0];
@@ -67,114 +88,70 @@ module jellyvl_etherneco_synctimer_slave #(
         .correct_valid    (correct_valid   )
     );
 
-    logic local_reset;
-    assign local_reset = reset || rx_error;
+    // -------------------------
+    //  Outer ring (Resquest)
+    // -------------------------
 
-    localparam type t_count = logic [16-1:0];
+    jellyvl_etherneco_synctimer_slave_request u_etherneco_synctimer_slave_request (
+        .reset            (reset           ),
+        .clk              (clk             ),
+        .correct_override (correct_override),
+        .correct_time     (correct_time    ),
+        .correct_valid    (correct_valid   ),
+        .
+        rx_start (outer_rx_start),
+        .rx_error (outer_rx_error),
+        .rx_end   (outer_rx_end  ),
+        .
+        s_first (s_outer_rx_first),
+        .s_last  (s_outer_rx_last ),
+        .s_data  (s_outer_rx_data ),
+        .s_valid (s_outer_rx_valid),
+        .
+        m_first (m_outer_tx_first),
+        .m_last  (m_outer_tx_last ),
+        .m_data  (m_outer_tx_data ),
+        .m_valid (m_outer_tx_valid)
+    );
 
-    logic            busy     ;
-    t_count          count    ;
-    logic   [8-1:0]  rx_cmd   ;
-    t_time           rx_time  ;
-    logic   [16-1:0] rx_offset;
 
+    // -------------------------
+    // Inner Ring (Response)
+    // -------------------------
+
+    localparam type t_delay = logic [32-1:0];
+
+    t_delay start_time;
+    t_delay delay_time;
     always_ff @ (posedge clk) begin
-        if (local_reset) begin
-            busy      <= 1'b0;
-            count     <= '0;
-            rx_cmd    <= 'x;
-            rx_time   <= 'x;
-            rx_offset <= 'x;
-
-            m_first <= 'x;
-            m_last  <= 'x;
-            m_data  <= 'x;
-            m_valid <= 1'b0;
-        end else begin
-            m_first <= s_first;
-            m_last  <= s_last;
-            m_data  <= s_data;
-            m_valid <= s_valid;
-
-            if (s_valid) begin
-                count <= count + 1'b1;
-
-                if (!busy) begin
-                    m_valid <= 1'b0;
-                    if (s_first) begin
-                        busy    <= 1'b1;
-                        count   <= '0;
-                        rx_cmd  <= s_data;
-                        m_data  <= s_data + 1;
-                        m_valid <= s_valid;
-                    end
-                end else begin
-                    case (int'(count))
-                        0: begin
-                            rx_time[0 * 8+:8] <= s_data;
-                        end
-                        1: begin
-                            rx_time[1 * 8+:8] <= s_data;
-                        end
-                        2: begin
-                            rx_time[2 * 8+:8] <= s_data;
-                        end
-                        3: begin
-                            rx_time[3 * 8+:8] <= s_data;
-                        end
-                        4: begin
-                            rx_time[4 * 8+:8] <= s_data;
-                        end
-                        5: begin
-                            rx_time[5 * 8+:8] <= s_data;
-                        end
-                        6: begin
-                            rx_time[6 * 8+:8] <= s_data;
-                        end
-                        7: begin
-                            rx_time[7 * 8+:8] <= s_data;
-                        end
-                        8: begin
-                            rx_offset[0 * 8+:8] <= s_data;
-                        end
-                        9: begin
-                            rx_offset[1 * 8+:8] <= s_data;
-                        end
-                        default: begin
-                            busy <= 1'b0;
-                        end
-                    endcase
-                    if (s_last) begin
-                        busy <= 1'b0;
-                    end
-                end
-            end
-            if (rx_start || rx_end || rx_error) begin
-                busy <= 1'b0;
-            end
+        if (outer_rx_end) begin
+            start_time <= t_delay'(current_time);
+        end
+        if (inner_rx_start) begin
+            delay_time <= t_delay'(current_time) - start_time;
         end
     end
 
-    always_ff @ (posedge clk) begin
-        if (reset) begin
-            correct_override <= 1'bx;
-            correct_time     <= 'x;
-            correct_valid    <= 1'b0;
-        end else begin
-            correct_override <= 1'bx;
-            correct_time     <= rx_time + t_time'(rx_offset);
-            correct_valid    <= 1'b0;
-
-            if (rx_end) begin
-                if (rx_cmd[0]) begin
-                    correct_override <= 1'b1;
-                    correct_valid    <= 1'b1;
-                end else begin
-                    correct_override <= 1'b0;
-                    correct_valid    <= 1'b1;
-                end
-            end
-        end
-    end
+    jellyvl_etherneco_synctimer_slave_response u_etherneco_synctimer_slave_response (
+        .reset (reset),
+        .clk   (clk  ),
+        .
+        node_id    (node_id   ),
+        .delay_time (start_time),
+        .
+        rx_start (outer_rx_start),
+        .rx_error (outer_rx_error),
+        .rx_end   (outer_rx_end  ),
+        .
+        s_first (s_outer_rx_first),
+        .s_last  (s_outer_rx_last ),
+        .s_data  (s_outer_rx_data ),
+        .s_valid (s_outer_rx_valid),
+        .
+        m_first (m_outer_tx_first),
+        .m_last  (m_outer_tx_last ),
+        .m_data  (m_outer_tx_data ),
+        .m_valid (m_outer_tx_valid)
+    );
 
 endmodule

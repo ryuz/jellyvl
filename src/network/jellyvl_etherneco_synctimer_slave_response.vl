@@ -1,0 +1,77 @@
+
+// リクエストの処理
+module etherneco_synctimer_slave_response(
+    reset: input logic,
+    clk  : input logic,
+
+    node_id    : input logic<8>,
+    delay_time : input logic<32>,
+
+    rx_start: input logic,
+    rx_error: input logic,
+    rx_end  : input logic,
+
+    s_first: input logic   ,
+    s_last : input logic   ,
+    s_data : input logic<8>,
+    s_valid: input logic   ,
+
+    m_first: output logic   ,
+    m_last : output logic   ,
+    m_data : output logic<8>,
+    m_valid: output logic   ,
+) {
+
+
+    var local_reset: logic;
+    assign local_reset = reset || rx_error;
+
+    localparam t_count: type = logic<16>;
+
+    var busy      : logic      ;
+    var count     : t_count    ;
+    var position  : t_count    ;
+    assign position = node_id as t_count * 4 + 8;
+
+    always_ff (clk, local_reset) {
+        if_reset {
+            busy       = 1'b0;
+            count      = '0;
+
+            m_first = 'x;
+            m_last  = 'x;
+            m_data  = 'x;
+            m_valid = 1'b0;
+        } else {
+            m_first = s_first;
+            m_last  = s_last;
+            m_data  = s_data;
+            m_valid = s_valid & busy;
+
+            if s_valid {
+                count = count + 1'b1;
+
+                if !busy {
+                    m_valid = 1'b0;
+                    if s_first {
+                        busy       = 1'b1;
+                        count      = '0;
+                        m_valid    = s_valid;
+                    }
+                } else {
+                    if count == position + 0 as t_count { m_data = delay_time[0*8 +: 8]; }
+                    if count == position + 1 as t_count { m_data = delay_time[1*8 +: 8]; }
+                    if count == position + 2 as t_count { m_data = delay_time[2*8 +: 8]; }
+                    if count == position + 3 as t_count { m_data = delay_time[3*8 +: 8]; }
+                    if s_last {
+                        busy = 1'b0;
+                    }
+                }
+            }
+            if rx_start || rx_end || rx_error {
+                busy = 1'b0;
+                m_valid = 1'b0;
+            }
+        }
+    }
+}

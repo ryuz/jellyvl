@@ -29,6 +29,7 @@ module etherneco_master #(
     m_up_tx_ready: input  logic   ,
 ) {
 
+
     // -------------------------------------
     //  Control
     // -------------------------------------
@@ -76,7 +77,7 @@ module etherneco_master #(
 
 
     // -------------------------------------
-    //  Outer loop (request)
+    //  outer rign (request)
     // -------------------------------------
 
     var outer_tx_last : logic   ;
@@ -98,10 +99,10 @@ module etherneco_master #(
         sync_start   : timsync_trigger ,
         sync_override: timsync_override,
 
-        m_last : outer_tx_last ,
-        m_data : outer_tx_data ,
-        m_valid: outer_tx_valid,
-        m_ready: outer_tx_ready,
+        m_outer_tx_last : outer_tx_last ,
+        m_outer_tx_data : outer_tx_data ,
+        m_outer_tx_valid: outer_tx_valid,
+        m_outer_tx_ready: outer_tx_ready,
     );
 
     inst u_etherneco_packet_tx_outer: etherneco_packet_tx (
@@ -126,6 +127,83 @@ module etherneco_master #(
         m_valid: m_down_tx_valid,
         m_ready: m_down_tx_ready,
     );
+
+
+    // 一周してきたパケットの受信
+    var outer_rx_first: logic   ;
+    var outer_rx_last : logic   ;
+    var outer_rx_data : logic<8>;
+    var outer_rx_valid: logic   ;
+    var outer_rx_ready: logic   ;
+
+    var outer_rx_start: logic;
+    var outer_rx_end  : logic;
+    var outer_rx_error: logic;
+    var outer_rx_length:logic<16>;
+    var outer_rx_type  :logic<8>;
+    var outer_rx_node  :logic<8>;
+
+    inst u_etherneco_packet_rx_outer: etherneco_packet_rx (
+        reset: reset,
+        clk  : clk  ,
+
+        rx_start: outer_rx_start,
+        rx_end  : outer_rx_end  ,
+        rx_error: outer_rx_error,
+        rx_length: outer_rx_length,
+        rx_type: outer_rx_type,
+        rx_node: outer_rx_node,
+
+        s_first: s_up_rx_first,
+        s_last : s_up_rx_last ,
+        s_data : s_up_rx_data ,
+        s_valid: s_up_rx_valid,
+
+        m_first: outer_rx_first,
+        m_last : outer_rx_last ,
+        m_data : outer_rx_data ,
+        m_valid: outer_rx_valid,
+    );
+
+
+    // -------------------------------------
+    //  inner rign (response)
+    // -------------------------------------
+
+    /*
+    var inner_tx_last : logic   ;
+    var inner_tx_data : logic<8>;
+    var inner_tx_valid: logic   ;
+    var inner_tx_ready: logic   ;
+    */
+
+    inst u_etherneco_packet_tx_inner: etherneco_packet_tx
+    #(
+        FIFO_PTR_WIDTH : 5,
+    )
+    (
+        reset: reset,
+        clk  : clk  ,
+
+        tx_start : outer_rx_start,
+        tx_length: outer_rx_length ,
+        tx_type  : outer_rx_type | 8'h80,
+        tx_node  : outer_rx_node - 1'b1,
+
+        tx_cancel: outer_rx_error,
+
+        s_last : outer_rx_last ,
+        s_data : outer_rx_data ,
+        s_valid: outer_rx_valid,
+        s_ready: outer_rx_ready,
+
+        m_first: m_up_tx_first,
+        m_last : m_up_tx_last ,
+        m_data : m_up_tx_data ,
+        m_valid: m_up_tx_valid,
+        m_ready: m_up_tx_ready,
+    );
+
 
     /*
     var outer_rx_last : logic   ;

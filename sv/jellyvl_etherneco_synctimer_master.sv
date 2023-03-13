@@ -12,53 +12,11 @@ module jellyvl_etherneco_synctimer_master #(
     input logic sync_start   ,
     input logic sync_override,
 
-    output logic         m_last ,
-    output logic [8-1:0] m_data ,
-    output logic         m_valid,
-    input  logic         m_ready
+    output logic         m_outer_tx_last ,
+    output logic [8-1:0] m_outer_tx_data ,
+    output logic         m_outer_tx_valid,
+    input  logic         m_outer_tx_ready
 );
-
-    localparam int unsigned LENGTH = 4 + 8 + 1;
-
-    logic [LENGTH-1:0][1-1:0] last;
-    logic [LENGTH-1:0][8-1:0] data;
-
-    always_ff @ (posedge clk) begin
-        if (reset) begin
-            last    <= 'x;
-            data    <= 'x;
-            m_valid <= 1'b0;
-        end else begin
-            if (sync_start) begin
-                // command_id
-                data[0] <= ((sync_override) ? (
-                    8'h01
-                ) : (
-                    8'h00
-                ));
-                last[0] <= 1'b0;
-
-                // time
-                data[8:1] <= current_time;
-                last[8:1] <= 8'h00;
-
-                // offset
-                data[12:9] <= 32'd1000;
-                last[12:9] <= 4'b1000;
-
-                m_valid <= 1'b1;
-            end else begin
-                if (m_valid && m_ready) begin
-                    data    <= data    >> (8);
-                    last    <= last    >> (1);
-                    m_valid <=   !m_last;
-                end
-            end
-        end
-    end
-
-    assign m_data = data[0];
-    assign m_last = last[0];
 
 
     // タイマ
@@ -80,5 +38,47 @@ module jellyvl_etherneco_synctimer_master #(
         .
         current_time (current_time)
     );
+
+    localparam int unsigned LENGTH = 4 + 8 + 1;
+
+    logic [LENGTH-1:0][1-1:0] last;
+    logic [LENGTH-1:0][8-1:0] data;
+
+    always_ff @ (posedge clk) begin
+        if (reset) begin
+            last             <= 'x;
+            data             <= 'x;
+            m_outer_tx_valid <= 1'b0;
+        end else begin
+            if (sync_start) begin
+                // command_id
+                data[0] <= ((sync_override) ? (
+                    8'h01
+                ) : (
+                    8'h00
+                ));
+                last[0] <= 1'b0;
+
+                // time
+                data[8:1] <= current_time;
+                last[8:1] <= 8'h00;
+
+                // offset
+                data[12:9] <= 32'd1000;
+                last[12:9] <= 4'b1000;
+
+                m_outer_tx_valid <= 1'b1;
+            end else begin
+                if (m_outer_tx_valid && m_outer_tx_ready) begin
+                    data             <= data             >> (8);
+                    last             <= last             >> (1);
+                    m_outer_tx_valid <=   !m_outer_tx_last;
+                end
+            end
+        end
+    end
+
+    assign m_outer_tx_data = data[0];
+    assign m_outer_tx_last = last[0];
 
 endmodule

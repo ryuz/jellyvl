@@ -1,3 +1,4 @@
+
 module etherneco_synctimer_slave #(
     parameter TIMER_WIDTH      : u32 = 64                             , // タイマのbit幅
     parameter NUMERATOR        : u32 = 10                             , // クロック周期の分子
@@ -16,20 +17,42 @@ module etherneco_synctimer_slave #(
 
     current_time: output logic<TIMER_WIDTH>,
 
-    rx_start: input logic,
-    rx_error: input logic,
-    rx_end  : input logic,
+    node_id : input logic<8>,
 
-    s_first: input logic   ,
-    s_last : input logic   ,
-    s_data : input logic<8>,
-    s_valid: input logic   ,
+    outer_rx_start: input logic,
+    outer_rx_error: input logic,
+    outer_rx_end  : input logic,
 
-    m_first: output logic   ,
-    m_last : output logic   ,
-    m_data : output logic<8>,
-    m_valid: output logic   ,
+    s_outer_rx_first: input logic   ,
+    s_outer_rx_last : input logic   ,
+    s_outer_rx_data : input logic<8>,
+    s_outer_rx_valid: input logic   ,
+
+    m_outer_tx_first: output logic   ,
+    m_outer_tx_last : output logic   ,
+    m_outer_tx_data : output logic<8>,
+    m_outer_tx_valid: output logic   ,
+
+
+    inner_rx_start: input logic,
+    inner_rx_error: input logic,
+    inner_rx_end  : input logic,
+
+    s_inner_rx_first: input logic   ,
+    s_inner_rx_last : input logic   ,
+    s_inner_rx_data : input logic<8>,
+    s_inner_rx_valid: input logic   ,
+
+    m_inner_tx_first: output logic   ,
+    m_inner_tx_last : output logic   ,
+    m_inner_tx_data : output logic<8>,
+    m_inner_tx_valid: output logic   ,
+
 ) {
+
+    // -------------------------
+    //  Timer
+    // -------------------------
 
     localparam t_adj_phase: type = signed logic<ADJ_PHASE_WIDTH>;
     localparam t_time     : type = logic<TIMER_WIDTH>;
@@ -67,114 +90,73 @@ module etherneco_synctimer_slave #(
         correct_valid   : correct_valid   ,
     );
 
-    var local_reset: logic;
-    assign local_reset = reset || rx_error;
+    // -------------------------
+    //  Outer ring (Resquest)
+    // -------------------------
 
-    localparam t_count: type = logic<16>;
+    inst u_etherneco_synctimer_slave_request :
+    etherneco_synctimer_slave_request(
+        reset           : reset           ,
+        clk             : clk             ,
+        correct_override: correct_override,
+        correct_time    : correct_time    ,
+        correct_valid   : correct_valid   ,
+        
+        rx_start        : outer_rx_start        ,
+        rx_error        : outer_rx_error        ,
+        rx_end          : outer_rx_end          ,
 
-    var busy      : logic      ;
-    var count     : t_count    ;
-    var rx_cmd    : logic  <8> ;
-    var rx_time   : t_time     ;
-    var rx_offset : logic  <16>;
+        s_first         : s_outer_rx_first         ,
+        s_last          : s_outer_rx_last          ,
+        s_data          : s_outer_rx_data          ,
+        s_valid         : s_outer_rx_valid         ,
 
-    always_ff (clk, local_reset) {
-        if_reset {
-            busy       = 1'b0;
-            count      = '0;
-            rx_cmd     = 'x;
-            rx_time    = 'x;
-            rx_offset  = 'x;
+        m_first         : m_outer_tx_first         ,
+        m_last          : m_outer_tx_last          ,
+        m_data          : m_outer_tx_data          ,
+        m_valid         : m_outer_tx_valid         ,
+    );
 
-            m_first = 'x;
-            m_last  = 'x;
-            m_data  = 'x;
-            m_valid = 1'b0;
-        } else {
-            m_first = s_first;
-            m_last  = s_last;
-            m_data  = s_data;
-            m_valid = s_valid;
 
-            if s_valid {
-                count = count + 1'b1;
+    // -------------------------
+    // Inner Ring (Response)
+    // -------------------------
 
-                if !busy {
-                    m_valid = 1'b0;
-                    if s_first {
-                        busy       = 1'b1;
-                        count      = '0;
-                        rx_cmd     = s_data;
-                        m_data     = s_data + 1;
-                        m_valid    = s_valid;
-                    }
-                } else {
-                    case count as int {
-                        0: {
-                            rx_time[0 * 8+:8] = s_data;
-                        }
-                        1: {
-                            rx_time[1 * 8+:8] = s_data;
-                        }
-                        2: {
-                            rx_time[2 * 8+:8] = s_data;
-                        }
-                        3: {
-                            rx_time[3 * 8+:8] = s_data;
-                        }
-                        4: {
-                            rx_time[4 * 8+:8] = s_data;
-                        }
-                        5: {
-                            rx_time[5 * 8+:8] = s_data;
-                        }
-                        6: {
-                            rx_time[6 * 8+:8] = s_data;
-                        }
-                        7: {
-                            rx_time[7 * 8+:8] = s_data;
-                        }
-                        8: {
-                            rx_offset[0 * 8+:8] = s_data;
-                        }
-                        9: {
-                            rx_offset[1 * 8+:8] = s_data;
-                        }
-                        default: {
-                            busy = 1'b0;
-                        }
-                    }
-                    if s_last {
-                        busy = 1'b0;
-                    }
-                }
-            }
-            if rx_start || rx_end || rx_error {
-                busy = 1'b0;
-            }
+    localparam t_delay : type = logic<32>;
+
+    var start_time : t_delay;
+    var delay_time : t_delay;
+    always_ff (clk) {
+        if outer_rx_end {
+            start_time = current_time as t_delay;
+        }
+        if inner_rx_start {
+            delay_time = current_time as t_delay - start_time;
         }
     }
 
-    always_ff (clk, reset) {
-        if_reset {
-            correct_override = 1'bx;
-            correct_time     = 'x;
-            correct_valid    = 1'b0;
-        } else {
-            correct_override = 1'bx;
-            correct_time     = rx_time + rx_offset as t_time;
-            correct_valid    = 1'b0;
 
-            if rx_end {
-                if rx_cmd[0] {
-                    correct_override = 1'b1;
-                    correct_valid    = 1'b1;
-                } else {
-                    correct_override = 1'b0;
-                    correct_valid    = 1'b1;
-                }
-            }
-        }
-    }
+    inst u_etherneco_synctimer_slave_response :
+    etherneco_synctimer_slave_response(
+        reset           : reset           ,
+        clk             : clk             ,
+
+        node_id         : node_id,
+        delay_time      : start_time,
+        
+        rx_start        : outer_rx_start        ,
+        rx_error        : outer_rx_error        ,
+        rx_end          : outer_rx_end          ,
+
+        s_first         : s_outer_rx_first         ,
+        s_last          : s_outer_rx_last          ,
+        s_data          : s_outer_rx_data          ,
+        s_valid         : s_outer_rx_valid         ,
+
+        m_first         : m_outer_tx_first         ,
+        m_last          : m_outer_tx_last          ,
+        m_data          : m_outer_tx_data          ,
+        m_valid         : m_outer_tx_valid         ,
+    );
 
 }

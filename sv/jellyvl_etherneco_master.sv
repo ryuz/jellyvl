@@ -29,6 +29,7 @@ module jellyvl_etherneco_master #(
     input  logic         m_up_tx_ready
 );
 
+
     // -------------------------------------
     //  Control
     // -------------------------------------
@@ -76,7 +77,7 @@ module jellyvl_etherneco_master #(
 
 
     // -------------------------------------
-    //  Outer loop (request)
+    //  outer rign (request)
     // -------------------------------------
 
     logic         outer_tx_last ;
@@ -98,10 +99,10 @@ module jellyvl_etherneco_master #(
         sync_start    (timsync_trigger ),
         .sync_override (timsync_override),
         .
-        m_last  (outer_tx_last ),
-        .m_data  (outer_tx_data ),
-        .m_valid (outer_tx_valid),
-        .m_ready (outer_tx_ready)
+        m_outer_tx_last  (outer_tx_last ),
+        .m_outer_tx_data  (outer_tx_data ),
+        .m_outer_tx_valid (outer_tx_valid),
+        .m_outer_tx_ready (outer_tx_ready)
     );
 
     jellyvl_etherneco_packet_tx u_etherneco_packet_tx_outer (
@@ -126,6 +127,81 @@ module jellyvl_etherneco_master #(
         .m_valid (m_down_tx_valid),
         .m_ready (m_down_tx_ready)
     );
+
+
+    // 一周してきたパケットの受信
+    logic         outer_rx_first;
+    logic         outer_rx_last ;
+    logic [8-1:0] outer_rx_data ;
+    logic         outer_rx_valid;
+    logic         outer_rx_ready;
+
+    logic          outer_rx_start ;
+    logic          outer_rx_end   ;
+    logic          outer_rx_error ;
+    logic [16-1:0] outer_rx_length;
+    logic [8-1:0]  outer_rx_type  ;
+    logic [8-1:0]  outer_rx_node  ;
+
+    jellyvl_etherneco_packet_rx u_etherneco_packet_rx_outer (
+        .reset (reset),
+        .clk   (clk  ),
+        .
+        rx_start  (outer_rx_start ),
+        .rx_end    (outer_rx_end   ),
+        .rx_error  (outer_rx_error ),
+        .rx_length (outer_rx_length),
+        .rx_type   (outer_rx_type  ),
+        .rx_node   (outer_rx_node  ),
+        .
+        s_first (s_up_rx_first),
+        .s_last  (s_up_rx_last ),
+        .s_data  (s_up_rx_data ),
+        .s_valid (s_up_rx_valid),
+        .
+        m_first (outer_rx_first),
+        .m_last  (outer_rx_last ),
+        .m_data  (outer_rx_data ),
+        .m_valid (outer_rx_valid)
+    );
+
+
+    // -------------------------------------
+    //  inner rign (response)
+    // -------------------------------------
+
+    /*
+    var inner_tx_last : logic   ;
+    var inner_tx_data : logic<8>;
+    var inner_tx_valid: logic   ;
+    var inner_tx_ready: logic   ;
+    */
+
+    jellyvl_etherneco_packet_tx #(
+        .FIFO_PTR_WIDTH (5)
+    ) u_etherneco_packet_tx_inner (
+        .reset (reset),
+        .clk   (clk  ),
+        .
+        tx_start  (outer_rx_start       ),
+        .tx_length (outer_rx_length      ),
+        .tx_type   (outer_rx_type | 8'h80),
+        .tx_node   (outer_rx_node - 1'b1 ),
+        .
+        tx_cancel (outer_rx_error),
+        .
+        s_last  (outer_rx_last ),
+        .s_data  (outer_rx_data ),
+        .s_valid (outer_rx_valid),
+        .s_ready (outer_rx_ready),
+        .
+        m_first (m_up_tx_first),
+        .m_last  (m_up_tx_last ),
+        .m_data  (m_up_tx_data ),
+        .m_valid (m_up_tx_valid),
+        .m_ready (m_up_tx_ready)
+    );
+
 
     /*
     var outer_rx_last : logic   ;

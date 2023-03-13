@@ -1,0 +1,138 @@
+
+// リクエストの処理
+module etherneco_synctimer_slave_request(
+    reset: input logic,
+    clk  : input logic,
+
+    correct_override: output logic ,
+    correct_time    : output logic<64>,
+    correct_valid   : output logic ,
+
+    rx_start: input logic,
+    rx_error: input logic,
+    rx_end  : input logic,
+
+    s_first: input logic   ,
+    s_last : input logic   ,
+    s_data : input logic<8>,
+    s_valid: input logic   ,
+
+    m_first: output logic   ,
+    m_last : output logic   ,
+    m_data : output logic<8>,
+    m_valid: output logic   ,
+) {
+
+    localparam t_time : type = logic<64>;
+
+    var local_reset: logic;
+    assign local_reset = reset || rx_error;
+
+    localparam t_count: type = logic<16>;
+
+    var busy      : logic      ;
+    var count     : t_count    ;
+    var rx_cmd    : logic  <8> ;
+    var rx_time   : t_time     ;
+    var rx_offset : logic  <16>;
+
+    always_ff (clk, local_reset) {
+        if_reset {
+            busy       = 1'b0;
+            count      = '0;
+            rx_cmd     = 'x;
+            rx_time    = 'x;
+            rx_offset  = 'x;
+
+            m_first = 'x;
+            m_last  = 'x;
+            m_data  = 'x;
+            m_valid = 1'b0;
+        } else {
+            m_first = s_first;
+            m_last  = s_last;
+            m_data  = s_data;
+            m_valid = s_valid & busy;
+
+            if s_valid {
+                count = count + 1'b1;
+
+                if !busy {
+                    m_valid = 1'b0;
+                    if s_first {
+                        busy       = 1'b1;
+                        count      = '0;
+                        rx_cmd     = s_data;
+                        m_data     = s_data + 1;
+                        m_valid    = 1'b1;
+                    }
+                } else {
+                    case count as int {
+                        0: {
+                            rx_time[0 * 8+:8] = s_data;
+                        }
+                        1: {
+                            rx_time[1 * 8+:8] = s_data;
+                        }
+                        2: {
+                            rx_time[2 * 8+:8] = s_data;
+                        }
+                        3: {
+                            rx_time[3 * 8+:8] = s_data;
+                        }
+                        4: {
+                            rx_time[4 * 8+:8] = s_data;
+                        }
+                        5: {
+                            rx_time[5 * 8+:8] = s_data;
+                        }
+                        6: {
+                            rx_time[6 * 8+:8] = s_data;
+                        }
+                        7: {
+                            rx_time[7 * 8+:8] = s_data;
+                        }
+                        8: {
+                            rx_offset[0 * 8+:8] = s_data;
+                        }
+                        9: {
+                            rx_offset[1 * 8+:8] = s_data;
+                        }
+                        default: {
+                            busy = 1'b0;
+                        }
+                    }
+                    if s_last {
+                        busy = 1'b0;
+                    }
+                }
+            }
+            if rx_start || rx_end || rx_error {
+                busy = 1'b0;
+            }
+        }
+    }
+
+    always_ff (clk, reset) {
+        if_reset {
+            correct_override = 1'bx;
+            correct_time     = 'x;
+            correct_valid    = 1'b0;
+        } else {
+            correct_override = 1'bx;
+            correct_time     = rx_time + rx_offset as t_time;
+            correct_valid    = 1'b0;
+
+            if rx_end {
+                if rx_cmd[0] {
+                    correct_override = 1'b1;
+                    correct_valid    = 1'b1;
+                } else {
+                    correct_override = 1'b0;
+                    correct_valid    = 1'b1;
+                }
+            }
+        }
+    }
+
+}
