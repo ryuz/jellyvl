@@ -25,17 +25,21 @@ module jellyvl_etherneco_rx #() (
         STATE_ERROR = 5'b10000
     } STATE;
 
+    localparam type t_count  = logic [4-1:0];
     localparam type t_length = logic [16-1:0];
 
-    STATE    state     ;
-    t_length count     ;
-    t_length length    ;
-    logic    preamble  ;
-    logic    crc_update;
-    logic    crc_check ;
+    STATE    state        ;
+    t_count  count        ;
+    t_length length       ;
+    logic    preamble     ;
+    logic    payload_first;
+    logic    payload_last ;
+    logic    fcs_last     ;
+    logic    crc_update   ;
+    logic    crc_check    ;
 
-    t_length count_next;
-    assign count_next = count + 1'b1;
+    t_length length_next;
+    assign length_next = length - 1'b1;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
@@ -48,26 +52,37 @@ module jellyvl_etherneco_rx #() (
             m_data  <= 'x;
             m_valid <= 1'b0;
 
-            state      <= STATE_IDLE;
-            count      <= 'x;
-            length     <= 'x;
-            preamble   <= 1'b0;
-            crc_update <= 'x;
-            crc_check  <= 1'b0;
+            state         <= STATE_IDLE;
+            count         <= 'x;
+            length        <= 'x;
+            preamble      <= 1'b0;
+            payload_first <= 1'bx;
+            payload_last  <= 1'bx;
+            fcs_last      <= 'x;
+            crc_update    <= 'x;
+            crc_check     <= 1'b0;
         end else begin
             rx_start  <= 1'b0;
             rx_end    <= 1'b0;
             rx_error  <= 1'b0;
             crc_check <= 1'b0;
+            m_data    <= s_data;
+            m_valid   <= 1'b0;
 
             if (s_valid) begin
-                count <= count_next;
+                if (count != '1) begin
+                    count <= count + 1'b1;
+                end
+
+                payload_first <= 1'bx;
+                payload_last  <= 1'bx;
+                fcs_last      <= 1'bx;
 
                 case (state)
                     STATE_IDLE: begin
-                        if (preamble && (s_data == 8'hd5) && (count >= 6 && count <= 8)) begin
+                        if (preamble && (s_data == 8'hd5) && (count >= 5 && count <= 7)) begin
                             state      <= STATE_LENGTH;
-                            count      <= 16'd1;
+                            count      <= '0;
                             crc_update <= 1'b0;
                         end
                         m_first <= 1'bx;
@@ -75,32 +90,38 @@ module jellyvl_etherneco_rx #() (
                     end
 
                     STATE_LENGTH: begin
-                        if (count[0]) begin
+                        if (~count[0]) begin
                             length[7:0] <= s_data;
                             crc_update  <= 1'b1;
                             m_first     <= 1'bx;
                             m_last      <= 1'bx;
                         end else begin
-                            state        <= STATE_PAYLOAD;
-                            count        <= 16'd1;
-                            length[15:8] <= s_data;
-                            m_first      <= 1'b1;
-                            m_last       <= ({s_data, length[7:0]} == 16'd1);
+                            state         <= STATE_PAYLOAD;
+                            count         <= '0;
+                            length[15:8]  <= s_data;
+                            payload_first <= 1'b1;
+                            payload_last  <= ({s_data, length[7:0]} == 16'd0);
                         end
                     end
 
                     STATE_PAYLOAD: begin
-                        m_first <= 1'b0;
-                        m_last  <= (count_next == length);
-                        if (m_last) begin
-                            state  <= STATE_FCS;
-                            count  <= 16'd1;
-                            length <= 'x;
+                        length        <= length_next;
+                        payload_first <= 1'b0;
+                        payload_last  <= (length_next == '0);
+                        m_first       <= payload_first;
+                        m_last        <= payload_last;
+                        m_valid       <= 1'b1;
+                        if (payload_last) begin
+                            state    <= STATE_FCS;
+                            fcs_last <= 1'b0;
+                            count    <= '0;
+                            length   <= 'x;
                         end
                     end
 
                     STATE_FCS: begin
-                        if (count == 3'd5) begin
+                        fcs_last <= (count[1:0] == 2'd2);
+                        if (fcs_last) begin
                             state     <= STATE_IDLE;
                             crc_check <= 1'b1;
                         end
@@ -116,17 +137,18 @@ module jellyvl_etherneco_rx #() (
                 end
 
                 if (s_first) begin
-                    count    <= 16'd1;
+                    count    <= '0;
                     preamble <= (s_data == 8'h55);
                     rx_start <= (state == STATE_IDLE);
                 end
 
-                if ((s_first && state != STATE_IDLE && state != STATE_ERROR) || (s_last && !(state == STATE_FCS && count == 5) && state != STATE_IDLE && state != STATE_ERROR)) begin
-                    state   <= STATE_ERROR;
-                    m_first <= 'x;
-                    m_last  <= 'x;
-                    m_data  <= 'x;
-                    m_valid <= 1'b0;
+                if ((s_first && state != STATE_IDLE && state != STATE_ERROR) || (s_last && !(state == STATE_FCS && fcs_last) && state != STATE_IDLE && state != STATE_ERROR)) begin
+                    state    <= STATE_ERROR;
+                    rx_error <= 1'b1;
+                    m_first  <= 'x;
+                    m_last   <= 'x;
+                    m_data   <= 'x;
+                    m_valid  <= 1'b0;
                 end
             end
 
@@ -166,7 +188,5 @@ module jellyvl_etherneco_rx #() (
         .
         out_crc (crc_value)
     );
-
-    // crc_value == 0x2144df1c
 
 endmodule

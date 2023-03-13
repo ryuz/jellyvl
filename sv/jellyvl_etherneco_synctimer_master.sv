@@ -31,7 +31,7 @@ module jellyvl_etherneco_synctimer_master #(
         end else begin
             if (sync_start) begin
                 // node id
-                data[0] <= 8'h00;
+                data[0] <= 8'h01;
                 last[0] <= 1'b0;
 
                 // cmd type

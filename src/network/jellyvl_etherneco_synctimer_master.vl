@@ -31,7 +31,7 @@ module etherneco_synctimer_master #(
         } else {
             if sync_start {
                 // node id
-                data[0] = 8'h00;
+                data[0] = 8'h01;
                 last[0] = 1'b0;
 
                 // cmd type

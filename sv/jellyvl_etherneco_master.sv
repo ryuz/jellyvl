@@ -8,29 +8,25 @@ module jellyvl_etherneco_master #(
 
     output logic [TIMER_WIDTH-1:0] current_time,
 
-    input  logic         s_inner_rx_first,
-    input  logic         s_inner_rx_last ,
-    input  logic [8-1:0] s_inner_rx_data ,
-    input  logic         s_inner_rx_valid,
-    output logic         s_inner_rx_ready,
+    input  logic         s_down_rx_first,
+    input  logic         s_down_rx_last ,
+    input  logic [8-1:0] s_down_rx_data ,
+    input  logic         s_down_rx_valid,
+    output logic         m_down_tx_first,
+    output logic         m_down_tx_last ,
+    output logic [8-1:0] m_down_tx_data ,
+    output logic         m_down_tx_valid,
+    input  logic         m_down_tx_ready,
 
-    output logic         m_inner_tx_first,
-    output logic         m_inner_tx_last ,
-    output logic [8-1:0] m_inner_tx_data ,
-    output logic         m_inner_tx_valid,
-    input  logic         m_inner_tx_ready,
-
-    input  logic         s_outer_rx_first,
-    input  logic         s_outer_rx_last ,
-    input  logic [8-1:0] s_outer_rx_data ,
-    input  logic         s_outer_rx_valid,
-    output logic         s_outer_rx_ready,
-
-    output logic         m_outer_tx_first,
-    output logic         m_outer_tx_last ,
-    output logic [8-1:0] m_outer_tx_data ,
-    output logic         m_outer_tx_valid,
-    input  logic         m_outer_tx_ready
+    input  logic         s_up_rx_first,
+    input  logic         s_up_rx_last ,
+    input  logic [8-1:0] s_up_rx_data ,
+    input  logic         s_up_rx_valid,
+    output logic         m_up_tx_first,
+    output logic         m_up_tx_last ,
+    output logic [8-1:0] m_up_tx_data ,
+    output logic         m_up_tx_valid,
+    input  logic         m_up_tx_ready
 );
 
     localparam int unsigned PERIOD_WIDTH = 32;
@@ -65,12 +61,12 @@ module jellyvl_etherneco_master #(
         end
     end
 
-    logic         inner_tx_last ;
-    logic [8-1:0] inner_tx_data ;
-    logic         inner_tx_valid;
-    logic         inner_tx_ready;
+    logic         down_tx_last ;
+    logic [8-1:0] down_tx_data ;
+    logic         down_tx_valid;
+    logic         down_tx_ready;
 
-    jellyvl_etherneco_tx u_etherneco_tx_inner (
+    jellyvl_etherneco_tx u_etherneco_tx_down (
         .reset (reset),
         .clk   (clk  ),
         .
@@ -79,16 +75,16 @@ module jellyvl_etherneco_master #(
         .
         tx_cancel (1'b0),
         .
-        s_last  (inner_tx_last ),
-        .s_data  (inner_tx_data ),
-        .s_valid (inner_tx_valid),
-        .s_ready (inner_tx_ready),
+        s_last  (down_tx_last ),
+        .s_data  (down_tx_data ),
+        .s_valid (down_tx_valid),
+        .s_ready (down_tx_ready),
         .
-        m_first (m_inner_tx_first),
-        .m_last  (m_inner_tx_last ),
-        .m_data  (m_inner_tx_data ),
-        .m_valid (m_inner_tx_valid),
-        .m_ready (m_inner_tx_ready)
+        m_first (m_down_tx_first),
+        .m_last  (m_down_tx_last ),
+        .m_data  (m_down_tx_data ),
+        .m_valid (m_down_tx_valid),
+        .m_ready (m_down_tx_ready)
     );
 
 
@@ -107,10 +103,10 @@ module jellyvl_etherneco_master #(
         sync_start    (timsync_trigger ),
         .sync_override (timsync_override),
         .
-        m_last  (inner_tx_last ),
-        .m_data  (inner_tx_data ),
-        .m_valid (inner_tx_valid),
-        .m_ready (inner_tx_ready)
+        m_last  (down_tx_last ),
+        .m_data  (down_tx_data ),
+        .m_valid (down_tx_valid),
+        .m_ready (down_tx_ready)
     );
 
 endmodule

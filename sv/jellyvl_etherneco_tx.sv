@@ -1,4 +1,6 @@
-module jellyvl_etherneco_tx (
+module jellyvl_etherneco_tx #(
+    parameter int unsigned FIFO_PTR_WIDTH = 0
+) (
     input logic reset,
     input logic clk  ,
 
@@ -18,6 +20,45 @@ module jellyvl_etherneco_tx (
     output logic         m_valid,
     input  logic         m_ready
 );
+
+
+    // -------------------------
+    //  FIFO
+    // -------------------------
+
+    logic [FIFO_PTR_WIDTH + 1-1:0] fifo_free_count;
+    logic [FIFO_PTR_WIDTH + 1-1:0] fifo_data_count;
+    logic                          fifo_last      ;
+    logic [8-1:0]                  fifo_data      ;
+    logic                          fifo_valid     ;
+    logic                          fifo_ready     ;
+
+    jelly2_fifo_fwtf #(
+        .DATA_WIDTH (1 + 8         ),
+        .PTR_WIDTH  (FIFO_PTR_WIDTH),
+        .DOUT_REGS  (0             ),
+        .RAM_TYPE   ("distributed" ),
+        .LOW_DEALY  (1             ),
+        .S_REGS     (0             ),
+        .M_REGS     (0             )
+    ) u_fifo_fwtf (
+        .reset        (reset                ),
+        .clk          (clk                  ),
+        .cke          (1'b1                 ),
+        .s_data       ({s_last, s_data}      ),
+        .s_valid      (s_valid              ),
+        .s_ready      (s_ready              ),
+        .s_free_count (fifo_free_count      ),
+        .m_data       ({fifo_last, fifo_data}),
+        .m_valid      (fifo_valid           ),
+        .m_ready      (fifo_ready           ),
+        .m_data_count (fifo_data_count      )
+    );
+
+
+    // -------------------------
+    //  core
+    // -------------------------
     typedef 
     enum logic [6-1:0] {
         STATE_IDLE = 6'b000000,
@@ -104,7 +145,7 @@ module jellyvl_etherneco_tx (
                     st0_length <= st0_length_next;
                     st0_first  <= 1'b0;
                     st0_last   <= (st0_length_next == 0);
-                    if (s_last) begin
+                    if (fifo_last) begin
                         st0_state <= STATE_PADDING;
                     end
                     if (st0_last) begin
@@ -149,8 +190,8 @@ module jellyvl_etherneco_tx (
             endcase
 
             // エラーチェック
-            if ((st0_state == STATE_PAYLOAD && !s_valid) // 転送中アンダーフロー
-             || (st0_state == STATE_PAYLOAD && st0_last && !s_last)) begin // オーバーフロー
+            if ((st0_state == STATE_PAYLOAD && !fifo_valid) // 転送中アンダーフロー
+             || (st0_state == STATE_PAYLOAD && st0_last && !fifo_last)) begin // オーバーフロー
                 st0_state  <= STATE_ERROR;
                 st0_count  <= 'x;
                 st0_length <= 'x;
@@ -168,7 +209,8 @@ module jellyvl_etherneco_tx (
         end
     end
 
-    assign s_ready = cke && (st0_state == STATE_PAYLOAD);
+    assign fifo_ready = cke && (st0_state == STATE_PAYLOAD);
+
 
 
     // ----------------------------
@@ -222,7 +264,7 @@ module jellyvl_etherneco_tx (
                 end
 
                 STATE_PAYLOAD: begin
-                    st1_data <= s_data;
+                    st1_data <= fifo_data;
                 end
 
                 STATE_PADDING: begin
@@ -257,7 +299,6 @@ module jellyvl_etherneco_tx (
     logic          st2_last ;
     logic [32-1:0] st2_crc  ;
     logic [8-1:0]  st2_data ;
-    //    var st2_valid: logic    ;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
