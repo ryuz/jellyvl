@@ -125,7 +125,7 @@ module jellyvl_etherneco_packet_tx #(
 
                 STATE_PREAMBLE: begin
                     st0_first <= 1'b0;
-                    st0_last  <= (st0_count == 3'd4);
+                    st0_last  <= (st0_count == 3'd5);
                     if (st0_last) begin
                         st0_state <= STATE_LENGTH;
                         st0_count <= '0;

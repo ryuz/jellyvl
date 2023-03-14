@@ -139,19 +139,19 @@ module jellyvl_etherneco_synctimer_slave #(
         node_id    (node_id   ),
         .delay_time (start_time),
         .
-        rx_start (outer_rx_start),
-        .rx_error (outer_rx_error),
-        .rx_end   (outer_rx_end  ),
+        rx_start (inner_rx_start),
+        .rx_error (inner_rx_error),
+        .rx_end   (inner_rx_end  ),
         .
-        s_first (s_outer_rx_first),
-        .s_last  (s_outer_rx_last ),
-        .s_data  (s_outer_rx_data ),
-        .s_valid (s_outer_rx_valid),
+        s_first (s_inner_rx_first),
+        .s_last  (s_inner_rx_last ),
+        .s_data  (s_inner_rx_data ),
+        .s_valid (s_inner_rx_valid),
         .
-        m_first (m_outer_tx_first),
-        .m_last  (m_outer_tx_last ),
-        .m_data  (m_outer_tx_data ),
-        .m_valid (m_outer_tx_valid)
+        m_first (m_inner_tx_first),
+        .m_last  (m_inner_tx_last ),
+        .m_data  (m_inner_tx_data ),
+        .m_valid (m_inner_tx_valid)
     );
 
 endmodule

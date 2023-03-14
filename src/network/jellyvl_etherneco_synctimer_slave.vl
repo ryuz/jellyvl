@@ -1,4 +1,3 @@
-
 module etherneco_synctimer_slave #(
     parameter TIMER_WIDTH      : u32 = 64                             , // タイマのbit幅
     parameter NUMERATOR        : u32 = 10                             , // クロック周期の分子
@@ -17,7 +16,7 @@ module etherneco_synctimer_slave #(
 
     current_time: output logic<TIMER_WIDTH>,
 
-    node_id : input logic<8>,
+    node_id: input logic<8>,
 
     outer_rx_start: input logic,
     outer_rx_error: input logic,
@@ -32,7 +31,6 @@ module etherneco_synctimer_slave #(
     m_outer_tx_last : output logic   ,
     m_outer_tx_data : output logic<8>,
     m_outer_tx_valid: output logic   ,
-
 
     inner_rx_start: input logic,
     inner_rx_error: input logic,
@@ -94,27 +92,26 @@ module etherneco_synctimer_slave #(
     //  Outer ring (Resquest)
     // -------------------------
 
-    inst u_etherneco_synctimer_slave_request :
-    etherneco_synctimer_slave_request(
+    inst u_etherneco_synctimer_slave_request: etherneco_synctimer_slave_request (
         reset           : reset           ,
         clk             : clk             ,
         correct_override: correct_override,
         correct_time    : correct_time    ,
         correct_valid   : correct_valid   ,
-        
-        rx_start        : outer_rx_start        ,
-        rx_error        : outer_rx_error        ,
-        rx_end          : outer_rx_end          ,
 
-        s_first         : s_outer_rx_first         ,
-        s_last          : s_outer_rx_last          ,
-        s_data          : s_outer_rx_data          ,
-        s_valid         : s_outer_rx_valid         ,
+        rx_start: outer_rx_start,
+        rx_error: outer_rx_error,
+        rx_end  : outer_rx_end  ,
 
-        m_first         : m_outer_tx_first         ,
-        m_last          : m_outer_tx_last          ,
-        m_data          : m_outer_tx_data          ,
-        m_valid         : m_outer_tx_valid         ,
+        s_first: s_outer_rx_first,
+        s_last : s_outer_rx_last ,
+        s_data : s_outer_rx_data ,
+        s_valid: s_outer_rx_valid,
+
+        m_first: m_outer_tx_first,
+        m_last : m_outer_tx_last ,
+        m_data : m_outer_tx_data ,
+        m_valid: m_outer_tx_valid,
     );
 
 
@@ -122,10 +119,10 @@ module etherneco_synctimer_slave #(
     // Inner Ring (Response)
     // -------------------------
 
-    localparam t_delay : type = logic<32>;
+    localparam t_delay: type = logic<32>;
 
-    var start_time : t_delay;
-    var delay_time : t_delay;
+    var start_time: t_delay;
+    var delay_time: t_delay;
     always_ff (clk) {
         if outer_rx_end {
             start_time = current_time as t_delay;
@@ -135,28 +132,26 @@ module etherneco_synctimer_slave #(
         }
     }
 
+    inst u_etherneco_synctimer_slave_response: etherneco_synctimer_slave_response (
+        reset: reset,
+        clk  : clk  ,
 
-    inst u_etherneco_synctimer_slave_response :
-    etherneco_synctimer_slave_response(
-        reset           : reset           ,
-        clk             : clk             ,
+        node_id   : node_id   ,
+        delay_time: start_time,
 
-        node_id         : node_id,
-        delay_time      : start_time,
-        
-        rx_start        : outer_rx_start        ,
-        rx_error        : outer_rx_error        ,
-        rx_end          : outer_rx_end          ,
+        rx_start: inner_rx_start,
+        rx_error: inner_rx_error,
+        rx_end  : inner_rx_end  ,
 
-        s_first         : s_outer_rx_first         ,
-        s_last          : s_outer_rx_last          ,
-        s_data          : s_outer_rx_data          ,
-        s_valid         : s_outer_rx_valid         ,
+        s_first: s_inner_rx_first,
+        s_last : s_inner_rx_last ,
+        s_data : s_inner_rx_data ,
+        s_valid: s_inner_rx_valid,
 
-        m_first         : m_outer_tx_first         ,
-        m_last          : m_outer_tx_last          ,
-        m_data          : m_outer_tx_data          ,
-        m_valid         : m_outer_tx_valid         ,
+        m_first: m_inner_tx_first,
+        m_last : m_inner_tx_last ,
+        m_data : m_inner_tx_data ,
+        m_valid: m_inner_tx_valid,
     );
 
 }

@@ -39,8 +39,6 @@ module etherneco_synctimer_master #(
         current_time: current_time,
     );
 
-
-
     localparam LENGTH: u32 = 4 + 8 + 1;
 
     var last: logic<LENGTH, 1>;
@@ -48,8 +46,8 @@ module etherneco_synctimer_master #(
 
     always_ff (clk, reset) {
         if_reset {
-            last    = 'x;
-            data    = 'x;
+            last             = 'x;
+            data             = 'x;
             m_outer_tx_valid = 1'b0;
         } else {
             if sync_start {
@@ -72,8 +70,8 @@ module etherneco_synctimer_master #(
                 m_outer_tx_valid = 1'b1;
             } else {
                 if m_outer_tx_valid && m_outer_tx_ready {
-                    data    >>= 8;
-                    last    >>= 1;
+                    data             >>= 8;
+                    last             >>= 1;
                     m_outer_tx_valid =   !m_outer_tx_last;
                 }
             }
@@ -82,6 +80,5 @@ module etherneco_synctimer_master #(
 
     assign m_outer_tx_data = data[0];
     assign m_outer_tx_last = last[0];
-
 
 }

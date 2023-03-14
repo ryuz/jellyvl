@@ -16,7 +16,7 @@ module etherneco_slave #(
     clk  : input logic,
 
     current_time: output logic<TIMER_WIDTH>,
-    
+
     s_up_rx_first: input  logic   ,
     s_up_rx_last : input  logic   ,
     s_up_rx_data : input  logic<8>,
@@ -43,12 +43,12 @@ module etherneco_slave #(
     //  Outer loop (request)
     // -------------------------------------
 
-    var outer_rx_start: logic;
-    var outer_rx_end  : logic;
-    var outer_rx_error: logic;
-    var outer_rx_length:logic<16>;
-    var outer_rx_type  :logic<8>;
-    var outer_rx_node  :logic<8>;
+    var outer_rx_start : logic    ;
+    var outer_rx_end   : logic    ;
+    var outer_rx_error : logic    ;
+    var outer_rx_length: logic<16>;
+    var outer_rx_type  : logic<8> ;
+    var outer_rx_node  : logic<8> ;
 
     var outer_rx_first: logic   ;
     var outer_rx_last : logic   ;
@@ -66,12 +66,12 @@ module etherneco_slave #(
         reset: reset,
         clk  : clk  ,
 
-        rx_start: outer_rx_start,
-        rx_end  : outer_rx_end  ,
-        rx_error: outer_rx_error,
+        rx_start : outer_rx_start ,
+        rx_end   : outer_rx_end   ,
+        rx_error : outer_rx_error ,
         rx_length: outer_rx_length,
-        rx_type: outer_rx_type,
-        rx_node: outer_rx_node,
+        rx_type  : outer_rx_type  ,
+        rx_node  : outer_rx_node  ,
 
         s_first: s_up_rx_first,
         s_last : s_up_rx_last ,
@@ -87,16 +87,15 @@ module etherneco_slave #(
 
     // さらに下流にリクエストを流す
     inst u_etherneco_packet_tx_outer: etherneco_packet_tx #(
-        FIFO_PTR_WIDTH : 5,
-    )
-    (
+        FIFO_PTR_WIDTH: 5,
+    ) (
         reset: reset,
         clk  : clk  ,
 
-        tx_start : outer_rx_start,
-        tx_length: outer_rx_length,
-        tx_type: outer_rx_type,
-        tx_node: outer_rx_node + 1'b1,
+        tx_start : outer_rx_start      ,
+        tx_length: outer_rx_length     ,
+        tx_type  : outer_rx_type       ,
+        tx_node  : outer_rx_node + 1'b1,
 
         tx_cancel: outer_rx_error,
 
@@ -117,12 +116,12 @@ module etherneco_slave #(
     //  Inner loop (response)
     // -------------------------------------
 
-    var inner_rx_start: logic;
-    var inner_rx_end  : logic;
-    var inner_rx_error: logic;
-    var inner_rx_length:logic<16>;
-    var inner_rx_type  :logic<8>;
-    var inner_rx_node  :logic<8>;
+    var inner_rx_start : logic    ;
+    var inner_rx_end   : logic    ;
+    var inner_rx_error : logic    ;
+    var inner_rx_length: logic<16>;
+    var inner_rx_type  : logic<8> ;
+    var inner_rx_node  : logic<8> ;
 
     var inner_rx_first: logic   ;
     var inner_rx_last : logic   ;
@@ -141,12 +140,12 @@ module etherneco_slave #(
         reset: reset,
         clk  : clk  ,
 
-        rx_start:  inner_rx_start,
-        rx_end  :  inner_rx_end  ,
-        rx_error:  inner_rx_error,
+        rx_start : inner_rx_start ,
+        rx_end   : inner_rx_end   ,
+        rx_error : inner_rx_error ,
         rx_length: inner_rx_length,
-        rx_type:   inner_rx_type,
-        rx_node:   inner_rx_node,
+        rx_type  : inner_rx_type  ,
+        rx_node  : inner_rx_node  ,
 
         s_first: s_down_rx_first,
         s_last : s_down_rx_last ,
@@ -161,16 +160,15 @@ module etherneco_slave #(
 
     // 上流へレスポンス応答
     inst u_etherneco_packet_tx_inner: etherneco_packet_tx #(
-        FIFO_PTR_WIDTH : 5,
-    )
-    (
+        FIFO_PTR_WIDTH: 5,
+    ) (
         reset: reset,
         clk  : clk  ,
 
-        tx_start : outer_rx_start,
-        tx_length: outer_rx_length,
-        tx_type: outer_rx_type,
-        tx_node: outer_rx_node - 1'b1,
+        tx_start : outer_rx_start      ,
+        tx_length: outer_rx_length     ,
+        tx_type  : outer_rx_type       ,
+        tx_node  : outer_rx_node - 1'b1,
 
         tx_cancel: outer_rx_error,
 
@@ -244,8 +242,5 @@ module etherneco_slave #(
         m_inner_tx_valid: inner_tx_valid,
 
     );
-
-
-
 
 }

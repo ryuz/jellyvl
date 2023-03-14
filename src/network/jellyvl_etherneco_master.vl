@@ -36,15 +36,15 @@ module etherneco_master #(
 
     localparam PERIOD_WIDTH: u32 = 32;
 
-    var timsync_trigger : logic;
-    var timsync_override: logic;
-    var request_type:  logic<8>;
-    var request_node:  logic<8>;
-    var request_length: logic<16>;
+    var timsync_trigger : logic    ;
+    var timsync_override: logic    ;
+    var request_type    : logic<8> ;
+    var request_node    : logic<8> ;
+    var request_length  : logic<16>;
 
     // とりあえず時間合わせパケットに固定
-    assign request_type = 8'h10;
-    assign request_node = 8'h00;
+    assign request_type   = 8'h10;
+    assign request_node   = 8'h00;
     assign request_length = 16'd13 - 16'd1;
 
 
@@ -111,8 +111,8 @@ module etherneco_master #(
 
         tx_start : timsync_trigger,
         tx_length: request_length ,
-        tx_type  : request_type ,
-        tx_node  : request_node ,
+        tx_type  : request_type   ,
+        tx_node  : request_node   ,
 
         tx_cancel: 1'b0,
 
@@ -136,23 +136,23 @@ module etherneco_master #(
     var outer_rx_valid: logic   ;
     var outer_rx_ready: logic   ;
 
-    var outer_rx_start: logic;
-    var outer_rx_end  : logic;
-    var outer_rx_error: logic;
-    var outer_rx_length:logic<16>;
-    var outer_rx_type  :logic<8>;
-    var outer_rx_node  :logic<8>;
+    var outer_rx_start : logic    ;
+    var outer_rx_end   : logic    ;
+    var outer_rx_error : logic    ;
+    var outer_rx_length: logic<16>;
+    var outer_rx_type  : logic<8> ;
+    var outer_rx_node  : logic<8> ;
 
     inst u_etherneco_packet_rx_outer: etherneco_packet_rx (
         reset: reset,
         clk  : clk  ,
 
-        rx_start: outer_rx_start,
-        rx_end  : outer_rx_end  ,
-        rx_error: outer_rx_error,
+        rx_start : outer_rx_start ,
+        rx_end   : outer_rx_end   ,
+        rx_error : outer_rx_error ,
         rx_length: outer_rx_length,
-        rx_type: outer_rx_type,
-        rx_node: outer_rx_node,
+        rx_type  : outer_rx_type  ,
+        rx_node  : outer_rx_node  ,
 
         s_first: s_up_rx_first,
         s_last : s_up_rx_last ,
@@ -177,18 +177,16 @@ module etherneco_master #(
     var inner_tx_ready: logic   ;
     */
 
-    inst u_etherneco_packet_tx_inner: etherneco_packet_tx
-    #(
-        FIFO_PTR_WIDTH : 5,
-    )
-    (
+    inst u_etherneco_packet_tx_inner: etherneco_packet_tx #(
+        FIFO_PTR_WIDTH: 5,
+    ) (
         reset: reset,
         clk  : clk  ,
 
-        tx_start : outer_rx_start,
-        tx_length: outer_rx_length ,
+        tx_start : outer_rx_start       ,
+        tx_length: outer_rx_length      ,
         tx_type  : outer_rx_type | 8'h80,
-        tx_node  : outer_rx_node - 1'b1,
+        tx_node  : outer_rx_node - 1'b1 ,
 
         tx_cancel: outer_rx_error,
 
