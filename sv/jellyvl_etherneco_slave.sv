@@ -243,4 +243,57 @@ module jellyvl_etherneco_slave #(
 
     );
 
+
+
+    ///
+
+    logic          rep_m_first      ;
+    logic          rep_m_last       ;
+    logic [8-1:0]  rep_m_data       ;
+    logic          rep_m_valid      ;
+    logic          rep_rx_start     ;
+    logic          rep_rx_end       ;
+    logic          rep_rx_error     ;
+    logic [16-1:0] rep_rx_length    ;
+    logic [8-1:0]  rep_rx_type      ;
+    logic [8-1:0]  rep_rx_node      ;
+    logic          rep_payload_first;
+    logic          rep_payload_last ;
+    logic [16-1:0] rep_payload_pos  ;
+    logic [8-1:0]  rep_payload_data ;
+    logic          rep_payload_valid;
+    logic [8-1:0]  rep_replace_data ;
+    logic          rep_replace_valid;
+
+    jellyvl_etherneco_packet_repeater #(
+        .DOWN_STREAM   (1'b0),
+        .REPLACE_DELAY (1   )
+    ) u_etherneco_packet_repeater (
+        .reset (reset),
+        .clk   (clk  ),
+        .
+        s_first (s_up_rx_first),
+        .s_last  (s_up_rx_last ),
+        .s_data  (s_up_rx_data ),
+        .s_valid (s_up_rx_valid),
+        .
+        m_first       (rep_m_first      ),
+        .m_last        (rep_m_last       ),
+        .m_data        (rep_m_data       ),
+        .m_valid       (rep_m_valid      ),
+        .rx_start      (rep_rx_start     ),
+        .rx_end        (rep_rx_end       ),
+        .rx_error      (rep_rx_error     ),
+        .rx_length     (rep_rx_length    ),
+        .rx_type       (rep_rx_type      ),
+        .rx_node       (rep_rx_node      ),
+        .payload_first (rep_payload_first),
+        .payload_last  (rep_payload_last ),
+        .payload_pos   (rep_payload_pos  ),
+        .payload_data  (rep_payload_data ),
+        .payload_valid (rep_payload_valid),
+        .replace_data  (rep_replace_data ),
+        .replace_valid (rep_replace_valid)
+    );
+
 endmodule

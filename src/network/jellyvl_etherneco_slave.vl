@@ -243,4 +243,57 @@ module etherneco_slave #(
 
     );
 
+
+
+    ///
+
+    var rep_m_first      : logic    ;
+    var rep_m_last       : logic    ;
+    var rep_m_data       : logic<8> ;
+    var rep_m_valid      : logic    ;
+    var rep_rx_start     : logic    ;
+    var rep_rx_end       : logic    ;
+    var rep_rx_error     : logic    ;
+    var rep_rx_length    : logic<16>;
+    var rep_rx_type      : logic<8> ;
+    var rep_rx_node      : logic<8> ;
+    var rep_payload_first: logic    ;
+    var rep_payload_last : logic    ;
+    var rep_payload_pos  : logic<16>;
+    var rep_payload_data : logic<8> ;
+    var rep_payload_valid: logic    ;
+    var rep_replace_data : logic<8> ;
+    var rep_replace_valid: logic    ;
+
+    inst u_etherneco_packet_repeater: etherneco_packet_repeater #(
+        DOWN_STREAM  : 1'b0,
+        REPLACE_DELAY: 1   ,
+    ) (
+        reset: reset,
+        clk  : clk  ,
+
+        s_first: s_up_rx_first,
+        s_last : s_up_rx_last ,
+        s_data : s_up_rx_data ,
+        s_valid: s_up_rx_valid,
+
+        m_first      : rep_m_first      ,
+        m_last       : rep_m_last       ,
+        m_data       : rep_m_data       ,
+        m_valid      : rep_m_valid      ,
+        rx_start     : rep_rx_start     ,
+        rx_end       : rep_rx_end       ,
+        rx_error     : rep_rx_error     ,
+        rx_length    : rep_rx_length    ,
+        rx_type      : rep_rx_type      ,
+        rx_node      : rep_rx_node      ,
+        payload_first: rep_payload_first,
+        payload_last : rep_payload_last ,
+        payload_pos  : rep_payload_pos  ,
+        payload_data : rep_payload_data ,
+        payload_valid: rep_payload_valid,
+        replace_data : rep_replace_data ,
+        replace_valid: rep_replace_valid,
+    );
+
 }

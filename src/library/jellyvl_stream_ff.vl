@@ -1,7 +1,7 @@
 
 
 // insert FF to stream pipelines
-module jelly_pipeline_insert_ff #(
+module pipeline_insert_ff #(
     parameter t_data   : type      = logic<8>,
     parameter S_REGS   : bit       = 1       ,
     parameter M_REGS   : bit       = 1       ,

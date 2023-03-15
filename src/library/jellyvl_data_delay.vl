@@ -1,0 +1,48 @@
+module data_delay #(
+    parameter t_data   : type   = logic<8>,
+    parameter LATENCY  : u32    = 1       ,
+    parameter INIT_DATA: t_data = 'x      ,
+) (
+    reset: input logic,
+    clk  : input logic,
+    cke  : input logic,
+
+    s_data : input  t_data,
+    s_valid: input  logic ,
+    s_ready: output logic ,
+
+    m_data : output t_data,
+    m_valid: output logic ,
+    m_ready: input  logic ,
+) {
+
+    if LATENCY == 0 :bypass {
+        assign s_ready = m_ready;
+        assign m_data  = s_data;
+        assign m_valid = s_valid;
+    } else :delay {
+
+        assign s_ready = !m_valid || s_ready;
+
+        var buf_data : t_data [LATENCY];
+        var buf_valid: logic  [LATENCY];
+        always_ff (clk, reset) {
+            if_reset {
+                for i: u32 in 0..LATENCY {
+                    buf_data[i]  = INIT_DATA;
+                    buf_valid[i] = 1'b0;
+                }
+            } else if cke && s_ready {
+                buf_data[0]  = s_data;
+                buf_valid[0] = s_valid;
+                for i: u32 in 1..LATENCY {
+                    buf_data[i]  = buf_data[i - 1];
+                    buf_valid[i] = buf_valid[i - 1];
+                }
+            }
+        }
+
+        assign m_valid = buf_valid[LATENCY - 1];
+        assign m_data  = buf_data[LATENCY - 1];
+    }
+}
