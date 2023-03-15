@@ -1,6 +1,9 @@
 module etherneco_packet_repeater #(
     parameter DOWN_STREAM  : bit = 1'b0,
     parameter REPLACE_DELAY: u32 = 1   ,
+    parameter BUFFERING    : u32 = 1   ,
+    parameter M_REGS       : bit = 1'b1,
+
 ) (
     reset: input logic,
     clk  : input logic,
@@ -277,8 +280,9 @@ module etherneco_packet_repeater #(
     );
 
 
+
     // -----------------------------
-    //  Repeater
+    //  Forward
     // -----------------------------
 
     var fw_ready: logic;
@@ -344,6 +348,7 @@ module etherneco_packet_repeater #(
     var tx_last : logic   ;
     var tx_data : logic<8>;
     var tx_valid: logic   ;
+    var tx_ready: logic   ;
 
     always_comb {
         tx_data = dly_data;
@@ -363,5 +368,57 @@ module etherneco_packet_repeater #(
             tx_valid = dly_valid;
         }
     }
+
+
+
+    // 1サイクル分貯める
+    localparam t_buf: type = logic<2 + 8>;
+
+    var buf_first: logic   ;
+    var buf_last : logic   ;
+    var buf_data : logic<8>;
+    var buf_valid: logic   ;
+    var buf_ready: logic   ;
+
+    inst u_stream_ff: stream_ff #(
+        t_data   : t_buf         ,
+        S_REGS   : BUFFERING >: 0,
+        M_REGS   : M_REGS        ,
+        INIT_DATA: 'x            ,
+    ) (
+        reset: reset,
+        clk  : clk  ,
+        cke  : 1'b1 ,
+
+        s_data : {tx_first, tx_last, tx_data},
+        s_valid: tx_valid                  ,
+        s_ready: tx_ready                  ,
+
+        m_data : {buf_first, buf_last, buf_data},
+        m_valid: buf_valid                    ,
+        m_ready: buf_ready                    ,
+    );
+
+    // 1サイクル溜める
+    var buf_enable: logic;
+    always_ff (clk, reset) {
+        if_reset {
+            buf_enable = 1'b0;
+        } else {
+            if buf_valid {
+                buf_enable = 1'b1;
+            }
+            if buf_valid && buf_ready && buf_last {
+                buf_enable = 1'b0;
+            }
+        }
+    }
+
+    assign buf_ready = buf_enable;
+
+    assign m_first = buf_first;
+    assign m_last  = buf_last;
+    assign m_data  = buf_data;
+    assign m_valid = buf_valid & buf_enable;
 
 }

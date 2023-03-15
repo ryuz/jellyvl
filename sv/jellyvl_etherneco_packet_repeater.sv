@@ -1,6 +1,9 @@
 module jellyvl_etherneco_packet_repeater #(
     parameter bit          DOWN_STREAM   = 1'b0,
-    parameter int unsigned REPLACE_DELAY = 1   
+    parameter int unsigned REPLACE_DELAY = 1   ,
+    parameter int unsigned BUFFERING     = 1   ,
+    parameter bit          M_REGS        = 1'b1
+
 ) (
     input logic reset,
     input logic clk  ,
@@ -277,8 +280,9 @@ module jellyvl_etherneco_packet_repeater #(
     );
 
 
+
     // -----------------------------
-    //  Repeater
+    //  Forward
     // -----------------------------
 
     logic fw_ready;
@@ -340,14 +344,11 @@ module jellyvl_etherneco_packet_repeater #(
 
 
     // output
-    //    var tx_fcs_value: logic<32>;
-    //    var tx_crc_value: logic<32>;
-    //    var tx_crc_update: logic<32>;
-
     logic         tx_first;
     logic         tx_last ;
     logic [8-1:0] tx_data ;
     logic         tx_valid;
+    logic         tx_ready;
 
     always_comb begin
         tx_data = dly_data;
@@ -367,5 +368,57 @@ module jellyvl_etherneco_packet_repeater #(
             tx_valid <= dly_valid;
         end
     end
+
+
+
+    // 1サイクル分貯める
+    localparam type t_buf = logic [2 + 8-1:0];
+
+    logic         buf_first;
+    logic         buf_last ;
+    logic [8-1:0] buf_data ;
+    logic         buf_valid;
+    logic         buf_ready;
+
+    jellyvl_stream_ff #(
+        .t_data    (t_buf         ),
+        .S_REGS    (BUFFERING > 0),
+        .M_REGS    (M_REGS        ),
+        .INIT_DATA ('x            )
+    ) u_stream_ff (
+        .reset (reset),
+        .clk   (clk  ),
+        .cke   (1'b1 ),
+        .
+        s_data  ({tx_first, tx_last, tx_data}),
+        .s_valid (tx_valid                  ),
+        .s_ready (tx_ready                  ),
+        .
+        m_data  ({buf_first, buf_last, buf_data}),
+        .m_valid (buf_valid                    ),
+        .m_ready (buf_ready                    )
+    );
+
+    // 1サイクル溜める
+    logic buf_enable;
+    always_ff @ (posedge clk) begin
+        if (reset) begin
+            buf_enable <= 1'b0;
+        end else begin
+            if (buf_valid) begin
+                buf_enable <= 1'b1;
+            end
+            if (buf_valid && buf_ready && buf_last) begin
+                buf_enable <= 1'b0;
+            end
+        end
+    end
+
+    assign buf_ready = buf_enable;
+
+    assign m_first = buf_first;
+    assign m_last  = buf_last;
+    assign m_data  = buf_data;
+    assign m_valid = buf_valid & buf_enable;
 
 endmodule

@@ -77,7 +77,7 @@ module etherneco_master #(
 
 
     // -------------------------------------
-    //  outer rign (request)
+    //  outer ring (request)
     // -------------------------------------
 
     var outer_tx_last : logic   ;
@@ -167,7 +167,7 @@ module etherneco_master #(
 
 
     // -------------------------------------
-    //  inner rign (response)
+    //  inner ring (response)
     // -------------------------------------
 
     /*

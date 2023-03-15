@@ -1,11 +1,11 @@
 
 
 // insert FF to stream pipelines
-module jellyvl_pipeline_insert_ff #(
-    parameter type      t_data    = logic [8-1:0],
-    parameter bit       S_REGS    = 1            ,
-    parameter bit       M_REGS    = 1            ,
-    parameter DATA_TYPE INIT_DATA = 'x       
+module jellyvl_stream_ff #(
+    parameter type   t_data    = logic [8-1:0],
+    parameter bit    S_REGS    = 1            ,
+    parameter bit    M_REGS    = 1            ,
+    parameter t_data INIT_DATA = 'x       
 ) (
     input logic reset,
     input logic clk  ,

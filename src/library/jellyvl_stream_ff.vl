@@ -1,11 +1,11 @@
 
 
 // insert FF to stream pipelines
-module pipeline_insert_ff #(
-    parameter t_data   : type      = logic<8>,
-    parameter S_REGS   : bit       = 1       ,
-    parameter M_REGS   : bit       = 1       ,
-    parameter INIT_DATA: DATA_TYPE = 'x      ,
+module stream_ff #(
+    parameter t_data   : type   = logic<8>,
+    parameter S_REGS   : bit    = 1       ,
+    parameter M_REGS   : bit    = 1       ,
+    parameter INIT_DATA: t_data = 'x      ,
 ) (
     reset: input logic,
     clk  : input logic,

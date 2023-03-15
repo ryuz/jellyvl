@@ -77,7 +77,7 @@ module jellyvl_etherneco_master #(
 
 
     // -------------------------------------
-    //  outer rign (request)
+    //  outer ring (request)
     // -------------------------------------
 
     logic         outer_tx_last ;
@@ -167,7 +167,7 @@ module jellyvl_etherneco_master #(
 
 
     // -------------------------------------
-    //  inner rign (response)
+    //  inner ring (response)
     // -------------------------------------
 
     /*
