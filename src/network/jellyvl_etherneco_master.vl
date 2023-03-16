@@ -143,7 +143,7 @@ module etherneco_master #(
     var outer_rx_type  : logic<8> ;
     var outer_rx_node  : logic<8> ;
 
-    inst u_etherneco_packet_rx_outer: etherneco_packet_rx (
+    inst u_etherneco_packet_rx_outer: etherneco_packet_rx_old (
         reset: reset,
         clk  : clk  ,
 

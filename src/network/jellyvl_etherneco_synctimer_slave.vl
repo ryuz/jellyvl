@@ -16,41 +16,42 @@ module etherneco_synctimer_slave #(
 
     current_time: output logic<TIMER_WIDTH>,
 
-    node_id: input logic<8>,
+    // upstream
+    up_rx_start : input logic    ,
+    up_rx_end   : input logic    ,
+    up_rx_error : input logic    ,
+    up_rx_length: input logic<16>,
+    up_rx_type  : input logic<8> ,
+    up_rx_node  : input logic<8> ,
 
-    outer_rx_start: input logic,
-    outer_rx_error: input logic,
-    outer_rx_end  : input logic,
+    s_up_first: input  logic    ,
+    s_up_last : input  logic    ,
+    s_up_pos  : input  logic<16>,
+    s_up_data : input  logic<8> ,
+    s_up_valid: input  logic    ,
+    m_up_data : output logic<8> ,
+    m_up_valid: output logic    ,
 
-    s_outer_rx_first: input logic   ,
-    s_outer_rx_last : input logic   ,
-    s_outer_rx_data : input logic<8>,
-    s_outer_rx_valid: input logic   ,
+    // downstream
+    down_rx_start : input logic    ,
+    down_rx_end   : input logic    ,
+    down_rx_error : input logic    ,
+    down_rx_length: input logic<16>,
+    down_rx_type  : input logic<8> ,
+    down_rx_node  : input logic<8> ,
 
-    m_outer_tx_first: output logic   ,
-    m_outer_tx_last : output logic   ,
-    m_outer_tx_data : output logic<8>,
-    m_outer_tx_valid: output logic   ,
-
-    inner_rx_start: input logic,
-    inner_rx_error: input logic,
-    inner_rx_end  : input logic,
-
-    s_inner_rx_first: input logic   ,
-    s_inner_rx_last : input logic   ,
-    s_inner_rx_data : input logic<8>,
-    s_inner_rx_valid: input logic   ,
-
-    m_inner_tx_first: output logic   ,
-    m_inner_tx_last : output logic   ,
-    m_inner_tx_data : output logic<8>,
-    m_inner_tx_valid: output logic   ,
-
+    s_down_first: input  logic    ,
+    s_down_last : input  logic    ,
+    s_down_pos  : input  logic<16>,
+    s_down_data : input  logic<8> ,
+    s_down_valid: input  logic    ,
+    m_down_data : output logic<8> ,
+    m_down_valid: output logic    ,
 ) {
 
-    // -------------------------
+    // ---------------------------------
     //  Timer
-    // -------------------------
+    // ---------------------------------
 
     localparam t_adj_phase: type = signed logic<ADJ_PHASE_WIDTH>;
     localparam t_time     : type = logic<TIMER_WIDTH>;
@@ -88,70 +89,129 @@ module etherneco_synctimer_slave #(
         correct_valid   : correct_valid   ,
     );
 
-    // -------------------------
-    //  Outer ring (Resquest)
-    // -------------------------
+    localparam t_time32    : type     = logic<32>;
+    var start_time  : t_time32;
+    var elapsed_time: t_time32;
 
-    inst u_etherneco_synctimer_slave_request: etherneco_synctimer_slave_request (
-        reset           : reset           ,
-        clk             : clk             ,
-        correct_override: correct_override,
-        correct_time    : correct_time    ,
-        correct_valid   : correct_valid   ,
-
-        rx_start: outer_rx_start,
-        rx_error: outer_rx_error,
-        rx_end  : outer_rx_end  ,
-
-        s_first: s_outer_rx_first,
-        s_last : s_outer_rx_last ,
-        s_data : s_outer_rx_data ,
-        s_valid: s_outer_rx_valid,
-
-        m_first: m_outer_tx_first,
-        m_last : m_outer_tx_last ,
-        m_data : m_outer_tx_data ,
-        m_valid: m_outer_tx_valid,
-    );
-
-
-    // -------------------------
-    // Inner Ring (Response)
-    // -------------------------
-
-    localparam t_delay: type = logic<32>;
-
-    var start_time: t_delay;
-    var delay_time: t_delay;
     always_ff (clk) {
-        if outer_rx_end {
-            start_time = current_time as t_delay;
+        if up_rx_end {
+            start_time = current_time[31:0];
         }
-        if inner_rx_start {
-            delay_time = current_time as t_delay - start_time;
+
+        if down_rx_start {
+            elapsed_time = current_time[31:0] - start_time;
         }
     }
 
-    inst u_etherneco_synctimer_slave_response: etherneco_synctimer_slave_response (
-        reset: reset,
-        clk  : clk  ,
 
-        node_id   : node_id   ,
-        delay_time: start_time,
+    // ---------------------------------
+    //  Upstream (receive request)
+    // ---------------------------------
 
-        rx_start: inner_rx_start,
-        rx_error: inner_rx_error,
-        rx_end  : inner_rx_end  ,
+    var up_reset: logic;
+    assign up_reset = reset || up_rx_error;
 
-        s_first: s_inner_rx_first,
-        s_last : s_inner_rx_last ,
-        s_data : s_inner_rx_data ,
-        s_valid: s_inner_rx_valid,
+    var up_rx_cmd   : logic <8> ;
+    var up_rx_time  : t_time    ;
+    var up_rx_offset: logic <16>;
 
-        m_first: m_inner_tx_first,
-        m_last : m_inner_tx_last ,
-        m_data : m_inner_tx_data ,
-        m_valid: m_inner_tx_valid,
-    );
+    always_ff (clk, up_reset) {
+        if_reset {
+            up_rx_cmd    = 'x;
+            up_rx_time   = 'x;
+            up_rx_offset = 'x;
+        } else {
+            if s_up_valid {
+                case s_up_pos as int {
+                    0 : up_rx_cmd              = s_up_data;
+                    1 : up_rx_time[0 * 8+:8]   = s_up_data;
+                    2 : up_rx_time[1 * 8+:8]   = s_up_data;
+                    3 : up_rx_time[2 * 8+:8]   = s_up_data;
+                    4 : up_rx_time[3 * 8+:8]   = s_up_data;
+                    5 : up_rx_time[4 * 8+:8]   = s_up_data;
+                    6 : up_rx_time[5 * 8+:8]   = s_up_data;
+                    7 : up_rx_time[6 * 8+:8]   = s_up_data;
+                    8 : up_rx_time[7 * 8+:8]   = s_up_data;
+                    9 : up_rx_offset[0 * 8+:8] = s_up_data;
+                    10: up_rx_offset[1 * 8+:8] = s_up_data;
+                }
+            }
+        }
+    }
 
+    always_ff (clk, up_reset) {
+        if_reset {
+            correct_override = 1'bx;
+            correct_time     = 'x;
+            correct_valid    = 1'b0;
+        } else {
+            correct_override = 1'bx;
+            correct_time     = up_rx_time + up_rx_offset as t_time;
+            correct_valid    = 1'b0;
+
+            if up_rx_end {
+                case up_rx_cmd {
+                    8'h00: {
+                        correct_override = 1'bx;
+                        correct_valid    = 1'b0;
+                    }
+                    8'h01: {
+                        correct_override = 1'b0;
+                        correct_valid    = 1'b1;
+                    }
+                    8'h03: {
+                        correct_override = 1'b1;
+                        correct_valid    = 1'b1;
+                    }
+                    default: {
+                        correct_override = 1'b1;
+                        correct_valid    = 1'b1;
+                    }
+                }
+            }
+        }
+    }
+
+    assign m_up_data  = 'x;
+    assign m_up_valid = 1'b0;
+
+
+    // ---------------------------------
+    //  Downstream (send response)
+    // ---------------------------------
+
+    var down_reset: logic;
+    assign down_reset = reset || down_rx_error;
+
+    var resp_pos : logic<16>;
+    assign resp_pos = 9 + up_rx_node * 4;
+
+    always_ff (clk, up_reset) {
+        if_reset {
+            m_down_data  = 'x;
+            m_down_valid = 1'b0;
+        } else {
+            m_down_data  = 'x;
+            m_down_valid = 1'b0;
+            if s_down_valid {
+                if s_down_pos == resp_pos + 16'd0 {
+                    m_down_data  = elapsed_time[0*8 +: 8];
+                    m_down_valid = 1'b1;
+                }
+                if s_down_pos == resp_pos + 16'd1 {
+                    m_down_data  = elapsed_time[1*8 +: 8];
+                    m_down_valid = 1'b1;
+                }
+                if s_down_pos == resp_pos + 16'd2 {
+                    m_down_data  = elapsed_time[2*8 +: 8];
+                    m_down_valid = 1'b1;
+                }
+                if s_down_pos == resp_pos + 16'd3 {
+                    m_down_data  = elapsed_time[3*8 +: 8];
+                    m_down_valid = 1'b1;
+                }
+            }
+        }
+    }
 }
+

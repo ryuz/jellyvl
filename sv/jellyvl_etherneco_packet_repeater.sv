@@ -3,7 +3,6 @@ module jellyvl_etherneco_packet_repeater #(
     parameter int unsigned REPLACE_DELAY = 1   ,
     parameter int unsigned BUFFERING     = 1   ,
     parameter bit          M_REGS        = 1'b1
-
 ) (
     input logic reset,
     input logic clk  ,

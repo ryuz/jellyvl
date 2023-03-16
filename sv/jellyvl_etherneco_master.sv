@@ -143,7 +143,7 @@ module jellyvl_etherneco_master #(
     logic [8-1:0]  outer_rx_type  ;
     logic [8-1:0]  outer_rx_node  ;
 
-    jellyvl_etherneco_packet_rx u_etherneco_packet_rx_outer (
+    jellyvl_etherneco_packet_rx_old u_etherneco_packet_rx_outer (
         .reset (reset),
         .clk   (clk  ),
         .

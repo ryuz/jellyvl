@@ -1,4 +1,4 @@
-module jellyvl_etherneco_synctimer_slave #(
+module jellyvl_etherneco_synctimer_slave2 #(
     parameter int unsigned TIMER_WIDTH       = 64                             , // タイマのbit幅
     parameter int unsigned NUMERATOR         = 10                             , // クロック周期の分子
     parameter int unsigned DENOMINATOR       = 3                              , // クロック周期の分母
