@@ -316,8 +316,8 @@ module jellyvl_etherneco_packet_rx #(
 
 
     // replace & CRC
-    logic [8-1:0] tx_crc_data;
-    assign tx_crc_data = ((replace_valid) ? (
+    logic [8-1:0] dly_crc_data;
+    assign dly_crc_data = ((replace_valid) ? (
         replace_data
     ) : (
         dly_data
@@ -335,7 +335,7 @@ module jellyvl_etherneco_packet_rx #(
         .cke   (1'b1 ),
         .
         in_update (dly_crc_update),
-        .in_data   (dly_data      ),
+        .in_data   (dly_crc_data  ),
         .in_valid  (dly_valid     ),
         .
         out_crc (tx_crc_value)
@@ -343,28 +343,37 @@ module jellyvl_etherneco_packet_rx #(
 
 
     // output
+    logic [2-1:0] tx_count;
+    logic         tx_fcs  ;
     logic         tx_first;
     logic         tx_last ;
+    logic [8-1:0] tx_buf  ;
     logic [8-1:0] tx_data ;
     logic         tx_valid;
     logic         tx_ready;
 
-    always_comb begin
-        tx_data = dly_data;
-        if (dly_fcs) begin
-            tx_data = tx_crc_value[dly_count];
+    always_ff @ (posedge clk) begin
+        if (reset) begin
+            tx_count <= 'x;
+            tx_fcs   <= 'x;
+            tx_first <= 'x;
+            tx_last  <= 'x;
+            tx_buf   <= 'x;
+            tx_valid <= 1'b0;
+        end else begin
+            tx_count <= dly_count;
+            tx_fcs   <= dly_fcs;
+            tx_first <= dly_first;
+            tx_last  <= dly_last;
+            tx_buf   <= dly_data;
+            tx_valid <= dly_valid;
         end
     end
 
-    always_ff @ (posedge clk) begin
-        if (reset) begin
-            tx_first <= 'x;
-            tx_last  <= 'x;
-            tx_valid <= 1'b0;
-        end else begin
-            tx_first <= dly_first;
-            tx_last  <= dly_last;
-            tx_valid <= dly_valid;
+    always_comb begin
+        tx_data = tx_buf;
+        if (tx_fcs) begin
+            tx_data = tx_crc_value[tx_count];
         end
     end
 

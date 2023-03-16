@@ -16,37 +16,37 @@ module etherneco_synctimer_slave #(
 
     current_time: output logic<TIMER_WIDTH>,
 
-    // upstream
-    up_rx_start : input logic    ,
-    up_rx_end   : input logic    ,
-    up_rx_error : input logic    ,
-    up_rx_length: input logic<16>,
-    up_rx_type  : input logic<8> ,
-    up_rx_node  : input logic<8> ,
+    // command
+    cmd_rx_start : input logic    ,
+    cmd_rx_end   : input logic    ,
+    cmd_rx_error : input logic    ,
+    cmd_rx_length: input logic<16>,
+    cmd_rx_type  : input logic<8> ,
+    cmd_rx_node  : input logic<8> ,
 
-    s_up_first: input  logic    ,
-    s_up_last : input  logic    ,
-    s_up_pos  : input  logic<16>,
-    s_up_data : input  logic<8> ,
-    s_up_valid: input  logic    ,
-    m_up_data : output logic<8> ,
-    m_up_valid: output logic    ,
+    s_cmd_first: input  logic    ,
+    s_cmd_last : input  logic    ,
+    s_cmd_pos  : input  logic<16>,
+    s_cmd_data : input  logic<8> ,
+    s_cmd_valid: input  logic    ,
+    m_cmd_data : output logic<8> ,
+    m_cmd_valid: output logic    ,
 
     // downstream
-    down_rx_start : input logic    ,
-    down_rx_end   : input logic    ,
-    down_rx_error : input logic    ,
-    down_rx_length: input logic<16>,
-    down_rx_type  : input logic<8> ,
-    down_rx_node  : input logic<8> ,
+    res_rx_start : input logic    ,
+    res_rx_end   : input logic    ,
+    res_rx_error : input logic    ,
+    res_rx_length: input logic<16>,
+    res_rx_type  : input logic<8> ,
+    res_rx_node  : input logic<8> ,
 
-    s_down_first: input  logic    ,
-    s_down_last : input  logic    ,
-    s_down_pos  : input  logic<16>,
-    s_down_data : input  logic<8> ,
-    s_down_valid: input  logic    ,
-    m_down_data : output logic<8> ,
-    m_down_valid: output logic    ,
+    s_res_first: input  logic    ,
+    s_res_last : input  logic    ,
+    s_res_pos  : input  logic<16>,
+    s_res_data : input  logic<8> ,
+    s_res_valid: input  logic    ,
+    m_res_data : output logic<8> ,
+    m_res_valid: output logic    ,
 ) {
 
     // ---------------------------------
@@ -94,11 +94,11 @@ module etherneco_synctimer_slave #(
     var elapsed_time: t_time32;
 
     always_ff (clk) {
-        if up_rx_end {
+        if cmd_rx_end {
             start_time = current_time[31:0];
         }
 
-        if down_rx_start {
+        if res_rx_start {
             elapsed_time = current_time[31:0] - start_time;
         }
     }
@@ -109,31 +109,31 @@ module etherneco_synctimer_slave #(
     // ---------------------------------
 
     var up_reset: logic;
-    assign up_reset = reset || up_rx_error;
+    assign up_reset = reset || cmd_rx_error;
 
-    var up_rx_cmd   : logic <8> ;
-    var up_rx_time  : t_time    ;
-    var up_rx_offset: logic <16>;
+    var cmd_rx_cmd   : logic <8> ;
+    var cmd_rx_time  : t_time    ;
+    var cmd_rx_offset: logic <16>;
 
     always_ff (clk, up_reset) {
         if_reset {
-            up_rx_cmd    = 'x;
-            up_rx_time   = 'x;
-            up_rx_offset = 'x;
+            cmd_rx_cmd    = 'x;
+            cmd_rx_time   = 'x;
+            cmd_rx_offset = 'x;
         } else {
-            if s_up_valid {
-                case s_up_pos as int {
-                    0 : up_rx_cmd              = s_up_data;
-                    1 : up_rx_time[0 * 8+:8]   = s_up_data;
-                    2 : up_rx_time[1 * 8+:8]   = s_up_data;
-                    3 : up_rx_time[2 * 8+:8]   = s_up_data;
-                    4 : up_rx_time[3 * 8+:8]   = s_up_data;
-                    5 : up_rx_time[4 * 8+:8]   = s_up_data;
-                    6 : up_rx_time[5 * 8+:8]   = s_up_data;
-                    7 : up_rx_time[6 * 8+:8]   = s_up_data;
-                    8 : up_rx_time[7 * 8+:8]   = s_up_data;
-                    9 : up_rx_offset[0 * 8+:8] = s_up_data;
-                    10: up_rx_offset[1 * 8+:8] = s_up_data;
+            if s_cmd_valid {
+                case s_cmd_pos as int {
+                    0 : cmd_rx_cmd              = s_cmd_data;
+                    1 : cmd_rx_time[0 * 8+:8]   = s_cmd_data;
+                    2 : cmd_rx_time[1 * 8+:8]   = s_cmd_data;
+                    3 : cmd_rx_time[2 * 8+:8]   = s_cmd_data;
+                    4 : cmd_rx_time[3 * 8+:8]   = s_cmd_data;
+                    5 : cmd_rx_time[4 * 8+:8]   = s_cmd_data;
+                    6 : cmd_rx_time[5 * 8+:8]   = s_cmd_data;
+                    7 : cmd_rx_time[6 * 8+:8]   = s_cmd_data;
+                    8 : cmd_rx_time[7 * 8+:8]   = s_cmd_data;
+                    9 : cmd_rx_offset[0 * 8+:8] = s_cmd_data;
+                    10: cmd_rx_offset[1 * 8+:8] = s_cmd_data;
                 }
             }
         }
@@ -146,11 +146,11 @@ module etherneco_synctimer_slave #(
             correct_valid    = 1'b0;
         } else {
             correct_override = 1'bx;
-            correct_time     = up_rx_time + up_rx_offset as t_time;
+            correct_time     = cmd_rx_time + cmd_rx_offset as t_time;
             correct_valid    = 1'b0;
 
-            if up_rx_end {
-                case up_rx_cmd {
+            if cmd_rx_end {
+                case cmd_rx_cmd {
                     8'h00: {
                         correct_override = 1'bx;
                         correct_valid    = 1'b0;
@@ -172,8 +172,8 @@ module etherneco_synctimer_slave #(
         }
     }
 
-    assign m_up_data  = 'x;
-    assign m_up_valid = 1'b0;
+    assign m_cmd_data  = 'x;
+    assign m_cmd_valid = 1'b0;
 
 
     // ---------------------------------
@@ -181,34 +181,34 @@ module etherneco_synctimer_slave #(
     // ---------------------------------
 
     var down_reset: logic;
-    assign down_reset = reset || down_rx_error;
+    assign down_reset = reset || res_rx_error;
 
-    var resp_pos: logic<16>;
-    assign resp_pos = 9 + up_rx_node * 4;
+    var res_pos: logic<16>;
+    assign res_pos = 9 + cmd_rx_node * 4;
 
     always_ff (clk, up_reset) {
         if_reset {
-            m_down_data  = 'x;
-            m_down_valid = 1'b0;
+            m_res_data  = 'x;
+            m_res_valid = 1'b0;
         } else {
-            m_down_data  = 'x;
-            m_down_valid = 1'b0;
-            if s_down_valid {
-                if s_down_pos == resp_pos + 16'd0 {
-                    m_down_data  = elapsed_time[0 * 8+:8];
-                    m_down_valid = 1'b1;
+            m_res_data  = 'x;
+            m_res_valid = 1'b0;
+            if s_res_valid {
+                if s_res_pos == res_pos + 16'd0 {
+                    m_res_data  = elapsed_time[0 * 8+:8];
+                    m_res_valid = 1'b1;
                 }
-                if s_down_pos == resp_pos + 16'd1 {
-                    m_down_data  = elapsed_time[1 * 8+:8];
-                    m_down_valid = 1'b1;
+                if s_res_pos == res_pos + 16'd1 {
+                    m_res_data  = elapsed_time[1 * 8+:8];
+                    m_res_valid = 1'b1;
                 }
-                if s_down_pos == resp_pos + 16'd2 {
-                    m_down_data  = elapsed_time[2 * 8+:8];
-                    m_down_valid = 1'b1;
+                if s_res_pos == res_pos + 16'd2 {
+                    m_res_data  = elapsed_time[2 * 8+:8];
+                    m_res_valid = 1'b1;
                 }
-                if s_down_pos == resp_pos + 16'd3 {
-                    m_down_data  = elapsed_time[3 * 8+:8];
-                    m_down_valid = 1'b1;
+                if s_res_pos == res_pos + 16'd3 {
+                    m_res_data  = elapsed_time[3 * 8+:8];
+                    m_res_valid = 1'b1;
                 }
             }
         }

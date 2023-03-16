@@ -17,31 +17,31 @@ module etherneco_synctimer_master #(
     m_cmd_tx_valid: output logic   ,
     m_cmd_tx_ready: input  logic   ,
 
-    return_rx_start     : input logic    ,
-    return_rx_end       : input logic    ,
-    return_rx_error     : input logic    ,
-    return_rx_length    : input logic<16>,
-    return_rx_type      : input logic<8> ,
-    return_rx_node      : input logic<8> ,
-    return_payload_first: input logic    ,
-    return_payload_last : input logic    ,
-    return_payload_pos  : input logic<16>,
-    return_payload_data : input logic<8> ,
-    return_payload_valid: input logic    ,
-    return_replace_data : output logic<8> ,
-    return_replace_valid: output logic    ,
+    ret_rx_start     : input  logic    ,
+    ret_rx_end       : input  logic    ,
+    ret_rx_error     : input  logic    ,
+    ret_rx_length    : input  logic<16>,
+    ret_rx_type      : input  logic<8> ,
+    ret_rx_node      : input  logic<8> ,
+    ret_payload_first: input  logic    ,
+    ret_payload_last : input  logic    ,
+    ret_payload_pos  : input  logic<16>,
+    ret_payload_data : input  logic<8> ,
+    ret_payload_valid: input  logic    ,
+    ret_replace_data : output logic<8> ,
+    ret_replace_valid: output logic    ,
 
-    resp_rx_start     : input logic    ,
-    resp_rx_end       : input logic    ,
-    resp_rx_error     : input logic    ,
-    resp_rx_length    : input logic<16>,
-    resp_rx_type      : input logic<8> ,
-    resp_rx_node      : input logic<8> ,
-    resp_payload_first: input logic    ,
-    resp_payload_last : input logic    ,
-    resp_payload_pos  : input logic<16>,
-    resp_payload_data : input logic<8> ,
-    resp_payload_valid: input logic    ,
+    res_rx_start     : input logic    ,
+    res_rx_end       : input logic    ,
+    res_rx_error     : input logic    ,
+    res_rx_length    : input logic<16>,
+    res_rx_type      : input logic<8> ,
+    res_rx_node      : input logic<8> ,
+    res_payload_first: input logic    ,
+    res_payload_last : input logic    ,
+    res_payload_pos  : input logic<16>,
+    res_payload_data : input logic<8> ,
+    res_payload_valid: input logic    ,
 ) {
 
 
@@ -72,8 +72,8 @@ module etherneco_synctimer_master #(
 
     always_ff (clk, reset) {
         if_reset {
-            last             = 'x;
-            data             = 'x;
+            last           = 'x;
+            data           = 'x;
             m_cmd_tx_valid = 1'b0;
         } else {
             if sync_start {
@@ -96,8 +96,8 @@ module etherneco_synctimer_master #(
                 m_cmd_tx_valid = 1'b1;
             } else {
                 if m_cmd_tx_valid && m_cmd_tx_ready {
-                    data             >>= 8;
-                    last             >>= 1;
+                    data           >>= 8;
+                    last           >>= 1;
                     m_cmd_tx_valid =   !m_cmd_tx_last;
                 }
             }

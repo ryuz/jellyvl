@@ -43,26 +43,26 @@ module jellyvl_etherneco_slave #(
     //  Ring bus
     // ---------------------------------
 
-    // upstream
-    logic          up_rx_start ;
-    logic          up_rx_end   ;
-    logic          up_rx_error ;
-    logic [16-1:0] up_rx_length;
-    logic [8-1:0]  up_rx_type  ;
-    logic [8-1:0]  up_rx_node  ;
+    // Outer loop
+    logic          outer_rx_start ;
+    logic          outer_rx_end   ;
+    logic          outer_rx_error ;
+    logic [16-1:0] outer_rx_length;
+    logic [8-1:0]  outer_rx_type  ;
+    logic [8-1:0]  outer_rx_node  ;
 
-    logic          up_payload_first;
-    logic          up_payload_last ;
-    logic [16-1:0] up_payload_pos  ;
-    logic [8-1:0]  up_payload_data ;
-    logic          up_payload_valid;
-    logic [8-1:0]  up_replace_data ;
-    logic          up_replace_valid;
+    logic          outer_payload_first;
+    logic          outer_payload_last ;
+    logic [16-1:0] outer_payload_pos  ;
+    logic [8-1:0]  outer_payload_data ;
+    logic          outer_payload_valid;
+    logic [8-1:0]  outer_replace_data ;
+    logic          outer_replace_valid;
 
     jellyvl_etherneco_packet_rx #(
         .DOWN_STREAM   (1'b0),
         .REPLACE_DELAY (1   )
-    ) u_etherneco_packet_up (
+    ) u_etherneco_packet_rx_outer (
         .reset (reset),
         .clk   (clk  ),
         .
@@ -76,43 +76,43 @@ module jellyvl_etherneco_slave #(
         .m_tx_data  (m_down_tx_data ),
         .m_tx_valid (m_down_tx_valid),
         .
-        rx_start  (up_rx_start ),
-        .rx_end    (up_rx_end   ),
-        .rx_error  (up_rx_error ),
-        .rx_length (up_rx_length),
-        .rx_type   (up_rx_type  ),
-        .rx_node   (up_rx_node  ),
+        rx_start  (outer_rx_start ),
+        .rx_end    (outer_rx_end   ),
+        .rx_error  (outer_rx_error ),
+        .rx_length (outer_rx_length),
+        .rx_type   (outer_rx_type  ),
+        .rx_node   (outer_rx_node  ),
         .
-        payload_first (up_payload_first),
-        .payload_last  (up_payload_last ),
-        .payload_pos   (up_payload_pos  ),
-        .payload_data  (up_payload_data ),
-        .payload_valid (up_payload_valid),
-        .replace_data  (up_replace_data ),
-        .replace_valid (up_replace_valid)
+        payload_first (outer_payload_first),
+        .payload_last  (outer_payload_last ),
+        .payload_pos   (outer_payload_pos  ),
+        .payload_data  (outer_payload_data ),
+        .payload_valid (outer_payload_valid),
+        .replace_data  (outer_replace_data ),
+        .replace_valid (outer_replace_valid)
     );
 
 
-    // downstream
-    logic          down_rx_start ;
-    logic          down_rx_end   ;
-    logic          down_rx_error ;
-    logic [16-1:0] down_rx_length;
-    logic [8-1:0]  down_rx_type  ;
-    logic [8-1:0]  down_rx_node  ;
+    // Inner loop
+    logic          inner_rx_start ;
+    logic          inner_rx_end   ;
+    logic          inner_rx_error ;
+    logic [16-1:0] inner_rx_length;
+    logic [8-1:0]  inner_rx_type  ;
+    logic [8-1:0]  inner_rx_node  ;
 
-    logic          down_payload_first;
-    logic          down_payload_last ;
-    logic [16-1:0] down_payload_pos  ;
-    logic [8-1:0]  down_payload_data ;
-    logic          down_payload_valid;
-    logic [8-1:0]  down_replace_data ;
-    logic          down_replace_valid;
+    logic          inner_payload_first;
+    logic          inner_payload_last ;
+    logic [16-1:0] inner_payload_pos  ;
+    logic [8-1:0]  inner_payload_data ;
+    logic          inner_payload_valid;
+    logic [8-1:0]  inner_replace_data ;
+    logic          inner_replace_valid;
 
     jellyvl_etherneco_packet_rx #(
         .DOWN_STREAM   (1'b1),
         .REPLACE_DELAY (1   )
-    ) u_etherneco_packet_down (
+    ) u_etherneco_packet_rx_inner (
         .reset (reset),
         .clk   (clk  ),
         .
@@ -126,20 +126,20 @@ module jellyvl_etherneco_slave #(
         .m_tx_data  (m_up_tx_data ),
         .m_tx_valid (m_up_tx_valid),
         .
-        rx_start  (down_rx_start ),
-        .rx_end    (down_rx_end   ),
-        .rx_error  (down_rx_error ),
-        .rx_length (down_rx_length),
-        .rx_type   (down_rx_type  ),
-        .rx_node   (down_rx_node  ),
+        rx_start  (inner_rx_start ),
+        .rx_end    (inner_rx_end   ),
+        .rx_error  (inner_rx_error ),
+        .rx_length (inner_rx_length),
+        .rx_type   (inner_rx_type  ),
+        .rx_node   (inner_rx_node  ),
         .
-        payload_first (down_payload_first),
-        .payload_last  (down_payload_last ),
-        .payload_pos   (down_payload_pos  ),
-        .payload_data  (down_payload_data ),
-        .payload_valid (down_payload_valid),
-        .replace_data  (down_replace_data ),
-        .replace_valid (down_replace_valid)
+        payload_first (inner_payload_first),
+        .payload_last  (inner_payload_last ),
+        .payload_pos   (inner_payload_pos  ),
+        .payload_data  (inner_payload_data ),
+        .payload_valid (inner_payload_valid),
+        .replace_data  (inner_replace_data ),
+        .replace_valid (inner_replace_valid)
     );
 
 
@@ -166,33 +166,33 @@ module jellyvl_etherneco_slave #(
         .
         current_time (current_time),
         .
-        up_rx_start  (up_rx_start     ),
-        .up_rx_end    (up_rx_end       ),
-        .up_rx_error  (up_rx_error     ),
-        .up_rx_length (up_rx_length    ),
-        .up_rx_type   (up_rx_type      ),
-        .up_rx_node   (up_rx_node      ),
-        .s_up_first   (up_payload_first),
-        .s_up_last    (up_payload_last ),
-        .s_up_pos     (up_payload_pos  ),
-        .s_up_data    (up_payload_data ),
-        .s_up_valid   (up_payload_valid),
-        .m_up_data    (up_replace_data ),
-        .m_up_valid   (up_replace_valid),
+        cmd_rx_start  (outer_rx_start     ),
+        .cmd_rx_end    (outer_rx_end       ),
+        .cmd_rx_error  (outer_rx_error     ),
+        .cmd_rx_length (outer_rx_length    ),
+        .cmd_rx_type   (outer_rx_type      ),
+        .cmd_rx_node   (outer_rx_node      ),
+        .s_cmd_first   (outer_payload_first),
+        .s_cmd_last    (outer_payload_last ),
+        .s_cmd_pos     (outer_payload_pos  ),
+        .s_cmd_data    (outer_payload_data ),
+        .s_cmd_valid   (outer_payload_valid),
+        .m_cmd_data    (outer_replace_data ),
+        .m_cmd_valid   (outer_replace_valid),
         .
-        down_rx_start  (down_rx_start     ),
-        .down_rx_end    (down_rx_end       ),
-        .down_rx_error  (down_rx_error     ),
-        .down_rx_length (down_rx_length    ),
-        .down_rx_type   (down_rx_type      ),
-        .down_rx_node   (down_rx_node      ),
-        .s_down_first   (down_payload_first),
-        .s_down_last    (down_payload_last ),
-        .s_down_pos     (down_payload_pos  ),
-        .s_down_data    (down_payload_data ),
-        .s_down_valid   (down_payload_valid),
-        .m_down_data    (down_replace_data ),
-        .m_down_valid   (down_replace_valid)
+        res_rx_start  (inner_rx_start     ),
+        .res_rx_end    (inner_rx_end       ),
+        .res_rx_error  (inner_rx_error     ),
+        .res_rx_length (inner_rx_length    ),
+        .res_rx_type   (inner_rx_type      ),
+        .res_rx_node   (inner_rx_node      ),
+        .s_res_first   (inner_payload_first),
+        .s_res_last    (inner_payload_last ),
+        .s_res_pos     (inner_payload_pos  ),
+        .s_res_data    (inner_payload_data ),
+        .s_res_valid   (inner_payload_valid),
+        .m_res_data    (inner_replace_data ),
+        .m_res_valid   (inner_replace_valid)
     );
 
 endmodule

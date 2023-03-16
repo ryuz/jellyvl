@@ -63,12 +63,12 @@ module etherneco_packet_rx #(
     var state_bit: t_state_bit;
     assign state_bit = state as t_state_bit;
 
-    var count     : t_count    ;
-    var preamble  : logic      ;
-    var fcs_rx_last  : logic      ;
-    var crc_update: logic      ;
-    var crc_check : logic      ;
-    var crc_value : logic  <32>;
+    var count      : t_count    ;
+    var preamble   : logic      ;
+    var fcs_rx_last: logic      ;
+    var crc_update : logic      ;
+    var crc_check  : logic      ;
+    var crc_value  : logic  <32>;
 
     var fw_count     : logic<2>;
     var fw_crc_update: logic   ;
@@ -89,7 +89,7 @@ module etherneco_packet_rx #(
             payload_first = 'x;
             payload_last  = 'x;
             payload_pos   = 'x;
-            fcs_rx_last      = 'x;
+            fcs_rx_last   = 'x;
             crc_update    = 'x;
             crc_check     = 1'b0;
 
@@ -136,7 +136,7 @@ module etherneco_packet_rx #(
 
                 payload_first = 1'b0;
                 payload_last  = 1'b0;
-                fcs_rx_last      = 1'b0;
+                fcs_rx_last   = 1'b0;
 
                 case state {
                     STATE::IDLE: {
@@ -203,10 +203,10 @@ module etherneco_packet_rx #(
                         payload_last  = (payload_pos_next == rx_length);
                         payload_pos   = payload_pos_next;
                         if payload_last {
-                            state     = STATE::FCS;
-                            fcs_rx_last  = 1'b0;
-                            count     = '0;
-                            rx_length = 'x;
+                            state       = STATE::FCS;
+                            fcs_rx_last = 1'b0;
+                            count       = '0;
+                            rx_length   = 'x;
                         }
                     }
 
@@ -272,8 +272,8 @@ module etherneco_packet_rx #(
         cke  : 1'b1 ,
 
         in_update: crc_update,
-        in_data  : s_rx_data    ,
-        in_valid : s_rx_valid   ,
+        in_data  : s_rx_data ,
+        in_valid : s_rx_valid,
 
         out_crc: crc_value,
     );
@@ -316,8 +316,8 @@ module etherneco_packet_rx #(
 
 
     // replace & CRC
-    var tx_crc_data: logic<8>;
-    assign tx_crc_data = if replace_valid {
+    var dly_crc_data: logic<8>;
+    assign dly_crc_data = if replace_valid {
         replace_data
     } else {
         dly_data
@@ -335,7 +335,7 @@ module etherneco_packet_rx #(
         cke  : 1'b1 ,
 
         in_update: dly_crc_update,
-        in_data  : dly_data      ,
+        in_data  : dly_crc_data  ,
         in_valid : dly_valid     ,
 
         out_crc: tx_crc_value,
@@ -343,28 +343,37 @@ module etherneco_packet_rx #(
 
 
     // output
+    var tx_count: logic<2>;
+    var tx_fcs  : logic   ;
     var tx_first: logic   ;
     var tx_last : logic   ;
+    var tx_buf  : logic<8>;
     var tx_data : logic<8>;
     var tx_valid: logic   ;
     var tx_ready: logic   ;
 
-    always_comb {
-        tx_data = dly_data;
-        if dly_fcs {
-            tx_data = tx_crc_value[dly_count];
+    always_ff (clk, reset) {
+        if_reset {
+            tx_count = 'x;
+            tx_fcs   = 'x;
+            tx_first = 'x;
+            tx_last  = 'x;
+            tx_buf   = 'x;
+            tx_valid = 1'b0;
+        } else {
+            tx_count = dly_count;
+            tx_fcs   = dly_fcs;
+            tx_first = dly_first;
+            tx_last  = dly_last;
+            tx_buf   = dly_data;
+            tx_valid = dly_valid;
         }
     }
 
-    always_ff (clk, reset) {
-        if_reset {
-            tx_first = 'x;
-            tx_last  = 'x;
-            tx_valid = 1'b0;
-        } else {
-            tx_first = dly_first;
-            tx_last  = dly_last;
-            tx_valid = dly_valid;
+    always_comb {
+        tx_data = tx_buf;
+        if tx_fcs {
+            tx_data = tx_crc_value[tx_count];
         }
     }
 
