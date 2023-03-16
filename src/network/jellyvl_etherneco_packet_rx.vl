@@ -7,15 +7,15 @@ module etherneco_packet_rx #(
     reset: input logic,
     clk  : input logic,
 
-    s_first: input logic   ,
-    s_last : input logic   ,
-    s_data : input logic<8>,
-    s_valid: input logic   ,
+    s_rx_first: input logic   ,
+    s_rx_last : input logic   ,
+    s_rx_data : input logic<8>,
+    s_rx_valid: input logic   ,
 
-    m_first: output logic   ,
-    m_last : output logic   ,
-    m_data : output logic<8>,
-    m_valid: output logic   ,
+    m_tx_first: output logic   ,
+    m_tx_last : output logic   ,
+    m_tx_data : output logic<8>,
+    m_tx_valid: output logic   ,
 
     rx_start: output logic,
     rx_end  : output logic,
@@ -65,7 +65,7 @@ module etherneco_packet_rx #(
 
     var count     : t_count    ;
     var preamble  : logic      ;
-    var fcs_last  : logic      ;
+    var fcs_rx_last  : logic      ;
     var crc_update: logic      ;
     var crc_check : logic      ;
     var crc_value : logic  <32>;
@@ -89,7 +89,7 @@ module etherneco_packet_rx #(
             payload_first = 'x;
             payload_last  = 'x;
             payload_pos   = 'x;
-            fcs_last      = 'x;
+            fcs_rx_last      = 'x;
             crc_update    = 'x;
             crc_check     = 1'b0;
 
@@ -121,14 +121,14 @@ module etherneco_packet_rx #(
             fw_data       = 'x;
             fw_valid      = 1'b0;
 
-            if s_valid {
+            if s_rx_valid {
                 fw_count      = count[1:0];
                 fw_crc_update = crc_update;
                 fw_fcs        = (state == STATE::FCS);
-                fw_first      = s_first;
-                fw_last       = s_last;
-                fw_data       = s_data;
-                fw_valid      = s_valid;
+                fw_first      = s_rx_first;
+                fw_last       = s_rx_last;
+                fw_data       = s_rx_data;
+                fw_valid      = s_rx_valid;
 
                 if count != '1 {
                     count = count + 1'b1;
@@ -136,12 +136,12 @@ module etherneco_packet_rx #(
 
                 payload_first = 1'b0;
                 payload_last  = 1'b0;
-                fcs_last      = 1'b0;
+                fcs_rx_last      = 1'b0;
 
                 case state {
                     STATE::IDLE: {
-                        if s_first {
-                            if s_data == 8'h55 && !s_last {
+                        if s_rx_first {
+                            if s_rx_data == 8'h55 && !s_rx_last {
                                 state    = STATE::PREAMBLE;
                                 rx_start = 1'b1;
                                 count    = '0;
@@ -169,32 +169,32 @@ module etherneco_packet_rx #(
 
                     STATE::LENGTH: {
                         if count[0:0] == 1'b1 {
-                            rx_length[15:8] = s_data;
+                            rx_length[15:8] = s_rx_data;
                             crc_update      = 1'b1;
                             state           = STATE::TYPE;
                             count           = 'x;
                         } else {
-                            rx_length[7:0] = s_data;
+                            rx_length[7:0] = s_rx_data;
                             crc_update     = 1'b1;
                         }
                     }
 
                     STATE::TYPE: {
-                        rx_type = s_data;
+                        rx_type = s_rx_data;
                         state   = STATE::NODE;
                         count   = 'x;
                     }
 
                     STATE::NODE: {
-                        rx_node       = s_data;
+                        rx_node       = s_rx_data;
                         state         = STATE::PAYLOAD;
                         payload_first = 1'b1;
                         payload_last  = (rx_length == '0);
                         payload_pos   = '0;
                         if DOWN_STREAM {
-                            fw_data = s_data - 8'd1;
+                            fw_data = s_rx_data - 8'd1;
                         } else {
-                            fw_data = s_data + 8'd1;
+                            fw_data = s_rx_data + 8'd1;
                         }
                     }
 
@@ -204,15 +204,15 @@ module etherneco_packet_rx #(
                         payload_pos   = payload_pos_next;
                         if payload_last {
                             state     = STATE::FCS;
-                            fcs_last  = 1'b0;
+                            fcs_rx_last  = 1'b0;
                             count     = '0;
                             rx_length = 'x;
                         }
                     }
 
                     STATE::FCS: {
-                        fcs_last = (count[1:0] == 2'd2);
-                        if fcs_last {
+                        fcs_rx_last = (count[1:0] == 2'd2);
+                        if fcs_rx_last {
                             state     = STATE::IDLE;
                             crc_check = 1'b1;
                         }
@@ -224,7 +224,7 @@ module etherneco_packet_rx #(
                 }
 
                 // 不正状態検知
-                if (s_first && state != STATE::IDLE && state != STATE::ERROR) || (s_last && !s_first && !fcs_last) || (state == STATE::PREAMBLE && !((count == 4'd6 && s_data == 8'hd5) || (count != 4'd6 && s_data == 8'h55))) {
+                if (s_rx_first && state != STATE::IDLE && state != STATE::ERROR) || (s_rx_last && !s_rx_first && !fcs_rx_last) || (state == STATE::PREAMBLE && !((count == 4'd6 && s_rx_data == 8'hd5) || (count != 4'd6 && s_rx_data == 8'h55))) {
                     // パケットを打ち切る
                     state    = STATE::ERROR;
                     rx_error = 1'b1;
@@ -258,8 +258,8 @@ module etherneco_packet_rx #(
         }
     }
 
-    assign payload_data  = s_data;
-    assign payload_valid = s_valid & state_bit[BIT_PAYLOAD];
+    assign payload_data  = s_rx_data;
+    assign payload_valid = s_rx_valid & state_bit[BIT_PAYLOAD];
 
     inst u_cacl_crc_rx: jelly2_calc_crc #(
         DATA_WIDTH: 8           ,
@@ -272,8 +272,8 @@ module etherneco_packet_rx #(
         cke  : 1'b1 ,
 
         in_update: crc_update,
-        in_data  : s_data    ,
-        in_valid : s_valid   ,
+        in_data  : s_rx_data    ,
+        in_valid : s_rx_valid   ,
 
         out_crc: crc_value,
     );
@@ -415,9 +415,9 @@ module etherneco_packet_rx #(
 
     assign buf_ready = buf_enable;
 
-    assign m_first = buf_first;
-    assign m_last  = buf_last;
-    assign m_data  = buf_data;
-    assign m_valid = buf_valid & buf_enable;
+    assign m_tx_first = buf_first;
+    assign m_tx_last  = buf_last;
+    assign m_tx_data  = buf_data;
+    assign m_tx_valid = buf_valid & buf_enable;
 
 }

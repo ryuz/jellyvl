@@ -7,15 +7,15 @@ module jellyvl_etherneco_packet_rx #(
     input logic reset,
     input logic clk  ,
 
-    input logic         s_first,
-    input logic         s_last ,
-    input logic [8-1:0] s_data ,
-    input logic         s_valid,
+    input logic         s_rx_first,
+    input logic         s_rx_last ,
+    input logic [8-1:0] s_rx_data ,
+    input logic         s_rx_valid,
 
-    output logic         m_first,
-    output logic         m_last ,
-    output logic [8-1:0] m_data ,
-    output logic         m_valid,
+    output logic         m_tx_first,
+    output logic         m_tx_last ,
+    output logic [8-1:0] m_tx_data ,
+    output logic         m_tx_valid,
 
     output logic rx_start,
     output logic rx_end  ,
@@ -63,12 +63,12 @@ module jellyvl_etherneco_packet_rx #(
     t_state_bit state_bit;
     assign state_bit = t_state_bit'(state);
 
-    t_count          count     ;
-    logic            preamble  ;
-    logic            fcs_last  ;
-    logic            crc_update;
-    logic            crc_check ;
-    logic   [32-1:0] crc_value ;
+    t_count          count      ;
+    logic            preamble   ;
+    logic            fcs_rx_last;
+    logic            crc_update ;
+    logic            crc_check  ;
+    logic   [32-1:0] crc_value  ;
 
     logic [2-1:0] fw_count     ;
     logic         fw_crc_update;
@@ -89,7 +89,7 @@ module jellyvl_etherneco_packet_rx #(
             payload_first <= 'x;
             payload_last  <= 'x;
             payload_pos   <= 'x;
-            fcs_last      <= 'x;
+            fcs_rx_last   <= 'x;
             crc_update    <= 'x;
             crc_check     <= 1'b0;
 
@@ -121,14 +121,14 @@ module jellyvl_etherneco_packet_rx #(
             fw_data       <= 'x;
             fw_valid      <= 1'b0;
 
-            if (s_valid) begin
+            if (s_rx_valid) begin
                 fw_count      <= count[1:0];
                 fw_crc_update <= crc_update;
                 fw_fcs        <= (state == STATE_FCS);
-                fw_first      <= s_first;
-                fw_last       <= s_last;
-                fw_data       <= s_data;
-                fw_valid      <= s_valid;
+                fw_first      <= s_rx_first;
+                fw_last       <= s_rx_last;
+                fw_data       <= s_rx_data;
+                fw_valid      <= s_rx_valid;
 
                 if (count != '1) begin
                     count <= count + 1'b1;
@@ -136,12 +136,12 @@ module jellyvl_etherneco_packet_rx #(
 
                 payload_first <= 1'b0;
                 payload_last  <= 1'b0;
-                fcs_last      <= 1'b0;
+                fcs_rx_last   <= 1'b0;
 
                 case (state)
                     STATE_IDLE: begin
-                        if (s_first) begin
-                            if (s_data == 8'h55 && !s_last) begin
+                        if (s_rx_first) begin
+                            if (s_rx_data == 8'h55 && !s_rx_last) begin
                                 state    <= STATE_PREAMBLE;
                                 rx_start <= 1'b1;
                                 count    <= '0;
@@ -169,32 +169,32 @@ module jellyvl_etherneco_packet_rx #(
 
                     STATE_LENGTH: begin
                         if (count[0:0] == 1'b1) begin
-                            rx_length[15:8] <= s_data;
+                            rx_length[15:8] <= s_rx_data;
                             crc_update      <= 1'b1;
                             state           <= STATE_TYPE;
                             count           <= 'x;
                         end else begin
-                            rx_length[7:0] <= s_data;
+                            rx_length[7:0] <= s_rx_data;
                             crc_update     <= 1'b1;
                         end
                     end
 
                     STATE_TYPE: begin
-                        rx_type <= s_data;
+                        rx_type <= s_rx_data;
                         state   <= STATE_NODE;
                         count   <= 'x;
                     end
 
                     STATE_NODE: begin
-                        rx_node       <= s_data;
+                        rx_node       <= s_rx_data;
                         state         <= STATE_PAYLOAD;
                         payload_first <= 1'b1;
                         payload_last  <= (rx_length == '0);
                         payload_pos   <= '0;
                         if (DOWN_STREAM) begin
-                            fw_data <= s_data - 8'd1;
+                            fw_data <= s_rx_data - 8'd1;
                         end else begin
-                            fw_data <= s_data + 8'd1;
+                            fw_data <= s_rx_data + 8'd1;
                         end
                     end
 
@@ -203,16 +203,16 @@ module jellyvl_etherneco_packet_rx #(
                         payload_last  <= (payload_pos_next == rx_length);
                         payload_pos   <= payload_pos_next;
                         if (payload_last) begin
-                            state     <= STATE_FCS;
-                            fcs_last  <= 1'b0;
-                            count     <= '0;
-                            rx_length <= 'x;
+                            state       <= STATE_FCS;
+                            fcs_rx_last <= 1'b0;
+                            count       <= '0;
+                            rx_length   <= 'x;
                         end
                     end
 
                     STATE_FCS: begin
-                        fcs_last <= (count[1:0] == 2'd2);
-                        if (fcs_last) begin
+                        fcs_rx_last <= (count[1:0] == 2'd2);
+                        if (fcs_rx_last) begin
                             state     <= STATE_IDLE;
                             crc_check <= 1'b1;
                         end
@@ -224,7 +224,7 @@ module jellyvl_etherneco_packet_rx #(
                 endcase
 
                 // 不正状態検知
-                if ((s_first && state != STATE_IDLE && state != STATE_ERROR) || (s_last && !s_first && !fcs_last) || (state == STATE_PREAMBLE && !((count == 4'd6 && s_data == 8'hd5) || (count != 4'd6 && s_data == 8'h55)))) begin
+                if ((s_rx_first && state != STATE_IDLE && state != STATE_ERROR) || (s_rx_last && !s_rx_first && !fcs_rx_last) || (state == STATE_PREAMBLE && !((count == 4'd6 && s_rx_data == 8'hd5) || (count != 4'd6 && s_rx_data == 8'h55)))) begin
                     // パケットを打ち切る
                     state    <= STATE_ERROR;
                     rx_error <= 1'b1;
@@ -258,8 +258,8 @@ module jellyvl_etherneco_packet_rx #(
         end
     end
 
-    assign payload_data  = s_data;
-    assign payload_valid = s_valid & state_bit[BIT_PAYLOAD];
+    assign payload_data  = s_rx_data;
+    assign payload_valid = s_rx_valid & state_bit[BIT_PAYLOAD];
 
     jelly2_calc_crc #(
         .DATA_WIDTH (8           ),
@@ -272,8 +272,8 @@ module jellyvl_etherneco_packet_rx #(
         .cke   (1'b1 ),
         .
         in_update (crc_update),
-        .in_data   (s_data    ),
-        .in_valid  (s_valid   ),
+        .in_data   (s_rx_data ),
+        .in_valid  (s_rx_valid),
         .
         out_crc (crc_value)
     );
@@ -415,9 +415,9 @@ module jellyvl_etherneco_packet_rx #(
 
     assign buf_ready = buf_enable;
 
-    assign m_first = buf_first;
-    assign m_last  = buf_last;
-    assign m_data  = buf_data;
-    assign m_valid = buf_valid & buf_enable;
+    assign m_tx_first = buf_first;
+    assign m_tx_last  = buf_last;
+    assign m_tx_data  = buf_data;
+    assign m_tx_valid = buf_valid & buf_enable;
 
 endmodule

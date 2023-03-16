@@ -12,10 +12,36 @@ module jellyvl_etherneco_synctimer_master #(
     input logic sync_start   ,
     input logic sync_override,
 
-    output logic         m_outer_tx_last ,
-    output logic [8-1:0] m_outer_tx_data ,
-    output logic         m_outer_tx_valid,
-    input  logic         m_outer_tx_ready
+    output logic         m_cmd_tx_last ,
+    output logic [8-1:0] m_cmd_tx_data ,
+    output logic         m_cmd_tx_valid,
+    input  logic         m_cmd_tx_ready,
+
+    input  logic          return_rx_start     ,
+    input  logic          return_rx_end       ,
+    input  logic          return_rx_error     ,
+    input  logic [16-1:0] return_rx_length    ,
+    input  logic [8-1:0]  return_rx_type      ,
+    input  logic [8-1:0]  return_rx_node      ,
+    input  logic          return_payload_first,
+    input  logic          return_payload_last ,
+    input  logic [16-1:0] return_payload_pos  ,
+    input  logic [8-1:0]  return_payload_data ,
+    input  logic          return_payload_valid,
+    output logic [8-1:0]  return_replace_data ,
+    output logic          return_replace_valid,
+
+    input logic          resp_rx_start     ,
+    input logic          resp_rx_end       ,
+    input logic          resp_rx_error     ,
+    input logic [16-1:0] resp_rx_length    ,
+    input logic [8-1:0]  resp_rx_type      ,
+    input logic [8-1:0]  resp_rx_node      ,
+    input logic          resp_payload_first,
+    input logic          resp_payload_last ,
+    input logic [16-1:0] resp_payload_pos  ,
+    input logic [8-1:0]  resp_payload_data ,
+    input logic          resp_payload_valid
 );
 
 
@@ -46,9 +72,9 @@ module jellyvl_etherneco_synctimer_master #(
 
     always_ff @ (posedge clk) begin
         if (reset) begin
-            last             <= 'x;
-            data             <= 'x;
-            m_outer_tx_valid <= 1'b0;
+            last           <= 'x;
+            data           <= 'x;
+            m_cmd_tx_valid <= 1'b0;
         end else begin
             if (sync_start) begin
                 // command_id
@@ -67,18 +93,18 @@ module jellyvl_etherneco_synctimer_master #(
                 data[12:9] <= 32'd1000;
                 last[12:9] <= 4'b1000;
 
-                m_outer_tx_valid <= 1'b1;
+                m_cmd_tx_valid <= 1'b1;
             end else begin
-                if (m_outer_tx_valid && m_outer_tx_ready) begin
-                    data             <= data             >> (8);
-                    last             <= last             >> (1);
-                    m_outer_tx_valid <=   !m_outer_tx_last;
+                if (m_cmd_tx_valid && m_cmd_tx_ready) begin
+                    data           <= data           >> (8);
+                    last           <= last           >> (1);
+                    m_cmd_tx_valid <=   !m_cmd_tx_last;
                 end
             end
         end
     end
 
-    assign m_outer_tx_data = data[0];
-    assign m_outer_tx_last = last[0];
+    assign m_cmd_tx_data = data[0];
+    assign m_cmd_tx_last = last[0];
 
 endmodule

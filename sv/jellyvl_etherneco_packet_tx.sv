@@ -11,16 +11,16 @@ module jellyvl_etherneco_packet_tx #(
 
     input logic tx_cancel,
 
-    input  logic         s_last ,
-    input  logic [8-1:0] s_data ,
-    input  logic         s_valid,
-    output logic         s_ready,
+    input  logic         s_payload_last ,
+    input  logic [8-1:0] s_payload_data ,
+    input  logic         s_payload_valid,
+    output logic         s_payload_ready,
 
-    output logic         m_first,
-    output logic         m_last ,
-    output logic [8-1:0] m_data ,
-    output logic         m_valid,
-    input  logic         m_ready
+    output logic         m_tx_first,
+    output logic         m_tx_last ,
+    output logic [8-1:0] m_tx_data ,
+    output logic         m_tx_valid,
+    input  logic         m_tx_ready
 );
 
 
@@ -44,17 +44,17 @@ module jellyvl_etherneco_packet_tx #(
         .S_REGS     (0             ),
         .M_REGS     (0             )
     ) u_fifo_fwtf (
-        .reset        (reset                ),
-        .clk          (clk                  ),
-        .cke          (1'b1                 ),
-        .s_data       ({s_last, s_data}      ),
-        .s_valid      (s_valid              ),
-        .s_ready      (s_ready              ),
-        .s_free_count (fifo_free_count      ),
-        .m_data       ({fifo_last, fifo_data}),
-        .m_valid      (fifo_valid           ),
-        .m_ready      (fifo_ready           ),
-        .m_data_count (fifo_data_count      )
+        .reset        (reset                          ),
+        .clk          (clk                            ),
+        .cke          (1'b1                           ),
+        .s_data       ({s_payload_last, s_payload_data}),
+        .s_valid      (s_payload_valid                ),
+        .s_ready      (s_payload_ready                ),
+        .s_free_count (fifo_free_count                ),
+        .m_data       ({fifo_last, fifo_data}          ),
+        .m_valid      (fifo_valid                     ),
+        .m_ready      (fifo_ready                     ),
+        .m_data_count (fifo_data_count                )
     );
 
 
@@ -78,7 +78,7 @@ module jellyvl_etherneco_packet_tx #(
     localparam type t_count  = logic [3-1:0];
 
     logic cke;
-    assign cke = !m_valid || m_ready;
+    assign cke = !m_tx_valid || m_tx_ready;
 
 
     // ----------------------------
@@ -420,9 +420,9 @@ module jellyvl_etherneco_packet_tx #(
         end
     end
 
-    assign m_first = st3_first;
-    assign m_last  = st3_last;
-    assign m_data  = st3_data[7:0];
-    assign m_valid = st3_valid;
+    assign m_tx_first = st3_first;
+    assign m_tx_last  = st3_last;
+    assign m_tx_data  = st3_data[7:0];
+    assign m_tx_valid = st3_valid;
 
 endmodule

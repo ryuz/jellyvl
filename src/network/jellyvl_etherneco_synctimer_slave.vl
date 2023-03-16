@@ -183,7 +183,7 @@ module etherneco_synctimer_slave #(
     var down_reset: logic;
     assign down_reset = reset || down_rx_error;
 
-    var resp_pos : logic<16>;
+    var resp_pos: logic<16>;
     assign resp_pos = 9 + up_rx_node * 4;
 
     always_ff (clk, up_reset) {
@@ -195,23 +195,22 @@ module etherneco_synctimer_slave #(
             m_down_valid = 1'b0;
             if s_down_valid {
                 if s_down_pos == resp_pos + 16'd0 {
-                    m_down_data  = elapsed_time[0*8 +: 8];
+                    m_down_data  = elapsed_time[0 * 8+:8];
                     m_down_valid = 1'b1;
                 }
                 if s_down_pos == resp_pos + 16'd1 {
-                    m_down_data  = elapsed_time[1*8 +: 8];
+                    m_down_data  = elapsed_time[1 * 8+:8];
                     m_down_valid = 1'b1;
                 }
                 if s_down_pos == resp_pos + 16'd2 {
-                    m_down_data  = elapsed_time[2*8 +: 8];
+                    m_down_data  = elapsed_time[2 * 8+:8];
                     m_down_valid = 1'b1;
                 }
                 if s_down_pos == resp_pos + 16'd3 {
-                    m_down_data  = elapsed_time[3*8 +: 8];
+                    m_down_data  = elapsed_time[3 * 8+:8];
                     m_down_valid = 1'b1;
                 }
             }
         }
     }
 }
-

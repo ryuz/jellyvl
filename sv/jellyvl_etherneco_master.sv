@@ -8,26 +8,169 @@ module jellyvl_etherneco_master #(
 
     output logic [TIMER_WIDTH-1:0] current_time,
 
-    input  logic         s_down_rx_first,
-    input  logic         s_down_rx_last ,
-    input  logic [8-1:0] s_down_rx_data ,
-    input  logic         s_down_rx_valid,
     output logic         m_down_tx_first,
     output logic         m_down_tx_last ,
     output logic [8-1:0] m_down_tx_data ,
     output logic         m_down_tx_valid,
     input  logic         m_down_tx_ready,
+    input  logic         s_down_rx_first,
+    input  logic         s_down_rx_last ,
+    input  logic [8-1:0] s_down_rx_data ,
+    input  logic         s_down_rx_valid,
 
-    input  logic         s_up_rx_first,
-    input  logic         s_up_rx_last ,
-    input  logic [8-1:0] s_up_rx_data ,
-    input  logic         s_up_rx_valid,
     output logic         m_up_tx_first,
     output logic         m_up_tx_last ,
     output logic [8-1:0] m_up_tx_data ,
     output logic         m_up_tx_valid,
-    input  logic         m_up_tx_ready
+    input  logic         m_up_tx_ready,
+    input  logic         s_up_rx_first,
+    input  logic         s_up_rx_last ,
+    input  logic [8-1:0] s_up_rx_data ,
+    input  logic         s_up_rx_valid
 );
+
+
+    // -------------------------------------
+    //  Ring bus
+    // -------------------------------------
+
+    // Outer ring TX (send command)
+    logic         cmd_tx_payload_last ;
+    logic [8-1:0] cmd_tx_payload_data ;
+    logic         cmd_tx_payload_valid;
+    logic         cmd_tx_payload_ready;
+
+    jellyvl_etherneco_packet_tx u_etherneco_packet_tx_up (
+        .reset (reset),
+        .clk   (clk  ),
+        .
+        tx_start  (timsync_trigger),
+        .tx_length (request_length ),
+        .tx_type   (request_type   ),
+        .tx_node   (request_node   ),
+        .
+        tx_cancel (1'b0),
+        .
+        s_payload_last  (cmd_tx_payload_last ),
+        .s_payload_data  (cmd_tx_payload_data ),
+        .s_payload_valid (cmd_tx_payload_valid),
+        .s_payload_ready (cmd_tx_payload_ready),
+        .
+        m_tx_first (m_down_tx_first),
+        .m_tx_last  (m_down_tx_last ),
+        .m_tx_data  (m_down_tx_data ),
+        .m_tx_valid (m_down_tx_valid),
+        .m_tx_ready (m_down_tx_ready)
+    );
+
+
+    // Outer ring RX and Inner ring TX (return)
+    logic          return_rx_start ;
+    logic          return_rx_end   ;
+    logic          return_rx_error ;
+    logic [16-1:0] return_rx_length;
+    logic [8-1:0]  return_rx_type  ;
+    logic [8-1:0]  return_rx_node  ;
+
+    logic          return_payload_first;
+    logic          return_payload_last ;
+    logic [16-1:0] return_payload_pos  ;
+    logic [8-1:0]  return_payload_data ;
+    logic          return_payload_valid;
+    logic [8-1:0]  return_replace_data ;
+    logic          return_replace_valid;
+
+    jellyvl_etherneco_packet_rx #(
+        .DOWN_STREAM   (1'b1),
+        .REPLACE_DELAY (1   )
+    ) u_etherneco_packet_return (
+        .reset (reset),
+        .clk   (clk  ),
+        .
+        s_rx_first (s_up_rx_first),
+        .s_rx_last  (s_up_rx_last ),
+        .s_rx_data  (s_up_rx_data ),
+        .s_rx_valid (s_up_rx_valid),
+        .
+        m_tx_first (m_up_tx_first),
+        .m_tx_last  (m_up_tx_last ),
+        .m_tx_data  (m_up_tx_data ),
+        .m_tx_valid (m_up_tx_valid),
+        .
+        rx_start      (return_rx_start     ),
+        .rx_end        (return_rx_end       ),
+        .rx_error      (return_rx_error     ),
+        .rx_length     (return_rx_length    ),
+        .rx_type       (return_rx_type      ),
+        .rx_node       (return_rx_node      ),
+        .payload_first (return_payload_first),
+        .payload_last  (return_payload_last ),
+        .payload_pos   (return_payload_pos  ),
+        .payload_data  (return_payload_data ),
+        .payload_valid (return_payload_valid),
+        .replace_data  (return_replace_data ),
+        .replace_valid (return_replace_valid)
+    );
+
+
+    // Inner ring RX (receive response)
+    logic          resp_rx_start ;
+    logic          resp_rx_end   ;
+    logic          resp_rx_error ;
+    logic [16-1:0] resp_rx_length;
+    logic [8-1:0]  resp_rx_type  ;
+    logic [8-1:0]  resp_rx_node  ;
+
+    logic         terminate_first;
+    logic         terminate_last ;
+    logic [8-1:0] terminate_data ;
+    logic         terminate_valid;
+
+    logic          resp_payload_first;
+    logic          resp_payload_last ;
+    logic [16-1:0] resp_payload_pos  ;
+    logic [8-1:0]  resp_payload_data ;
+    logic          resp_payload_valid;
+    logic [8-1:0]  resp_replace_data ;
+    logic          resp_replace_valid;
+
+    jellyvl_etherneco_packet_rx #(
+        .DOWN_STREAM   (1'b0),
+        .REPLACE_DELAY (0   )
+    ) u_etherneco_packet_down (
+        .reset (reset),
+        .clk   (clk  ),
+        .
+        s_rx_first (s_down_rx_first),
+        .s_rx_last  (s_down_rx_last ),
+        .s_rx_data  (s_down_rx_data ),
+        .s_rx_valid (s_down_rx_valid),
+        .
+        m_tx_first (terminate_first),
+        .m_tx_last  (terminate_last ),
+        .m_tx_data  (terminate_data ),
+        .m_tx_valid (terminate_valid),
+        .
+        rx_start  (resp_rx_start ),
+        .rx_end    (resp_rx_end   ),
+        .rx_error  (resp_rx_error ),
+        .rx_length (resp_rx_length),
+        .rx_type   (resp_rx_type  ),
+        .rx_node   (resp_rx_node  ),
+        .
+        payload_first (resp_payload_first),
+        .payload_last  (resp_payload_last ),
+        .payload_pos   (resp_payload_pos  ),
+        .payload_data  (resp_payload_data ),
+        .payload_valid (resp_payload_valid),
+        .replace_data  (resp_replace_data ),
+        .replace_valid (resp_replace_valid)
+    );
+
+    assign resp_replace_data  = '0;
+    assign resp_replace_valid = '0;
+
+
 
 
     // -------------------------------------
@@ -76,15 +219,6 @@ module jellyvl_etherneco_master #(
     end
 
 
-    // -------------------------------------
-    //  outer ring (request)
-    // -------------------------------------
-
-    logic         outer_tx_last ;
-    logic [8-1:0] outer_tx_data ;
-    logic         outer_tx_valid;
-    logic         outer_tx_ready;
-
     // タイマ合わせマスター
     jellyvl_etherneco_synctimer_master #(
         .TIMER_WIDTH (TIMER_WIDTH),
@@ -99,115 +233,36 @@ module jellyvl_etherneco_master #(
         sync_start    (timsync_trigger ),
         .sync_override (timsync_override),
         .
-        m_outer_tx_last  (outer_tx_last ),
-        .m_outer_tx_data  (outer_tx_data ),
-        .m_outer_tx_valid (outer_tx_valid),
-        .m_outer_tx_ready (outer_tx_ready)
+        m_cmd_tx_last  (cmd_tx_payload_last ),
+        .m_cmd_tx_data  (cmd_tx_payload_data ),
+        .m_cmd_tx_valid (cmd_tx_payload_valid),
+        .m_cmd_tx_ready (cmd_tx_payload_ready),
+        .
+        return_rx_start      (return_rx_start     ),
+        .return_rx_end        (return_rx_end       ),
+        .return_rx_error      (return_rx_error     ),
+        .return_rx_length     (return_rx_length    ),
+        .return_rx_type       (return_rx_type      ),
+        .return_rx_node       (return_rx_node      ),
+        .return_payload_first (return_payload_first),
+        .return_payload_last  (return_payload_last ),
+        .return_payload_pos   (return_payload_pos  ),
+        .return_payload_data  (return_payload_data ),
+        .return_payload_valid (return_payload_valid),
+        .return_replace_data  (return_replace_data ),
+        .return_replace_valid (return_replace_valid),
+        .
+        resp_rx_start      (resp_rx_start     ),
+        .resp_rx_end        (resp_rx_end       ),
+        .resp_rx_error      (resp_rx_error     ),
+        .resp_rx_length     (resp_rx_length    ),
+        .resp_rx_type       (resp_rx_type      ),
+        .resp_rx_node       (resp_rx_node      ),
+        .resp_payload_first (resp_payload_first),
+        .resp_payload_last  (resp_payload_last ),
+        .resp_payload_pos   (resp_payload_pos  ),
+        .resp_payload_data  (resp_payload_data ),
+        .resp_payload_valid (resp_payload_valid)
     );
-
-    jellyvl_etherneco_packet_tx u_etherneco_packet_tx_outer (
-        .reset (reset),
-        .clk   (clk  ),
-        .
-        tx_start  (timsync_trigger),
-        .tx_length (request_length ),
-        .tx_type   (request_type   ),
-        .tx_node   (request_node   ),
-        .
-        tx_cancel (1'b0),
-        .
-        s_last  (outer_tx_last ),
-        .s_data  (outer_tx_data ),
-        .s_valid (outer_tx_valid),
-        .s_ready (outer_tx_ready),
-        .
-        m_first (m_down_tx_first),
-        .m_last  (m_down_tx_last ),
-        .m_data  (m_down_tx_data ),
-        .m_valid (m_down_tx_valid),
-        .m_ready (m_down_tx_ready)
-    );
-
-
-    // 一周してきたパケットの受信
-    logic         outer_rx_first;
-    logic         outer_rx_last ;
-    logic [8-1:0] outer_rx_data ;
-    logic         outer_rx_valid;
-    logic         outer_rx_ready;
-
-    logic          outer_rx_start ;
-    logic          outer_rx_end   ;
-    logic          outer_rx_error ;
-    logic [16-1:0] outer_rx_length;
-    logic [8-1:0]  outer_rx_type  ;
-    logic [8-1:0]  outer_rx_node  ;
-
-    jellyvl_etherneco_packet_rx_old u_etherneco_packet_rx_outer (
-        .reset (reset),
-        .clk   (clk  ),
-        .
-        rx_start  (outer_rx_start ),
-        .rx_end    (outer_rx_end   ),
-        .rx_error  (outer_rx_error ),
-        .rx_length (outer_rx_length),
-        .rx_type   (outer_rx_type  ),
-        .rx_node   (outer_rx_node  ),
-        .
-        s_first (s_up_rx_first),
-        .s_last  (s_up_rx_last ),
-        .s_data  (s_up_rx_data ),
-        .s_valid (s_up_rx_valid),
-        .
-        m_first (outer_rx_first),
-        .m_last  (outer_rx_last ),
-        .m_data  (outer_rx_data ),
-        .m_valid (outer_rx_valid)
-    );
-
-
-    // -------------------------------------
-    //  inner ring (response)
-    // -------------------------------------
-
-    /*
-    var inner_tx_last : logic   ;
-    var inner_tx_data : logic<8>;
-    var inner_tx_valid: logic   ;
-    var inner_tx_ready: logic   ;
-    */
-
-    jellyvl_etherneco_packet_tx #(
-        .FIFO_PTR_WIDTH (5)
-    ) u_etherneco_packet_tx_inner (
-        .reset (reset),
-        .clk   (clk  ),
-        .
-        tx_start  (outer_rx_start       ),
-        .tx_length (outer_rx_length      ),
-        .tx_type   (outer_rx_type | 8'h80),
-        .tx_node   (outer_rx_node - 1'b1 ),
-        .
-        tx_cancel (outer_rx_error),
-        .
-        s_last  (outer_rx_last ),
-        .s_data  (outer_rx_data ),
-        .s_valid (outer_rx_valid),
-        .s_ready (outer_rx_ready),
-        .
-        m_first (m_up_tx_first),
-        .m_last  (m_up_tx_last ),
-        .m_data  (m_up_tx_data ),
-        .m_valid (m_up_tx_valid),
-        .m_ready (m_up_tx_ready)
-    );
-
-
-    /*
-    var outer_rx_last : logic   ;
-    var outer_rx_data : logic<8>;
-    var outer_rx_valid: logic   ;
-    var outer_rx_ready: logic   ;
-    */
 
 endmodule
