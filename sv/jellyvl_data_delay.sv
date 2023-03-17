@@ -22,7 +22,7 @@ module jellyvl_data_delay #(
         assign m_valid = s_valid;
     end else begin :delay
 
-        assign s_ready = !m_valid || s_ready;
+        assign s_ready = !m_valid || m_ready;
 
         t_data buf_data  [0:LATENCY-1];
         logic  buf_valid [0:LATENCY-1];

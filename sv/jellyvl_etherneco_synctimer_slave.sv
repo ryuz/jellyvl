@@ -89,13 +89,19 @@ module jellyvl_etherneco_synctimer_slave #(
         .correct_valid    (correct_valid   )
     );
 
+
+    // 応答時間補正
     localparam type     t_time32     = logic [32-1:0];
     t_time32 start_time  ;
     t_time32 elapsed_time;
 
     always_ff @ (posedge clk) begin
         if (cmd_rx_end) begin
-            start_time <= current_time[31:0];
+            if (correct_valid && correct_override) begin
+                start_time <= correct_time[31:0];
+            end else begin
+                start_time <= current_time[31:0];
+            end
         end
 
         if (res_rx_start) begin

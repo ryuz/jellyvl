@@ -291,6 +291,7 @@ module jellyvl_etherneco_packet_rx #(
     logic         dly_fcs       ;
     logic         dly_first     ;
     logic         dly_last      ;
+    logic [8-1:0] dly_data_tmp  ;
     logic [8-1:0] dly_data      ;
     logic         dly_valid     ;
 
@@ -309,18 +310,17 @@ module jellyvl_etherneco_packet_rx #(
         .s_valid (fw_valid                                                ),
         .s_ready (fw_ready                                                ),
         .
-        m_data  ({dly_count, dly_crc_update, dly_fcs, dly_first, dly_last, dly_data}),
-        .m_valid (dly_valid                                                     ),
-        .m_ready (1'b1                                                          )
+        m_data  ({dly_count, dly_crc_update, dly_fcs, dly_first, dly_last, dly_data_tmp}),
+        .m_valid (dly_valid                                                         ),
+        .m_ready (1'b1                                                              )
     );
 
 
     // replace & CRC
-    logic [8-1:0] dly_crc_data;
-    assign dly_crc_data = ((replace_valid) ? (
+    assign dly_data = ((replace_valid) ? (
         replace_data
     ) : (
-        dly_data
+        dly_data_tmp
     ));
 
     logic [4-1:0][8-1:0] tx_crc_value;
@@ -335,7 +335,7 @@ module jellyvl_etherneco_packet_rx #(
         .cke   (1'b1 ),
         .
         in_update (dly_crc_update),
-        .in_data   (dly_crc_data  ),
+        .in_data   (dly_data      ),
         .in_valid  (dly_valid     ),
         .
         out_crc (tx_crc_value)

@@ -143,13 +143,14 @@ module jellyvl_etherneco_master #(
         .m_tx_data  (m_up_tx_data ),
         .m_tx_valid (m_up_tx_valid),
         .
-        rx_start      (outer_rx_start        ),
-        .rx_end        (outer_rx_end          ),
-        .rx_error      (outer_rx_error        ),
-        .rx_length     (outer_rx_length       ),
-        .rx_type       (outer_rx_type         ),
-        .rx_node       (outer_rx_node         ),
-        .payload_first (outer_rx_payload_first),
+        rx_start  (outer_rx_start ),
+        .rx_end    (outer_rx_end   ),
+        .rx_error  (outer_rx_error ),
+        .rx_length (outer_rx_length),
+        .rx_type   (outer_rx_type  ),
+        .rx_node   (outer_rx_node  ),
+        .
+        payload_first (outer_rx_payload_first),
         .payload_last  (outer_rx_payload_last ),
         .payload_pos   (outer_rx_payload_pos  ),
         .payload_data  (outer_rx_payload_data ),
@@ -180,7 +181,7 @@ module jellyvl_etherneco_master #(
 
     jellyvl_etherneco_packet_rx #(
         .DOWN_STREAM   (1'b0),
-        .REPLACE_DELAY (0   )
+        .REPLACE_DELAY (1   )
     ) u_etherneco_packet_rx_inner (
         .reset (reset),
         .clk   (clk  ),

@@ -107,4 +107,7 @@ module jellyvl_etherneco_synctimer_master #(
     assign m_cmd_tx_data = data[0];
     assign m_cmd_tx_last = last[0];
 
+    assign ret_replace_data  = 'x;
+    assign ret_replace_valid = 1'b0;
+
 endmodule

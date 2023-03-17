@@ -61,7 +61,7 @@ module jellyvl_etherneco_slave #(
 
     jellyvl_etherneco_packet_rx #(
         .DOWN_STREAM   (1'b0),
-        .REPLACE_DELAY (1   )
+        .REPLACE_DELAY (0   )
     ) u_etherneco_packet_rx_outer (
         .reset (reset),
         .clk   (clk  ),
@@ -111,7 +111,7 @@ module jellyvl_etherneco_slave #(
 
     jellyvl_etherneco_packet_rx #(
         .DOWN_STREAM   (1'b1),
-        .REPLACE_DELAY (1   )
+        .REPLACE_DELAY (0   )
     ) u_etherneco_packet_rx_inner (
         .reset (reset),
         .clk   (clk  ),

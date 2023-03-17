@@ -1,6 +1,6 @@
 module etherneco_packet_rx #(
     parameter DOWN_STREAM  : bit = 1'b0,
-    parameter REPLACE_DELAY: u32 = 1   ,
+    parameter REPLACE_DELAY: u32 = 0   ,
     parameter BUFFERING    : u32 = 1   ,
     parameter M_REGS       : bit = 1'b1,
 ) (
@@ -291,6 +291,7 @@ module etherneco_packet_rx #(
     var dly_fcs       : logic   ;
     var dly_first     : logic   ;
     var dly_last      : logic   ;
+    var dly_data_tmp  : logic<8>;
     var dly_data      : logic<8>;
     var dly_valid     : logic   ;
 
@@ -309,18 +310,17 @@ module etherneco_packet_rx #(
         s_valid: fw_valid                                                ,
         s_ready: fw_ready                                                ,
 
-        m_data : {dly_count, dly_crc_update, dly_fcs, dly_first, dly_last, dly_data},
-        m_valid: dly_valid                                                     ,
-        m_ready: 1'b1                                                          ,
+        m_data : {dly_count, dly_crc_update, dly_fcs, dly_first, dly_last, dly_data_tmp},
+        m_valid: dly_valid                                                         ,
+        m_ready: 1'b1                                                              ,
     );
 
 
     // replace & CRC
-    var dly_crc_data: logic<8>;
-    assign dly_crc_data = if replace_valid {
+    assign dly_data = if replace_valid {
         replace_data
     } else {
-        dly_data
+        dly_data_tmp
     };
 
     var tx_crc_value: logic<4, 8>;
@@ -335,7 +335,7 @@ module etherneco_packet_rx #(
         cke  : 1'b1 ,
 
         in_update: dly_crc_update,
-        in_data  : dly_crc_data  ,
+        in_data  : dly_data      ,
         in_valid : dly_valid     ,
 
         out_crc: tx_crc_value,

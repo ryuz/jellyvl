@@ -22,7 +22,7 @@ module data_delay #(
         assign m_valid = s_valid;
     } else :delay {
 
-        assign s_ready = !m_valid || s_ready;
+        assign s_ready = !m_valid || m_ready;
 
         var buf_data : t_data [LATENCY];
         var buf_valid: logic  [LATENCY];
