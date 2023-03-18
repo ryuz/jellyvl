@@ -336,7 +336,7 @@ module etherneco_packet_rx #(
 
         in_update: dly_crc_update,
         in_data  : dly_data      ,
-        in_valid : dly_valid     ,
+        in_valid : dly_valid & !dly_fcs,
 
         out_crc: tx_crc_value,
     );

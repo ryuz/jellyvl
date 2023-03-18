@@ -54,11 +54,11 @@ module jellyvl_etherneco_synctimer_slave #(
     // ---------------------------------
 
     localparam type t_adj_phase = logic signed [ADJ_PHASE_WIDTH-1:0];
-    localparam type t_time      = logic [TIMER_WIDTH-1:0];
+    localparam type t_time      = logic [8-1:0][8-1:0];
 
-    logic  correct_override;
-    t_time correct_time    ;
-    logic  correct_valid   ;
+    logic                   correct_override;
+    logic [TIMER_WIDTH-1:0] correct_time    ;
+    logic                   correct_valid   ;
 
     jellyvl_synctimer_core #(
         .TIMER_WIDTH       (TIMER_WIDTH      ),
@@ -91,21 +91,20 @@ module jellyvl_etherneco_synctimer_slave #(
 
 
     // 応答時間補正
-    localparam type     t_time32     = logic [32-1:0];
-    t_time32 start_time  ;
-    t_time32 elapsed_time;
+    localparam type     t_offset     = logic [4-1:0][8-1:0];
+    t_offset start_time  ;
+    t_offset elapsed_time;
 
     always_ff @ (posedge clk) begin
-        if (cmd_rx_end) begin
-            if (correct_valid && correct_override) begin
-                start_time <= correct_time[31:0];
-            end else begin
-                start_time <= current_time[31:0];
-            end
+        if (cmd_rx_start) begin
+            start_time <= t_offset'(current_time);
+            //            if correct_valid && correct_override {
+            //                start_time = correct_time as t_offset;
+            //            }
         end
 
         if (res_rx_start) begin
-            elapsed_time <= current_time[31:0] - start_time;
+            elapsed_time <= t_offset'(current_time) - start_time;
         end
     end
 
@@ -117,9 +116,9 @@ module jellyvl_etherneco_synctimer_slave #(
     logic up_reset;
     assign up_reset = reset || cmd_rx_error;
 
-    logic  [8-1:0]  cmd_rx_cmd   ;
-    t_time          cmd_rx_time  ;
-    logic  [16-1:0] cmd_rx_offset;
+    logic    [8-1:0] cmd_rx_cmd   ;
+    t_time           cmd_rx_time  ;
+    t_offset         cmd_rx_offset;
 
     always_ff @ (posedge clk) begin
         if (up_reset) begin
@@ -129,50 +128,19 @@ module jellyvl_etherneco_synctimer_slave #(
         end else begin
             if (s_cmd_valid) begin
                 case (int'(s_cmd_pos))
-                    0 : cmd_rx_cmd              <= s_cmd_data;
-                    1 : cmd_rx_time[0 * 8+:8]   <= s_cmd_data;
-                    2 : cmd_rx_time[1 * 8+:8]   <= s_cmd_data;
-                    3 : cmd_rx_time[2 * 8+:8]   <= s_cmd_data;
-                    4 : cmd_rx_time[3 * 8+:8]   <= s_cmd_data;
-                    5 : cmd_rx_time[4 * 8+:8]   <= s_cmd_data;
-                    6 : cmd_rx_time[5 * 8+:8]   <= s_cmd_data;
-                    7 : cmd_rx_time[6 * 8+:8]   <= s_cmd_data;
-                    8 : cmd_rx_time[7 * 8+:8]   <= s_cmd_data;
-                    9 : cmd_rx_offset[0 * 8+:8] <= s_cmd_data;
-                    10: cmd_rx_offset[1 * 8+:8] <= s_cmd_data;
-                endcase
-            end
-        end
-    end
-
-    always_ff @ (posedge clk) begin
-        if (up_reset) begin
-            correct_override <= 1'bx;
-            correct_time     <= 'x;
-            correct_valid    <= 1'b0;
-        end else begin
-            correct_override <= 1'bx;
-            correct_time     <= cmd_rx_time + t_time'(cmd_rx_offset);
-            correct_valid    <= 1'b0;
-
-            if (cmd_rx_end) begin
-                case (cmd_rx_cmd)
-                    8'h00: begin
-                        correct_override <= 1'bx;
-                        correct_valid    <= 1'b0;
-                    end
-                    8'h01: begin
-                        correct_override <= 1'b0;
-                        correct_valid    <= 1'b1;
-                    end
-                    8'h03: begin
-                        correct_override <= 1'b1;
-                        correct_valid    <= 1'b1;
-                    end
-                    default: begin
-                        correct_override <= 1'b1;
-                        correct_valid    <= 1'b1;
-                    end
+                    0 : cmd_rx_cmd       <= s_cmd_data;
+                    1 : cmd_rx_time[0]   <= s_cmd_data;
+                    2 : cmd_rx_time[1]   <= s_cmd_data;
+                    3 : cmd_rx_time[2]   <= s_cmd_data;
+                    4 : cmd_rx_time[3]   <= s_cmd_data;
+                    5 : cmd_rx_time[4]   <= s_cmd_data;
+                    6 : cmd_rx_time[5]   <= s_cmd_data;
+                    7 : cmd_rx_time[6]   <= s_cmd_data;
+                    8 : cmd_rx_time[7]   <= s_cmd_data;
+                    9 : cmd_rx_offset[0] <= s_cmd_data;
+                    10: cmd_rx_offset[1] <= s_cmd_data;
+                    11: cmd_rx_offset[2] <= s_cmd_data;
+                    12: cmd_rx_offset[3] <= s_cmd_data;
                 endcase
             end
         end
@@ -189,8 +157,8 @@ module jellyvl_etherneco_synctimer_slave #(
     logic down_reset;
     assign down_reset = reset || res_rx_error;
 
-    logic [16-1:0] res_pos;
-    assign res_pos = 9 + cmd_rx_node * 4;
+    int res_pos;
+    assign res_pos = 9 + (int'(cmd_rx_node) - 1) * 4;
 
     always_ff @ (posedge clk) begin
         if (up_reset) begin
@@ -200,23 +168,31 @@ module jellyvl_etherneco_synctimer_slave #(
             m_res_data  <= 'x;
             m_res_valid <= 1'b0;
             if (s_res_valid) begin
-                if (s_res_pos == res_pos + 16'd0) begin
-                    m_res_data  <= elapsed_time[0 * 8+:8];
-                    m_res_valid <= 1'b1;
-                end
-                if (s_res_pos == res_pos + 16'd1) begin
-                    m_res_data  <= elapsed_time[1 * 8+:8];
-                    m_res_valid <= 1'b1;
-                end
-                if (s_res_pos == res_pos + 16'd2) begin
-                    m_res_data  <= elapsed_time[2 * 8+:8];
-                    m_res_valid <= 1'b1;
-                end
-                if (s_res_pos == res_pos + 16'd3) begin
-                    m_res_data  <= elapsed_time[3 * 8+:8];
-                    m_res_valid <= 1'b1;
+                for (int i = 0; i < 4; i++) begin
+                    if (int'(s_res_pos) == res_pos + i) begin
+                        m_res_data  <= elapsed_time[i];
+                        m_res_valid <= 1'b1;
+                    end
                 end
             end
         end
     end
+
+    always_ff @ (posedge clk) begin
+        if (up_reset) begin
+            correct_override <= 1'bx;
+            correct_time     <= 'x;
+            correct_valid    <= 1'b0;
+        end else begin
+            correct_override <= 1'bx;
+            correct_time     <= cmd_rx_time + t_time'(cmd_rx_offset);
+            correct_valid    <= 1'b0;
+
+            if (res_rx_end) begin
+                correct_override <= cmd_rx_cmd[1];
+                correct_valid    <= cmd_rx_cmd[0];
+            end
+        end
+    end
+
 endmodule

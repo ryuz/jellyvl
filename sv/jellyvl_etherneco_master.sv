@@ -38,14 +38,15 @@ module jellyvl_etherneco_master #(
 
     logic          timsync_trigger ;
     logic          timsync_override;
-    logic [8-1:0]  request_type    ;
-    logic [8-1:0]  request_node    ;
-    logic [16-1:0] request_length  ;
+    logic          timsync_correct ;
+    logic [8-1:0]  timsync_type    ;
+    logic [8-1:0]  timsync_node    ;
+    logic [16-1:0] timsync_length  ;
 
     // とりあえず時間合わせパケットに固定
-    assign request_type   = 8'h10;
-    assign request_node   = 8'h00;
-    assign request_length = 16'd13 - 16'd1;
+    assign timsync_type = 8'h10;
+    assign timsync_node = 8'h01;
+    //  assign request_length = 16'd13 - 16'd1;
 
 
     // 通信タイミング生成
@@ -67,10 +68,12 @@ module jellyvl_etherneco_master #(
 
     always_ff @ (posedge clk) begin
         if (reset) begin
-            timsync_override <= 1'b1;
+            timsync_override <= 1'b0;
+            timsync_correct  <= 1'b0;
         end else begin
             if (timsync_trigger) begin
-                timsync_override <= 1'b0;
+                timsync_override <= ~timsync_correct;
+                timsync_correct  <= 1'b1;
             end
         end
     end
@@ -91,9 +94,9 @@ module jellyvl_etherneco_master #(
         .clk   (clk  ),
         .
         tx_start  (timsync_trigger),
-        .tx_length (request_length ),
-        .tx_type   (request_type   ),
-        .tx_node   (request_node   ),
+        .tx_length (timsync_length ),
+        .tx_type   (timsync_type   ),
+        .tx_node   (timsync_node   ),
         .
         tx_cancel (1'b0),
         .
@@ -128,7 +131,7 @@ module jellyvl_etherneco_master #(
 
     jellyvl_etherneco_packet_rx #(
         .DOWN_STREAM   (1'b1),
-        .REPLACE_DELAY (1   )
+        .REPLACE_DELAY (0   )
     ) u_etherneco_packet_rx_outer (
         .reset (reset),
         .clk   (clk  ),
@@ -181,7 +184,7 @@ module jellyvl_etherneco_master #(
 
     jellyvl_etherneco_packet_rx #(
         .DOWN_STREAM   (1'b0),
-        .REPLACE_DELAY (1   )
+        .REPLACE_DELAY (0   )
     ) u_etherneco_packet_rx_inner (
         .reset (reset),
         .clk   (clk  ),
@@ -230,13 +233,14 @@ module jellyvl_etherneco_master #(
         .
         current_time (current_time),
         .
-        sync_start    (timsync_trigger ),
-        .sync_override (timsync_override),
-        .
-        m_cmd_tx_last  (outer_tx_payload_last ),
-        .m_cmd_tx_data  (outer_tx_payload_data ),
-        .m_cmd_tx_valid (outer_tx_payload_valid),
-        .m_cmd_tx_ready (outer_tx_payload_ready),
+        cmd_tx_start    (timsync_trigger       ),
+        .cmd_tx_correct  (timsync_correct       ),
+        .cmd_tx_override (timsync_override      ),
+        .cmt_tx_length   (timsync_length        ),
+        .m_cmd_tx_last   (outer_tx_payload_last ),
+        .m_cmd_tx_data   (outer_tx_payload_data ),
+        .m_cmd_tx_valid  (outer_tx_payload_valid),
+        .m_cmd_tx_ready  (outer_tx_payload_ready),
         .
         ret_rx_start      (outer_rx_start        ),
         .ret_rx_end        (outer_rx_end          ),

@@ -54,10 +54,10 @@ module etherneco_synctimer_slave #(
     // ---------------------------------
 
     localparam t_adj_phase: type = signed logic<ADJ_PHASE_WIDTH>;
-    localparam t_time     : type = logic<TIMER_WIDTH>;
+    localparam t_time     : type = logic<8, 8>;
 
     var correct_override: logic ;
-    var correct_time    : t_time;
+    var correct_time    : logic<TIMER_WIDTH>;
     var correct_valid   : logic ;
 
     inst u_synctimer_core: synctimer_core #(
@@ -91,21 +91,20 @@ module etherneco_synctimer_slave #(
 
 
     // 応答時間補正
-    localparam t_time32    : type     = logic<32>;
-    var start_time  : t_time32;
-    var elapsed_time: t_time32;
+    localparam t_offset    : type     = logic<4, 8>;
+    var start_time  : t_offset;
+    var elapsed_time: t_offset;
 
     always_ff (clk) {
-        if cmd_rx_end {
-            if correct_valid && correct_override {
-                start_time = correct_time[31:0];
-            } else {
-                start_time = current_time[31:0];
-            }
+        if cmd_rx_start {
+            start_time = current_time as t_offset;
+//            if correct_valid && correct_override {
+//                start_time = correct_time as t_offset;
+//            }
         }
 
         if res_rx_start {
-            elapsed_time = current_time[31:0] - start_time;
+            elapsed_time = current_time as t_offset - start_time;
         }
     }
 
@@ -119,7 +118,7 @@ module etherneco_synctimer_slave #(
 
     var cmd_rx_cmd   : logic <8> ;
     var cmd_rx_time  : t_time    ;
-    var cmd_rx_offset: logic <16>;
+    var cmd_rx_offset: t_offset  ;
 
     always_ff (clk, up_reset) {
         if_reset {
@@ -129,50 +128,19 @@ module etherneco_synctimer_slave #(
         } else {
             if s_cmd_valid {
                 case s_cmd_pos as int {
-                    0 : cmd_rx_cmd              = s_cmd_data;
-                    1 : cmd_rx_time[0 * 8+:8]   = s_cmd_data;
-                    2 : cmd_rx_time[1 * 8+:8]   = s_cmd_data;
-                    3 : cmd_rx_time[2 * 8+:8]   = s_cmd_data;
-                    4 : cmd_rx_time[3 * 8+:8]   = s_cmd_data;
-                    5 : cmd_rx_time[4 * 8+:8]   = s_cmd_data;
-                    6 : cmd_rx_time[5 * 8+:8]   = s_cmd_data;
-                    7 : cmd_rx_time[6 * 8+:8]   = s_cmd_data;
-                    8 : cmd_rx_time[7 * 8+:8]   = s_cmd_data;
-                    9 : cmd_rx_offset[0 * 8+:8] = s_cmd_data;
-                    10: cmd_rx_offset[1 * 8+:8] = s_cmd_data;
-                }
-            }
-        }
-    }
-
-    always_ff (clk, up_reset) {
-        if_reset {
-            correct_override = 1'bx;
-            correct_time     = 'x;
-            correct_valid    = 1'b0;
-        } else {
-            correct_override = 1'bx;
-            correct_time     = cmd_rx_time + cmd_rx_offset as t_time;
-            correct_valid    = 1'b0;
-
-            if cmd_rx_end {
-                case cmd_rx_cmd {
-                    8'h00: {
-                        correct_override = 1'bx;
-                        correct_valid    = 1'b0;
-                    }
-                    8'h01: {
-                        correct_override = 1'b0;
-                        correct_valid    = 1'b1;
-                    }
-                    8'h03: {
-                        correct_override = 1'b1;
-                        correct_valid    = 1'b1;
-                    }
-                    default: {
-                        correct_override = 1'b1;
-                        correct_valid    = 1'b1;
-                    }
+                    0 : cmd_rx_cmd       = s_cmd_data;
+                    1 : cmd_rx_time[0]   = s_cmd_data;
+                    2 : cmd_rx_time[1]   = s_cmd_data;
+                    3 : cmd_rx_time[2]   = s_cmd_data;
+                    4 : cmd_rx_time[3]   = s_cmd_data;
+                    5 : cmd_rx_time[4]   = s_cmd_data;
+                    6 : cmd_rx_time[5]   = s_cmd_data;
+                    7 : cmd_rx_time[6]   = s_cmd_data;
+                    8 : cmd_rx_time[7]   = s_cmd_data;
+                    9 : cmd_rx_offset[0] = s_cmd_data;
+                    10: cmd_rx_offset[1] = s_cmd_data;
+                    11: cmd_rx_offset[2] = s_cmd_data;
+                    12: cmd_rx_offset[3] = s_cmd_data;
                 }
             }
         }
@@ -189,8 +157,8 @@ module etherneco_synctimer_slave #(
     var down_reset: logic;
     assign down_reset = reset || res_rx_error;
 
-    var res_pos: logic<16>;
-    assign res_pos = 9 + cmd_rx_node * 4;
+    var res_pos: int;
+    assign res_pos = 9 + (cmd_rx_node as int - 1) * 4;
 
     always_ff (clk, up_reset) {
         if_reset {
@@ -200,23 +168,32 @@ module etherneco_synctimer_slave #(
             m_res_data  = 'x;
             m_res_valid = 1'b0;
             if s_res_valid {
-                if s_res_pos == res_pos + 16'd0 {
-                    m_res_data  = elapsed_time[0 * 8+:8];
-                    m_res_valid = 1'b1;
-                }
-                if s_res_pos == res_pos + 16'd1 {
-                    m_res_data  = elapsed_time[1 * 8+:8];
-                    m_res_valid = 1'b1;
-                }
-                if s_res_pos == res_pos + 16'd2 {
-                    m_res_data  = elapsed_time[2 * 8+:8];
-                    m_res_valid = 1'b1;
-                }
-                if s_res_pos == res_pos + 16'd3 {
-                    m_res_data  = elapsed_time[3 * 8+:8];
-                    m_res_valid = 1'b1;
+                for i : int in 0..4 {
+                    if s_res_pos as int == res_pos + i {
+                        m_res_data  = elapsed_time[i];
+                        m_res_valid = 1'b1;
+                    }
                 }
             }
         }
     }
+
+
+    always_ff (clk, up_reset) {
+        if_reset {
+            correct_override = 1'bx;
+            correct_time     = 'x;
+            correct_valid    = 1'b0;
+        } else {
+            correct_override = 1'bx;
+            correct_time     = cmd_rx_time + cmd_rx_offset as t_time;
+            correct_valid    = 1'b0;
+
+            if res_rx_end {
+                correct_override = cmd_rx_cmd[1];
+                correct_valid    = cmd_rx_cmd[0];
+            }
+        }
+    }
+
 }

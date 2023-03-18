@@ -2,16 +2,17 @@ module etherneco_synctimer_master #(
     parameter TIMER_WIDTH: u32 = 64, // タイマのbit幅
     parameter NUMERATOR  : u32 = 10, // クロック周期の分子
     parameter DENOMINATOR: u32 = 3 , // クロック周期の分母
-
+    parameter MAX_NODES  : u32 = 2 , 
 ) (
     reset: input logic,
     clk  : input logic,
 
     current_time: output logic<TIMER_WIDTH>,
 
-    sync_start   : input logic,
-    sync_override: input logic,
-
+    cmd_tx_start : input logic,
+    cmd_tx_override: input logic,
+    cmd_tx_correct: input logic,
+    cmt_tx_length: output logic<16>,
     m_cmd_tx_last : output logic   ,
     m_cmd_tx_data : output logic<8>,
     m_cmd_tx_valid: output logic   ,
@@ -46,6 +47,8 @@ module etherneco_synctimer_master #(
 
 
     // タイマ
+    localparam t_time    : type     = logic<8, 8>;
+
     var adjust_ready: logic;
     inst u_synctimer_timer: synctimer_timer #(
         NUMERATOR  : NUMERATOR  ,
@@ -65,49 +68,142 @@ module etherneco_synctimer_master #(
         current_time: current_time,
     );
 
-    localparam LENGTH: u32 = 4 + 8 + 1;
+    // 応答時間計測
+    localparam t_offset   : type     = logic<4, 8>;
+    var start_time  : t_offset;
+    var elapsed_time: t_offset;
 
-    var last: logic<LENGTH, 1>;
-    var data: logic<LENGTH, 8>;
+    always_ff (clk) {
+        if cmd_tx_start {
+            start_time = current_time as t_offset;
+        }
+
+        if res_rx_end {
+            elapsed_time = current_time as t_offset - start_time;
+        }
+    }
+
+    // オフセット時間
+    var offset_time : t_offset [MAX_NODES];
+
+
+    // send command
+    localparam t_length: type = logic<16>;
+    localparam CMD_LENGTH: t_length = (1 + 8 + 4*MAX_NODES - 1) as t_length;
+    localparam t_cmd_count: type = logic<$clog2(CMD_LENGTH+1)>;
+
+    assign cmt_tx_length = CMD_LENGTH;
+
+    var cmd_busy : logic;
+    var cmd_count: t_cmd_count;
+    var cmd_cmd  : logic<8>;
+    var cmd_time : t_time;
+    var cmd_last: logic;
+    var cmd_data: logic<8>;
+
+    var cmd_count_next : t_cmd_count;
+    assign cmd_count_next = cmd_count + 1 as t_cmd_count;
+
+    var     cmd_cke : logic;
+    assign cmd_cke = !m_cmd_tx_valid || m_cmd_tx_ready;
 
     always_ff (clk, reset) {
         if_reset {
-            last           = 'x;
-            data           = 'x;
-            m_cmd_tx_valid = 1'b0;
+            cmd_busy  = 1'b0;
+            cmd_count = 'x;
+            cmd_cmd   = 'x;
+            cmd_time  = 'x;
+            cmd_last  = 'x;
+            cmd_data  = 'x;
         } else {
-            if sync_start {
-                // command_id
-                data[0] = if sync_override {
-                    8'h01
-                } else {
-                    8'h00
-                };
-                last[0] = 1'b0;
-
-                // time
-                data[8:1] = current_time;
-                last[8:1] = 8'h00;
-
-                // offset
-                data[12:9] = 32'd1000;
-                last[12:9] = 4'b1000;
-
-                m_cmd_tx_valid = 1'b1;
-            } else {
-                if m_cmd_tx_valid && m_cmd_tx_ready {
-                    data           >>= 8;
-                    last           >>= 1;
-                    m_cmd_tx_valid =   !m_cmd_tx_last;
+            if cmd_tx_start {
+                cmd_busy = 1'b1;
+                cmd_count = '0;
+                cmd_cmd  = {6'd0, cmd_tx_override, cmd_tx_correct};
+                cmd_time = current_time as t_time;
+            } else if cmd_cke {
+                cmd_count = cmd_count_next;
+                cmd_last = (cmd_count_next == CMD_LENGTH as t_cmd_count);
+                if cmd_last {
+                    cmd_busy  = 1'b0;
+                    cmd_count = 'x;
+                    cmd_cmd   = 'x;
+                    cmd_time  = 'x;
+                    cmd_last  = 'x;
                 }
             }
         }
     }
 
-    assign m_cmd_tx_data = data[0];
-    assign m_cmd_tx_last = last[0];
+    always_ff (clk, reset) {
+        if_reset {
+            m_cmd_tx_last  = 'x;
+            m_cmd_tx_data  = 'x;
+            m_cmd_tx_valid = 1'b0;
+        }
+        else if cmd_cke {
+            m_cmd_tx_last  = cmd_last;
+            m_cmd_tx_valid = cmd_busy;
+            if cmd_count == 0 {
+                m_cmd_tx_data = cmd_cmd;
+            }
+            for i : int in 0..8 {
+                if cmd_count as int  == 1 + i {
+                    m_cmd_tx_data = cmd_time[i];
+                }
+            }
+            for i : int in 0..MAX_NODES {
+                for j : int in 0..4 {
+                    if cmd_count as int == 9 + i * 4 + j {
+                        m_cmd_tx_data = offset_time[i][j];
+                    }
+                }
+            }
+        }
+    }
 
+
+    // return (bypass)
     assign ret_replace_data  = 'x;
     assign ret_replace_valid = 1'b0;
 
+
+    // receive response
+    var rx_offset : t_offset [MAX_NODES];
+    var offset_first : logic;
+    var calc_offset  : logic;
+
+    always_ff (clk, reset) {
+        if_reset {
+            offset_first = 1'b1;
+            calc_offset  = 1'b0;
+            for i : u32 in 0..MAX_NODES {
+                offset_time[i] = '0;
+                rx_offset[i] = 'x;
+            }
+        } else {
+            if res_payload_valid {
+                for i : int in 0..MAX_NODES {
+                    for j : int in 0..4 {
+                        if res_payload_pos as int == 9 + i * 4 + j {
+                            rx_offset[i][j] = res_payload_data;
+                        }
+                    }
+                }
+            }
+
+            calc_offset = res_rx_end;
+            if calc_offset {
+                offset_first = 1'b0;
+                for i : u32 in 0..MAX_NODES {
+                    if offset_first {
+                        offset_time[i] =  elapsed_time - (rx_offset[i] >> 1);
+                    }
+                    else {
+                        offset_time[i] = (offset_time[i] * 6 + elapsed_time * 2 - rx_offset[i]) >> 3;
+                    }
+                }
+            }
+        }
+    }
 }

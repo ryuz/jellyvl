@@ -1,6 +1,6 @@
 module jellyvl_etherneco_packet_rx #(
     parameter bit          DOWN_STREAM   = 1'b0,
-    parameter int unsigned REPLACE_DELAY = 1   ,
+    parameter int unsigned REPLACE_DELAY = 0   ,
     parameter int unsigned BUFFERING     = 1   ,
     parameter bit          M_REGS        = 1'b1
 ) (
@@ -334,9 +334,9 @@ module jellyvl_etherneco_packet_rx #(
         .clk   (clk  ),
         .cke   (1'b1 ),
         .
-        in_update (dly_crc_update),
-        .in_data   (dly_data      ),
-        .in_valid  (dly_valid     ),
+        in_update (dly_crc_update      ),
+        .in_data   (dly_data            ),
+        .in_valid  (dly_valid & !dly_fcs),
         .
         out_crc (tx_crc_value)
     );
