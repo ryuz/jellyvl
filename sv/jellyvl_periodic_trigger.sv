@@ -1,6 +1,7 @@
 module jellyvl_periodic_trigger #(
-    parameter int unsigned TIMER_WIDTH  = 64,
-    parameter int unsigned PERIOD_WIDTH = 32
+    parameter int unsigned TIMER_WIDTH    = 64  ,
+    parameter int unsigned PERIOD_WIDTH   = 32  ,
+    parameter bit          THRASHING_MASK = 1'b1
 ) (
     input logic reset,
     input logic clk  ,
@@ -15,27 +16,32 @@ module jellyvl_periodic_trigger #(
 );
 
     localparam type t_period = logic [PERIOD_WIDTH-1:0];
-    localparam type t_count  = logic signed [PERIOD_WIDTH + 1-1:0];
 
-    t_period next_time;
+    logic    trigger_valid;
+    t_period base_time    ;
 
-    t_count remaining_time;
-    assign remaining_time = t_count'(next_time) - t_count'(current_time[PERIOD_WIDTH - 1:0]);
+    t_period elapsed_time;
+    assign elapsed_time = current_time[PERIOD_WIDTH - 1:0] - base_time;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
-            next_time <= '0;
-            trigger   <= 1'b0;
+            base_time     <= '0;
+            trigger       <= 1'b0;
+            trigger_valid <= 1'b0;
         end else begin
             if (enable) begin
-                trigger <= 1'b0;
-                if (remaining_time < 0) begin
-                    next_time <= next_time + period;
-                    trigger   <= 1'b1;
+                trigger       <= 1'b0;
+                trigger_valid <= 1'b0;
+                if (elapsed_time >= period) begin
+                    base_time <= base_time + period;
+
+                    trigger_valid <= 1'b1;
+                    trigger       <= !THRASHING_MASK || !trigger_valid; // 連続していなければ発行
                 end
             end else begin
-                next_time <= phase + period;
-                trigger   <= 1'b0;
+                base_time     <= phase;
+                trigger_valid <= 1'b0;
+                trigger       <= 1'b0;
             end
         end
     end

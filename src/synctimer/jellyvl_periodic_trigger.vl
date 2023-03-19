@@ -1,6 +1,7 @@
 module periodic_trigger #(
-    parameter TIMER_WIDTH : u32 = 64,
-    parameter PERIOD_WIDTH: u32 = 32,
+    parameter TIMER_WIDTH   : u32 = 64  ,
+    parameter PERIOD_WIDTH  : u32 = 32  ,
+    parameter THRASHING_MASK: bit = 1'b1,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -15,27 +16,32 @@ module periodic_trigger #(
 ) {
 
     localparam t_period: type = logic<PERIOD_WIDTH>;
-    localparam t_count : type = signed logic<PERIOD_WIDTH + 1>;
 
-    var next_time: t_period;
+    var trigger_valid: logic   ;
+    var base_time    : t_period;
 
-    var remaining_time: t_count;
-    assign remaining_time = next_time as t_count - current_time[PERIOD_WIDTH - 1:0] as t_count;
+    var elapsed_time: t_period;
+    assign elapsed_time = current_time[PERIOD_WIDTH - 1:0] - base_time;
 
     always_ff (clk, reset) {
         if_reset {
-            next_time = '0;
-            trigger   = 1'b0;
+            base_time     = '0;
+            trigger       = 1'b0;
+            trigger_valid = 1'b0;
         } else {
             if enable {
-                trigger = 1'b0;
-                if remaining_time <: 0 {
-                    next_time = next_time + period;
-                    trigger   = 1'b1;
+                trigger       = 1'b0;
+                trigger_valid = 1'b0;
+                if elapsed_time >= period {
+                    base_time = base_time + period;
+
+                    trigger_valid = 1'b1;
+                    trigger       = !THRASHING_MASK || !trigger_valid; // 連続していなければ発行
                 }
             } else {
-                next_time = phase + period;
-                trigger   = 1'b0;
+                base_time     = phase;
+                trigger_valid = 1'b0;
+                trigger       = 1'b0;
             }
         }
     }

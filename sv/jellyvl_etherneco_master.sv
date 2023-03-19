@@ -34,7 +34,27 @@ module jellyvl_etherneco_master #(
     //  Control
     // -------------------------------------
 
-    localparam int unsigned PERIOD_WIDTH = 32;
+    logic [TIMER_WIDTH-1:0] set_time  ;
+    logic                   set_valid ;
+    logic                   set_valid2;
+
+    logic trig_enable;
+
+    always_ff @ (posedge clk) begin
+        if (reset) begin
+            set_time    <= 64'd0; // h0123456789abcdef;
+            set_valid   <= 1'b1;
+            set_valid2  <= 1'b1;
+            trig_enable <= 1'b0;
+        end else begin
+            //            set_time  = 64'd0;
+            set_valid   <= set_valid2;
+            set_valid2  <= 1'b0;
+            trig_enable <= !set_valid && !set_valid2;
+        end
+    end
+
+    localparam int unsigned PERIOD_WIDTH = 16;
 
     logic          timsync_trigger ;
     logic          timsync_override;
@@ -57,9 +77,9 @@ module jellyvl_etherneco_master #(
         .reset (reset),
         .clk   (clk  ),
         .
-        enable (1'b1     ),
-        .phase  ('0       ),
-        .period (32'd20000),
+        enable (1'b1     ), //trig_enable ,
+        .phase  ('0       ), //current_time as PERIOD_WIDTH,
+        .period (16'd20000),
         .
         current_time (current_time),
         .
@@ -72,7 +92,7 @@ module jellyvl_etherneco_master #(
             timsync_correct  <= 1'b0;
         end else begin
             if (timsync_trigger) begin
-                timsync_override <= ~timsync_correct;
+                timsync_override <= 1'b1; // ~timsync_correct;
                 timsync_correct  <= 1'b1;
             end
         end
@@ -232,6 +252,9 @@ module jellyvl_etherneco_master #(
         .clk   (clk  ),
         .
         current_time (current_time),
+        .
+        set_time  (set_time ),
+        .set_valid (set_valid),
         .
         cmd_tx_start    (timsync_trigger       ),
         .cmd_tx_correct  (timsync_correct       ),

@@ -2,21 +2,24 @@ module etherneco_synctimer_master #(
     parameter TIMER_WIDTH: u32 = 64, // タイマのbit幅
     parameter NUMERATOR  : u32 = 10, // クロック周期の分子
     parameter DENOMINATOR: u32 = 3 , // クロック周期の分母
-    parameter MAX_NODES  : u32 = 2 , 
+    parameter MAX_NODES  : u32 = 2 ,
 ) (
     reset: input logic,
     clk  : input logic,
 
     current_time: output logic<TIMER_WIDTH>,
 
-    cmd_tx_start : input logic,
-    cmd_tx_override: input logic,
-    cmd_tx_correct: input logic,
-    cmt_tx_length: output logic<16>,
-    m_cmd_tx_last : output logic   ,
-    m_cmd_tx_data : output logic<8>,
-    m_cmd_tx_valid: output logic   ,
-    m_cmd_tx_ready: input  logic   ,
+    set_time : input logic<TIMER_WIDTH>,
+    set_valid: input logic             ,
+
+    cmd_tx_start   : input  logic    ,
+    cmd_tx_override: input  logic    ,
+    cmd_tx_correct : input  logic    ,
+    cmt_tx_length  : output logic<16>,
+    m_cmd_tx_last  : output logic    ,
+    m_cmd_tx_data  : output logic<8> ,
+    m_cmd_tx_valid : output logic    ,
+    m_cmd_tx_ready : input  logic    ,
 
     ret_rx_start     : input  logic    ,
     ret_rx_end       : input  logic    ,
@@ -47,7 +50,7 @@ module etherneco_synctimer_master #(
 
 
     // タイマ
-    localparam t_time_pkt : type     = logic<8, 8>;
+    localparam t_time_pkt: type = logic<8, 8>;
 
     var adjust_ready: logic;
     inst u_synctimer_timer: synctimer_timer #(
@@ -58,8 +61,8 @@ module etherneco_synctimer_master #(
         reset: reset,
         clk  : clk  ,
 
-        set_time : '0  ,
-        set_valid: 1'b0,
+        set_time : set_time ,
+        set_valid: set_valid,
 
         adjust_sign : 1'b0        ,
         adjust_valid: 1'b0        ,
@@ -70,53 +73,59 @@ module etherneco_synctimer_master #(
 
 
     // 応答時間計測
-    localparam t_offset   : type     = logic<32>;
-    var tx_start_time : t_offset;
-    var rx_start_time : t_offset;
-    var rx_end_time:  t_offset;
-    var total_time:  t_offset;
-    var response_time: t_offset;
-    var packet_time: t_offset;
+    localparam t_offset: type = logic<32>;
 
+    function CycleToOffset (
+        cycle: input u32,
+    ) -> t_offset {
+        return NUMERATOR * cycle / DENOMINATOR;
+    }
+
+    var tx_start_time: t_offset;
+    var rx_start_time: t_offset;
+    var rx_end_time  : t_offset;
+    var total_time   : t_offset;
+    var response_time: t_offset;
+    var packet_time  : t_offset;
 
     always_ff (clk) {
         if cmd_tx_start {
-            tx_start_time = current_time as t_offset;
+            tx_start_time = current_time as t_offset - CycleToOffset(2); // 2サイクル補正
         }
         if res_rx_start {
             rx_start_time = current_time as t_offset;
             response_time = current_time as t_offset - tx_start_time;
         }
         if res_rx_end {
-            rx_end_time = current_time as t_offset; 
-            total_time = current_time as t_offset - tx_start_time;
+            rx_end_time = current_time as t_offset;
+            total_time  = current_time as t_offset - tx_start_time;
             packet_time = current_time as t_offset - rx_start_time;
         }
     }
 
     // オフセット時間
-    localparam t_offset_pkt : type     = logic<4, 8>;
+    localparam t_offset_pkt: type         = logic<4, 8>;
     var offset_time : t_offset_pkt [MAX_NODES];
 
 
     // send command
-    localparam t_length: type = logic<16>;
-    localparam CMD_LENGTH: t_length = (1 + 8 + 4*MAX_NODES - 1) as t_length;
-    localparam t_cmd_count: type = logic<$clog2(CMD_LENGTH+1)>;
+    localparam t_length   : type     = logic<16>;
+    localparam CMD_LENGTH : t_length = (1 + 8 + 4 * MAX_NODES - 1) as t_length;
+    localparam t_cmd_count: type     = logic<$clog2(CMD_LENGTH + 1)>;
 
     assign cmt_tx_length = CMD_LENGTH;
 
-    var cmd_busy : logic;
-    var cmd_count: t_cmd_count;
-    var cmd_cmd  : logic<8>;
-    var cmd_time : t_time_pkt;
-    var cmd_last: logic;
-    var cmd_data: logic<8>;
+    var cmd_busy : logic         ;
+    var cmd_count: t_cmd_count   ;
+    var cmd_cmd  : logic      <8>;
+    var cmd_time : t_time_pkt    ;
+    var cmd_last : logic         ;
+    var cmd_data : logic      <8>;
 
-    var cmd_count_next : t_cmd_count;
+    var cmd_count_next: t_cmd_count;
     assign cmd_count_next = cmd_count + 1 as t_cmd_count;
 
-    var     cmd_cke : logic;
+    var cmd_cke: logic;
     assign cmd_cke = !m_cmd_tx_valid || m_cmd_tx_ready;
 
     always_ff (clk, reset) {
@@ -129,13 +138,13 @@ module etherneco_synctimer_master #(
             cmd_data  = 'x;
         } else {
             if cmd_tx_start {
-                cmd_busy = 1'b1;
+                cmd_busy  = 1'b1;
                 cmd_count = '0;
-                cmd_cmd  = {6'd0, cmd_tx_override, cmd_tx_correct};
-                cmd_time = current_time as t_time_pkt;
+                cmd_cmd   = {6'd0, cmd_tx_override, cmd_tx_correct};
+                cmd_time  = current_time as t_time_pkt;
             } else if cmd_cke {
                 cmd_count = cmd_count_next;
-                cmd_last = (cmd_count_next == CMD_LENGTH as t_cmd_count);
+                cmd_last  = (cmd_count_next == CMD_LENGTH as t_cmd_count);
                 if cmd_last {
                     cmd_busy  = 1'b0;
                     cmd_count = 'x;
@@ -152,20 +161,19 @@ module etherneco_synctimer_master #(
             m_cmd_tx_last  = 'x;
             m_cmd_tx_data  = 'x;
             m_cmd_tx_valid = 1'b0;
-        }
-        else if cmd_cke {
+        } else if cmd_cke {
             m_cmd_tx_last  = cmd_last;
             m_cmd_tx_valid = cmd_busy;
             if cmd_count == 0 {
                 m_cmd_tx_data = cmd_cmd;
             }
-            for i : int in 0..8 {
-                if cmd_count as int  == 1 + i {
+            for i: int in 0..8 {
+                if cmd_count as int == 1 + i {
                     m_cmd_tx_data = cmd_time[i];
                 }
             }
-            for i : int in 0..MAX_NODES {
-                for j : int in 0..4 {
+            for i: int in 0..MAX_NODES {
+                for j: int in 0..4 {
                     if cmd_count as int == 9 + i * 4 + j {
                         m_cmd_tx_data = offset_time[i][j];
                     }
@@ -181,28 +189,28 @@ module etherneco_synctimer_master #(
 
 
     // receive response
-    var delay_time : t_offset [MAX_NODES];
-    var measured_time : t_offset [MAX_NODES];
+    var delay_time   : t_offset [MAX_NODES];
+    var measured_time: t_offset [MAX_NODES];
 
-    var rx_offset : t_offset_pkt [MAX_NODES];
+    var rx_offset: t_offset_pkt [MAX_NODES];
 
-    var offset_first : logic;
-    var calc_wait : logic<3>;
+    var offset_first: logic   ;
+    var calc_wait   : logic<3>;
 
     always_ff (clk, reset) {
         if_reset {
             offset_first = 1'b1;
-            calc_wait = '0;
-            for i : u32 in 0..MAX_NODES {
-                offset_time[i] = '0;
-                delay_time[i] = 'x;
+            calc_wait    = '0;
+            for i: u32 in 0..MAX_NODES {
+                offset_time[i]   = '0;
+                delay_time[i]    = 'x;
                 measured_time[i] = 'x;
-                rx_offset[i]  = 'x;
+                rx_offset[i]     = 'x;
             }
         } else {
             if res_payload_valid {
-                for i : int in 0..MAX_NODES {
-                    for j : int in 0..4 {
+                for i: int in 0..MAX_NODES {
+                    for j: int in 0..4 {
                         if res_payload_pos as int == 9 + i * 4 + j {
                             rx_offset[i][j] = res_payload_data;
                         }
@@ -211,23 +219,49 @@ module etherneco_synctimer_master #(
             }
 
             // calc
-            for i : u32 in 0..MAX_NODES {
+            for i: u32 in 0..MAX_NODES {
                 delay_time[i]    = response_time - rx_offset[i];
-                measured_time[i] = delay_time[i] + 2*packet_time;   // 2倍の時間
+                measured_time[i] = delay_time[i] + 2 * packet_time; // 2倍の時間
             }
 
             calc_wait = {calc_wait[1:0], res_rx_end};
             if calc_wait[2] {
                 offset_first = 1'b0;
-                for i : u32 in 0..MAX_NODES {
+                for i: u32 in 0..MAX_NODES {
                     if offset_first {
                         offset_time[i] = (measured_time[i] >> 1);
-                    }
-                    else {
+                    } else {
                         offset_time[i] = (offset_time[i] * 6 + measured_time[i]) >> 3;
                     }
                 }
             }
+        }
+    }
+
+
+
+    // monitor (debug)
+    localparam t_monitor_time      : type           = logic<32>;
+    var monitor_cmd_tx_start: t_monitor_time;
+    var monitor_ret_rx_start: t_monitor_time;
+    var monitor_ret_rx_end  : t_monitor_time;
+    var monitor_res_rx_start: t_monitor_time;
+    var monitor_res_rx_end  : t_monitor_time;
+    always_ff (clk) {
+        if cmd_tx_start {
+            monitor_cmd_tx_start = current_time as t_monitor_time;
+        }
+        if ret_rx_start {
+            monitor_ret_rx_start = current_time as t_monitor_time;
+        }
+        if ret_rx_end {
+            monitor_ret_rx_end = current_time as t_monitor_time;
+        }
+        if res_rx_start {
+            monitor_res_rx_start = current_time as t_monitor_time;
+        }
+        if res_rx_end {
+            monitor_res_rx_end = current_time as t_monitor_time;
         }
     }
 }

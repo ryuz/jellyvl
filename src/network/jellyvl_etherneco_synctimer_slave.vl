@@ -56,9 +56,12 @@ module etherneco_synctimer_slave #(
     localparam t_adj_phase: type = signed logic<ADJ_PHASE_WIDTH>;
     localparam t_time     : type = logic<8, 8>;
 
-    var correct_override: logic ;
-    var correct_time    : logic<TIMER_WIDTH>;
-    var correct_valid   : logic ;
+    #[sv("mark_debug=\"true\"")]
+    var correct_override: logic;
+    #[sv("mark_debug=\"true\"")]
+    var correct_time: logic<TIMER_WIDTH>;
+    #[sv("mark_debug=\"true\"")]
+    var correct_valid: logic;
 
     inst u_synctimer_core: synctimer_core #(
         TIMER_WIDTH      : TIMER_WIDTH      ,
@@ -98,9 +101,9 @@ module etherneco_synctimer_slave #(
     always_ff (clk) {
         if cmd_rx_start {
             start_time = current_time as t_offset;
-//            if correct_valid && correct_override {
-//                start_time = correct_time as t_offset;
-//            }
+            //            if correct_valid && correct_override {
+            //                start_time = correct_time as t_offset;
+            //            }
         }
 
         if res_rx_start {
@@ -116,9 +119,9 @@ module etherneco_synctimer_slave #(
     var up_reset: logic;
     assign up_reset = reset || cmd_rx_error;
 
-    var cmd_rx_cmd   : logic <8> ;
-    var cmd_rx_time  : t_time    ;
-    var cmd_rx_offset: t_offset  ;
+    var cmd_rx_cmd   : logic   <8>;
+    var cmd_rx_time  : t_time     ;
+    var cmd_rx_offset: t_offset   ;
 
     always_ff (clk, up_reset) {
         if_reset {
@@ -127,20 +130,23 @@ module etherneco_synctimer_slave #(
             cmd_rx_offset = 'x;
         } else {
             if s_cmd_valid {
-                case s_cmd_pos as int {
-                    0 : cmd_rx_cmd       = s_cmd_data;
-                    1 : cmd_rx_time[0]   = s_cmd_data;
-                    2 : cmd_rx_time[1]   = s_cmd_data;
-                    3 : cmd_rx_time[2]   = s_cmd_data;
-                    4 : cmd_rx_time[3]   = s_cmd_data;
-                    5 : cmd_rx_time[4]   = s_cmd_data;
-                    6 : cmd_rx_time[5]   = s_cmd_data;
-                    7 : cmd_rx_time[6]   = s_cmd_data;
-                    8 : cmd_rx_time[7]   = s_cmd_data;
-                    9 : cmd_rx_offset[0] = s_cmd_data;
-                    10: cmd_rx_offset[1] = s_cmd_data;
-                    11: cmd_rx_offset[2] = s_cmd_data;
-                    12: cmd_rx_offset[3] = s_cmd_data;
+                // command
+                if s_cmd_pos as int == 0 {
+                    cmd_rx_cmd = s_cmd_data;
+                }
+
+                // time
+                for i: int in 0..8 {
+                    if s_cmd_pos as int == 1 + i {
+                        cmd_rx_time[i] = s_cmd_data;
+                    }
+                }
+
+                // offset
+                for i: int in 0..4 {
+                    if s_cmd_pos as int == 9 + 4 * (cmd_rx_node as int - 1) + i {
+                        cmd_rx_offset[i] = s_cmd_data;
+                    }
                 }
             }
         }
@@ -168,7 +174,7 @@ module etherneco_synctimer_slave #(
             m_res_data  = 'x;
             m_res_valid = 1'b0;
             if s_res_valid {
-                for i : int in 0..4 {
+                for i: int in 0..4 {
                     if s_res_pos as int == res_pos + i {
                         m_res_data  = elapsed_time[i];
                         m_res_valid = 1'b1;
@@ -177,7 +183,6 @@ module etherneco_synctimer_slave #(
             }
         }
     }
-
 
     always_ff (clk, up_reset) {
         if_reset {
@@ -196,4 +201,25 @@ module etherneco_synctimer_slave #(
         }
     }
 
+
+    // monitor (debug)
+    localparam t_monitor_time      : type           = logic<32>;
+    var monitor_cmd_rx_start: t_monitor_time;
+    var monitor_cmd_rx_end  : t_monitor_time;
+    var monitor_res_rx_start: t_monitor_time;
+    var monitor_res_rx_end  : t_monitor_time;
+    always_ff (clk) {
+        if cmd_rx_start {
+            monitor_cmd_rx_start = current_time as t_monitor_time;
+        }
+        if cmd_rx_end {
+            monitor_cmd_rx_end = current_time as t_monitor_time;
+        }
+        if res_rx_start {
+            monitor_res_rx_start = current_time as t_monitor_time;
+        }
+        if res_rx_end {
+            monitor_res_rx_end = current_time as t_monitor_time;
+        }
+    }
 }

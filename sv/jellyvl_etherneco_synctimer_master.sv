@@ -9,6 +9,9 @@ module jellyvl_etherneco_synctimer_master #(
 
     output logic [TIMER_WIDTH-1:0] current_time,
 
+    input logic [TIMER_WIDTH-1:0] set_time ,
+    input logic                   set_valid,
+
     input  logic          cmd_tx_start   ,
     input  logic          cmd_tx_override,
     input  logic          cmd_tx_correct ,
@@ -58,8 +61,8 @@ module jellyvl_etherneco_synctimer_master #(
         .reset (reset),
         .clk   (clk  ),
         .
-        set_time  ('0  ),
-        .set_valid (1'b0),
+        set_time  (set_time ),
+        .set_valid (set_valid),
         .
         adjust_sign  (1'b0        ),
         .adjust_valid (1'b0        ),
@@ -70,7 +73,14 @@ module jellyvl_etherneco_synctimer_master #(
 
 
     // 応答時間計測
-    localparam type     t_offset      = logic [32-1:0];
+    localparam type t_offset = logic [32-1:0];
+
+    function automatic t_offset CycleToOffset(
+        input int unsigned cycle
+    ) ;
+        return NUMERATOR * cycle / DENOMINATOR;
+    endfunction
+
     t_offset tx_start_time;
     t_offset rx_start_time;
     t_offset rx_end_time  ;
@@ -80,7 +90,7 @@ module jellyvl_etherneco_synctimer_master #(
 
     always_ff @ (posedge clk) begin
         if (cmd_tx_start) begin
-            tx_start_time <= t_offset'(current_time);
+            tx_start_time <= t_offset'(current_time) - CycleToOffset(2); // 2サイクル補正
         end
         if (res_rx_start) begin
             rx_start_time <= t_offset'(current_time);
@@ -225,6 +235,33 @@ module jellyvl_etherneco_synctimer_master #(
                     end
                 end
             end
+        end
+    end
+
+
+
+    // monitor (debug)
+    localparam type           t_monitor_time       = logic [32-1:0];
+    t_monitor_time monitor_cmd_tx_start;
+    t_monitor_time monitor_ret_rx_start;
+    t_monitor_time monitor_ret_rx_end  ;
+    t_monitor_time monitor_res_rx_start;
+    t_monitor_time monitor_res_rx_end  ;
+    always_ff @ (posedge clk) begin
+        if (cmd_tx_start) begin
+            monitor_cmd_tx_start <= t_monitor_time'(current_time);
+        end
+        if (ret_rx_start) begin
+            monitor_ret_rx_start <= t_monitor_time'(current_time);
+        end
+        if (ret_rx_end) begin
+            monitor_ret_rx_end <= t_monitor_time'(current_time);
+        end
+        if (res_rx_start) begin
+            monitor_res_rx_start <= t_monitor_time'(current_time);
+        end
+        if (res_rx_end) begin
+            monitor_res_rx_end <= t_monitor_time'(current_time);
         end
     end
 endmodule

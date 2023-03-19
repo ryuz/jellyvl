@@ -55,10 +55,12 @@ module jellyvl_etherneco_synctimer_slave #(
 
     localparam type t_adj_phase = logic signed [ADJ_PHASE_WIDTH-1:0];
     localparam type t_time      = logic [8-1:0][8-1:0];
-
-    logic                   correct_override;
-    logic [TIMER_WIDTH-1:0] correct_time    ;
-    logic                   correct_valid   ;
+    (* mark_debug="true" *)
+    logic correct_override;
+    (* mark_debug="true" *)
+    logic [TIMER_WIDTH-1:0] correct_time;
+    (* mark_debug="true" *)
+    logic correct_valid;
 
     jellyvl_synctimer_core #(
         .TIMER_WIDTH       (TIMER_WIDTH      ),
@@ -127,21 +129,24 @@ module jellyvl_etherneco_synctimer_slave #(
             cmd_rx_offset <= 'x;
         end else begin
             if (s_cmd_valid) begin
-                case (int'(s_cmd_pos))
-                    0 : cmd_rx_cmd       <= s_cmd_data;
-                    1 : cmd_rx_time[0]   <= s_cmd_data;
-                    2 : cmd_rx_time[1]   <= s_cmd_data;
-                    3 : cmd_rx_time[2]   <= s_cmd_data;
-                    4 : cmd_rx_time[3]   <= s_cmd_data;
-                    5 : cmd_rx_time[4]   <= s_cmd_data;
-                    6 : cmd_rx_time[5]   <= s_cmd_data;
-                    7 : cmd_rx_time[6]   <= s_cmd_data;
-                    8 : cmd_rx_time[7]   <= s_cmd_data;
-                    9 : cmd_rx_offset[0] <= s_cmd_data;
-                    10: cmd_rx_offset[1] <= s_cmd_data;
-                    11: cmd_rx_offset[2] <= s_cmd_data;
-                    12: cmd_rx_offset[3] <= s_cmd_data;
-                endcase
+                // command
+                if (int'(s_cmd_pos) == 0) begin
+                    cmd_rx_cmd <= s_cmd_data;
+                end
+
+                // time
+                for (int i = 0; i < 8; i++) begin
+                    if (int'(s_cmd_pos) == 1 + i) begin
+                        cmd_rx_time[i] <= s_cmd_data;
+                    end
+                end
+
+                // offset
+                for (int i = 0; i < 4; i++) begin
+                    if (int'(s_cmd_pos) == 9 + 4 * (int'(cmd_rx_node) - 1) + i) begin
+                        cmd_rx_offset[i] <= s_cmd_data;
+                    end
+                end
             end
         end
     end
@@ -195,4 +200,25 @@ module jellyvl_etherneco_synctimer_slave #(
         end
     end
 
+
+    // monitor (debug)
+    localparam type           t_monitor_time       = logic [32-1:0];
+    t_monitor_time monitor_cmd_rx_start;
+    t_monitor_time monitor_cmd_rx_end  ;
+    t_monitor_time monitor_res_rx_start;
+    t_monitor_time monitor_res_rx_end  ;
+    always_ff @ (posedge clk) begin
+        if (cmd_rx_start) begin
+            monitor_cmd_rx_start <= t_monitor_time'(current_time);
+        end
+        if (cmd_rx_end) begin
+            monitor_cmd_rx_end <= t_monitor_time'(current_time);
+        end
+        if (res_rx_start) begin
+            monitor_res_rx_start <= t_monitor_time'(current_time);
+        end
+        if (res_rx_end) begin
+            monitor_res_rx_end <= t_monitor_time'(current_time);
+        end
+    end
 endmodule

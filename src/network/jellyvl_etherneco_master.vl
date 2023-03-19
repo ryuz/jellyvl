@@ -34,7 +34,27 @@ module etherneco_master #(
     //  Control
     // -------------------------------------
 
-    localparam PERIOD_WIDTH: u32 = 32;
+    var set_time  : logic<TIMER_WIDTH>;
+    var set_valid : logic             ;
+    var set_valid2: logic             ;
+
+    var trig_enable: logic;
+
+    always_ff (clk, reset) {
+        if_reset {
+            set_time    = 64'd0; // h0123456789abcdef;
+            set_valid   = 1'b1;
+            set_valid2  = 1'b1;
+            trig_enable = 1'b0;
+        } else {
+            //            set_time  = 64'd0;
+            set_valid   = set_valid2;
+            set_valid2  = 1'b0;
+            trig_enable = !set_valid && !set_valid2;
+        }
+    }
+
+    localparam PERIOD_WIDTH: u32 = 16;
 
     var timsync_trigger : logic    ;
     var timsync_override: logic    ;
@@ -44,9 +64,9 @@ module etherneco_master #(
     var timsync_length  : logic<16>;
 
     // とりあえず時間合わせパケットに固定
-    assign timsync_type   = 8'h10;
-    assign timsync_node   = 8'h01;
-//  assign request_length = 16'd13 - 16'd1;
+    assign timsync_type = 8'h10;
+    assign timsync_node = 8'h01;
+    //  assign request_length = 16'd13 - 16'd1;
 
 
     // 通信タイミング生成
@@ -57,9 +77,9 @@ module etherneco_master #(
         reset: reset,
         clk  : clk  ,
 
-        enable: 1'b1     ,
-        phase : '0       ,
-        period: 32'd20000,
+        enable: 1'b1     , //trig_enable ,
+        phase : '0       , //current_time as PERIOD_WIDTH,
+        period: 16'd20000,
 
         current_time: current_time,
 
@@ -72,7 +92,7 @@ module etherneco_master #(
             timsync_correct  = 1'b0;
         } else {
             if timsync_trigger {
-                timsync_override = ~timsync_correct;
+                timsync_override = 1'b1; // ~timsync_correct;
                 timsync_correct  = 1'b1;
             }
         }
@@ -161,8 +181,8 @@ module etherneco_master #(
         replace_data : outer_rx_replace_data ,
         replace_valid: outer_rx_replace_valid,
     );
-    
-    
+
+
     // Inner ring RX (receive response)
     var inner_rx_start : logic    ;
     var inner_rx_end   : logic    ;
@@ -233,14 +253,17 @@ module etherneco_master #(
 
         current_time: current_time,
 
-        cmd_tx_start  : timsync_trigger ,
-        cmd_tx_correct:  timsync_correct,
-        cmd_tx_override: timsync_override,
-        cmt_tx_length: timsync_length,
-        m_cmd_tx_last : outer_tx_payload_last ,
-        m_cmd_tx_data : outer_tx_payload_data ,
-        m_cmd_tx_valid: outer_tx_payload_valid,
-        m_cmd_tx_ready: outer_tx_payload_ready,
+        set_time : set_time ,
+        set_valid: set_valid,
+
+        cmd_tx_start   : timsync_trigger       ,
+        cmd_tx_correct : timsync_correct       ,
+        cmd_tx_override: timsync_override      ,
+        cmt_tx_length  : timsync_length        ,
+        m_cmd_tx_last  : outer_tx_payload_last ,
+        m_cmd_tx_data  : outer_tx_payload_data ,
+        m_cmd_tx_valid : outer_tx_payload_valid,
+        m_cmd_tx_ready : outer_tx_payload_ready,
 
         ret_rx_start     : outer_rx_start        ,
         ret_rx_end       : outer_rx_end          ,
