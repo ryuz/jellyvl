@@ -47,7 +47,7 @@ module jellyvl_etherneco_synctimer_master #(
 
 
     // タイマ
-    localparam type t_time = logic [8-1:0][8-1:0];
+    localparam type t_time_pkt = logic [8-1:0][8-1:0];
 
     logic adjust_ready;
     jellyvl_synctimer_timer #(
@@ -68,23 +68,34 @@ module jellyvl_etherneco_synctimer_master #(
         current_time (current_time)
     );
 
+
     // 応答時間計測
-    localparam type     t_offset     = logic [4-1:0][8-1:0];
-    t_offset start_time  ;
-    t_offset elapsed_time;
+    localparam type     t_offset      = logic [32-1:0];
+    t_offset tx_start_time;
+    t_offset rx_start_time;
+    t_offset rx_end_time  ;
+    t_offset total_time   ;
+    t_offset response_time;
+    t_offset packet_time  ;
 
     always_ff @ (posedge clk) begin
         if (cmd_tx_start) begin
-            start_time <= t_offset'(current_time);
+            tx_start_time <= t_offset'(current_time);
         end
-
+        if (res_rx_start) begin
+            rx_start_time <= t_offset'(current_time);
+            response_time <= t_offset'(current_time) - tx_start_time;
+        end
         if (res_rx_end) begin
-            elapsed_time <= t_offset'(current_time) - start_time;
+            rx_end_time <= t_offset'(current_time);
+            total_time  <= t_offset'(current_time) - tx_start_time;
+            packet_time <= t_offset'(current_time) - rx_start_time;
         end
     end
 
     // オフセット時間
-    t_offset offset_time [0:MAX_NODES-1];
+    localparam type         t_offset_pkt = logic [4-1:0][8-1:0];
+    t_offset_pkt offset_time  [0:MAX_NODES-1];
 
 
     // send command
@@ -97,7 +108,7 @@ module jellyvl_etherneco_synctimer_master #(
     logic               cmd_busy ;
     t_cmd_count         cmd_count;
     logic       [8-1:0] cmd_cmd  ;
-    t_time              cmd_time ;
+    t_time_pkt          cmd_time ;
     logic               cmd_last ;
     logic       [8-1:0] cmd_data ;
 
@@ -120,7 +131,7 @@ module jellyvl_etherneco_synctimer_master #(
                 cmd_busy  <= 1'b1;
                 cmd_count <= '0;
                 cmd_cmd   <= {6'd0, cmd_tx_override, cmd_tx_correct};
-                cmd_time  <= t_time'(current_time);
+                cmd_time  <= t_time_pkt'(current_time);
             end else if (cmd_cke) begin
                 cmd_count <= cmd_count_next;
                 cmd_last  <= (cmd_count_next == t_cmd_count'(CMD_LENGTH));
@@ -168,17 +179,23 @@ module jellyvl_etherneco_synctimer_master #(
 
 
     // receive response
-    t_offset rx_offset    [0:MAX_NODES-1];
-    logic    offset_first                ;
-    logic    calc_offset                 ;
+    t_offset delay_time    [0:MAX_NODES-1];
+    t_offset measured_time [0:MAX_NODES-1];
+
+    t_offset_pkt rx_offset [0:MAX_NODES-1];
+
+    logic         offset_first;
+    logic [3-1:0] calc_wait   ;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
             offset_first <= 1'b1;
-            calc_offset  <= 1'b0;
+            calc_wait    <= '0;
             for (int unsigned i = 0; i < MAX_NODES; i++) begin
-                offset_time[i] <= '0;
-                rx_offset[i]   <= 'x;
+                offset_time[i]   <= '0;
+                delay_time[i]    <= 'x;
+                measured_time[i] <= 'x;
+                rx_offset[i]     <= 'x;
             end
         end else begin
             if (res_payload_valid) begin
@@ -191,14 +208,20 @@ module jellyvl_etherneco_synctimer_master #(
                 end
             end
 
-            calc_offset <= res_rx_end;
-            if (calc_offset) begin
+            // calc
+            for (int unsigned i = 0; i < MAX_NODES; i++) begin
+                delay_time[i]    <= response_time - rx_offset[i];
+                measured_time[i] <= delay_time[i] + 2 * packet_time; // 2倍の時間
+            end
+
+            calc_wait <= {calc_wait[1:0], res_rx_end};
+            if (calc_wait[2]) begin
                 offset_first <= 1'b0;
                 for (int unsigned i = 0; i < MAX_NODES; i++) begin
                     if (offset_first) begin
-                        offset_time[i] <= elapsed_time - (rx_offset[i] >> 1);
+                        offset_time[i] <= (measured_time[i] >> 1);
                     end else begin
-                        offset_time[i] <= (offset_time[i] * 6 + elapsed_time * 2 - rx_offset[i]) >> 3;
+                        offset_time[i] <= (offset_time[i] * 6 + measured_time[i]) >> 3;
                     end
                 end
             end

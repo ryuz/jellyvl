@@ -188,7 +188,7 @@ module jellyvl_etherneco_synctimer_slave #(
             correct_time     <= cmd_rx_time + t_time'(cmd_rx_offset);
             correct_valid    <= 1'b0;
 
-            if (res_rx_end) begin
+            if (cmd_rx_end) begin
                 correct_override <= cmd_rx_cmd[1];
                 correct_valid    <= cmd_rx_cmd[0];
             end

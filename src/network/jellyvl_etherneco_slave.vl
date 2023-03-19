@@ -2,8 +2,8 @@ module etherneco_slave #(
     parameter TIMER_WIDTH      : u32 = 64                             , // タイマのbit幅
     parameter NUMERATOR        : u32 = 8                              , // クロック周期の分子
     parameter DENOMINATOR      : u32 = 1                              , // クロック周期の分母
-    parameter ADJ_COUNTER_WIDTH: u32 = 32                             , // 自クロックで経過時間カウンタのbit数
-    parameter ADJ_CALC_WIDTH   : u32 = 32                             , // タイマのうち計算に使う部分
+    parameter ADJ_COUNTER_WIDTH: u32 = 48                             , // 自クロックで経過時間カウンタのbit数
+    parameter ADJ_CALC_WIDTH   : u32 = 48                             , // タイマのうち計算に使う部分
     parameter ADJ_ERROR_WIDTH  : u32 = 32                             , // 誤差計算時のbit幅
     parameter ADJ_ERROR_Q      : u32 = 8                              , // 誤差計算時に追加する固定小数点数bit数
     parameter ADJ_ADJUST_WIDTH : u32 = ADJ_COUNTER_WIDTH + ADJ_ERROR_Q, // 補正周期のbit幅

@@ -2,8 +2,8 @@ module jellyvl_etherneco_slave #(
     parameter int unsigned TIMER_WIDTH       = 64                             , // タイマのbit幅
     parameter int unsigned NUMERATOR         = 8                              , // クロック周期の分子
     parameter int unsigned DENOMINATOR       = 1                              , // クロック周期の分母
-    parameter int unsigned ADJ_COUNTER_WIDTH = 32                             , // 自クロックで経過時間カウンタのbit数
-    parameter int unsigned ADJ_CALC_WIDTH    = 32                             , // タイマのうち計算に使う部分
+    parameter int unsigned ADJ_COUNTER_WIDTH = 48                             , // 自クロックで経過時間カウンタのbit数
+    parameter int unsigned ADJ_CALC_WIDTH    = 48                             , // タイマのうち計算に使う部分
     parameter int unsigned ADJ_ERROR_WIDTH   = 32                             , // 誤差計算時のbit幅
     parameter int unsigned ADJ_ERROR_Q       = 8                              , // 誤差計算時に追加する固定小数点数bit数
     parameter int unsigned ADJ_ADJUST_WIDTH  = ADJ_COUNTER_WIDTH + ADJ_ERROR_Q, // 補正周期のbit幅
