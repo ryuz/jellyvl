@@ -104,6 +104,8 @@ module jellyvl_etherneco_master #(
     // -------------------------------------
 
     // Outer ring TX (send command)
+    logic outer_tx_start;
+
     logic         outer_tx_payload_last ;
     logic [8-1:0] outer_tx_payload_data ;
     logic         outer_tx_payload_valid;
@@ -113,12 +115,14 @@ module jellyvl_etherneco_master #(
         .reset (reset),
         .clk   (clk  ),
         .
-        tx_start  (timsync_trigger),
-        .tx_length (timsync_length ),
-        .tx_type   (timsync_type   ),
-        .tx_node   (timsync_node   ),
+        start  (timsync_trigger),
+        .cancel (1'b0           ),
         .
-        tx_cancel (1'b0),
+        param_length (timsync_length),
+        .param_type   (timsync_type  ),
+        .param_node   (timsync_node  ),
+        .
+        tx_start (outer_tx_start),
         .
         s_payload_last  (outer_tx_payload_last ),
         .s_payload_data  (outer_tx_payload_data ),
@@ -256,7 +260,7 @@ module jellyvl_etherneco_master #(
         set_time  (set_time ),
         .set_valid (set_valid),
         .
-        cmd_tx_start    (timsync_trigger       ),
+        cmd_tx_start    (outer_tx_start        ),
         .cmd_tx_correct  (timsync_correct       ),
         .cmd_tx_override (timsync_override      ),
         .cmt_tx_length   (timsync_length        ),

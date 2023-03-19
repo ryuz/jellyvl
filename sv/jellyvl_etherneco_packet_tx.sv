@@ -4,12 +4,14 @@ module jellyvl_etherneco_packet_tx #(
     input logic reset,
     input logic clk  ,
 
-    input logic          tx_start ,
-    input logic [16-1:0] tx_length, // 転送サイズより1小さい値を指定(AXI方式)
-    input logic [8-1:0]  tx_type  ,
-    input logic [8-1:0]  tx_node  ,
+    input logic start ,
+    input logic cancel,
 
-    input logic tx_cancel,
+    input logic [16-1:0] param_length, // 転送サイズより1小さい値を指定(AXI方式)
+    input logic [8-1:0]  param_type  ,
+    input logic [8-1:0]  param_node  ,
+
+    output logic tx_start,
 
     input  logic         s_payload_last ,
     input  logic [8-1:0] s_payload_data ,
@@ -117,7 +119,7 @@ module jellyvl_etherneco_packet_tx #(
                     if (tx_start) begin
                         st0_state  <= STATE_PREAMBLE;
                         st0_count  <= '0;
-                        st0_length <= tx_length;
+                        st0_length <= param_length;
                         st0_first  <= 1'b0;
                         st0_last   <= 1'b0;
                     end
@@ -217,7 +219,7 @@ module jellyvl_etherneco_packet_tx #(
                 st0_last   <= 1'bx;
             end
 
-            if (tx_cancel) begin
+            if (cancel) begin
                 st0_state  <= STATE_IDLE;
                 st0_count  <= 'x;
                 st0_length <= 'x;
@@ -229,6 +231,7 @@ module jellyvl_etherneco_packet_tx #(
 
     assign fifo_ready = cke && (st0_state == STATE_PAYLOAD);
 
+    assign tx_start = start && (st0_state == STATE_IDLE);
 
 
     // ----------------------------
@@ -282,11 +285,11 @@ module jellyvl_etherneco_packet_tx #(
                 end
 
                 STATE_TYPE: begin
-                    st1_data <= tx_type;
+                    st1_data <= param_type;
                 end
 
                 STATE_NODE: begin
-                    st1_data <= tx_node;
+                    st1_data <= param_node;
                 end
 
                 STATE_PAYLOAD: begin
@@ -306,7 +309,7 @@ module jellyvl_etherneco_packet_tx #(
             endcase
 
             // キャンセル
-            if (tx_cancel) begin
+            if (cancel) begin
                 st1_state <= STATE_IDLE;
                 st1_first <= 1'bx;
                 st1_last  <= 1'bx;
@@ -338,7 +341,7 @@ module jellyvl_etherneco_packet_tx #(
             st2_last  <= st1_last;
             st2_data  <= st1_data;
 
-            if (tx_cancel) begin
+            if (cancel) begin
                 st2_state <= STATE_IDLE;
                 st2_first <= 1'bx;
                 st2_last  <= 1'bx;
@@ -410,7 +413,7 @@ module jellyvl_etherneco_packet_tx #(
             end
             st3_valid <= (st2_state != STATE_IDLE);
 
-            if ((tx_cancel && st3_valid && !st3_last) || st2_state == STATE_ERROR) begin
+            if ((cancel && st3_valid && !st3_last) || st2_state == STATE_ERROR) begin
                 st3_state     <= STATE_ERROR;
                 st3_first     <= 1'b0;
                 st3_last      <= 1'b1;

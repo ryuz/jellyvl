@@ -4,12 +4,14 @@ module etherneco_packet_tx #(
     reset: input logic,
     clk  : input logic,
 
-    tx_start : input logic    ,
-    tx_length: input logic<16>, // 転送サイズより1小さい値を指定(AXI方式)
-    tx_type  : input logic<8> ,
-    tx_node  : input logic<8> ,
+    start : input logic,
+    cancel: input logic,
 
-    tx_cancel: input logic,
+    param_length: input logic<16>, // 転送サイズより1小さい値を指定(AXI方式)
+    param_type  : input logic<8> ,
+    param_node  : input logic<8> ,
+
+    tx_start : output logic    ,
 
     s_payload_last : input  logic   ,
     s_payload_data : input  logic<8>,
@@ -117,7 +119,7 @@ module etherneco_packet_tx #(
                     if tx_start {
                         st0_state  = STATE::PREAMBLE;
                         st0_count  = '0;
-                        st0_length = tx_length;
+                        st0_length = param_length;
                         st0_first  = 1'b0;
                         st0_last   = 1'b0;
                     }
@@ -217,7 +219,7 @@ module etherneco_packet_tx #(
                 st0_last   = 1'bx;
             }
 
-            if tx_cancel {
+            if cancel {
                 st0_state  = STATE::IDLE;
                 st0_count  = 'x;
                 st0_length = 'x;
@@ -229,6 +231,7 @@ module etherneco_packet_tx #(
 
     assign fifo_ready = cke && (st0_state == STATE::PAYLOAD);
 
+    assign tx_start = start && (st0_state == STATE::IDLE);
 
 
     // ----------------------------
@@ -282,11 +285,11 @@ module etherneco_packet_tx #(
                 }
 
                 STATE::TYPE: {
-                    st1_data = tx_type;
+                    st1_data = param_type;
                 }
 
                 STATE::NODE: {
-                    st1_data = tx_node;
+                    st1_data = param_node;
                 }
 
                 STATE::PAYLOAD: {
@@ -305,7 +308,7 @@ module etherneco_packet_tx #(
             }
 
             // キャンセル
-            if tx_cancel {
+            if cancel {
                 st1_state = STATE::IDLE;
                 st1_first = 1'bx;
                 st1_last  = 1'bx;
@@ -337,7 +340,7 @@ module etherneco_packet_tx #(
             st2_last  = st1_last;
             st2_data  = st1_data;
 
-            if tx_cancel {
+            if cancel {
                 st2_state = STATE::IDLE;
                 st2_first = 1'bx;
                 st2_last  = 1'bx;
@@ -409,7 +412,7 @@ module etherneco_packet_tx #(
             }
             st3_valid = (st2_state != STATE::IDLE);
 
-            if (tx_cancel && st3_valid && !st3_last) || st2_state == STATE::ERROR {
+            if (cancel && st3_valid && !st3_last) || st2_state == STATE::ERROR {
                 st3_state     = STATE::ERROR;
                 st3_first     = 1'b0;
                 st3_last      = 1'b1;
