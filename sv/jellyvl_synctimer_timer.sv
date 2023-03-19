@@ -38,9 +38,9 @@ module jellyvl_synctimer_timer #(
                 add_value <= t_count'(COUNT_NUM);
                 if (adjust_valid && adjust_ready) begin
                     if (adjust_sign) begin
-                        add_value <= t_count'((COUNT_NUM + 1));
-                    end else begin
                         add_value <= t_count'((COUNT_NUM - 1));
+                    end else begin
+                        add_value <= t_count'((COUNT_NUM + 1));
                     end
                 end
             end

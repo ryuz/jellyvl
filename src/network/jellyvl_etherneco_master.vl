@@ -6,6 +6,8 @@ module etherneco_master #(
     reset: input logic,
     clk  : input logic,
 
+    force_override: input logic,
+
     current_time: output logic<TIMER_WIDTH>,
 
     m_down_tx_first: output logic   ,
@@ -92,7 +94,7 @@ module etherneco_master #(
             timsync_correct  = 1'b0;
         } else {
             if timsync_trigger {
-                timsync_override = 1'b1; // ~timsync_correct;
+                timsync_override = ~timsync_correct;
                 timsync_correct  = 1'b1;
             }
         }
@@ -104,7 +106,7 @@ module etherneco_master #(
     // -------------------------------------
 
     // Outer ring TX (send command)
-    var outer_tx_start : logic   ;
+    var outer_tx_start: logic;
 
     var outer_tx_payload_last : logic   ;
     var outer_tx_payload_data : logic<8>;
@@ -116,11 +118,11 @@ module etherneco_master #(
         clk  : clk  ,
 
         start : timsync_trigger,
-        cancel: 1'b0,
+        cancel: 1'b0           ,
 
-        param_length: timsync_length ,
-        param_type  : timsync_type   ,
-        param_node  : timsync_node   ,
+        param_length: timsync_length,
+        param_type  : timsync_type  ,
+        param_node  : timsync_node  ,
 
         tx_start: outer_tx_start,
 
@@ -260,7 +262,7 @@ module etherneco_master #(
         set_time : set_time ,
         set_valid: set_valid,
 
-        cmd_tx_start   : outer_tx_start       ,
+        cmd_tx_start   : outer_tx_start        ,
         cmd_tx_correct : timsync_correct       ,
         cmd_tx_override: timsync_override      ,
         cmt_tx_length  : timsync_length        ,

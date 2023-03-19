@@ -251,7 +251,7 @@ module jellyvl_synctimer_adjust #(
     // adjuster
     logic    adj_zero  ;
     logic    adj_sign  ;
-    t_adjust adj_pediod;
+    t_adjust adj_period;
     t_adjust adj_count ;
     logic    adj_valid ;
 
@@ -262,15 +262,15 @@ module jellyvl_synctimer_adjust #(
         if (reset) begin
             adj_zero   <= 1'b1;
             adj_sign   <= 'x;
-            adj_pediod <= 'x;
+            adj_period <= 'x;
             adj_count  <= '0;
             adj_valid  <= 1'b0;
         end else begin
             adj_valid <= 1'b0;
 
             adj_count <= adj_count_next;
-            if (adj_count_next >= adj_pediod) begin
-                adj_count <= adj_count_next - adj_pediod;
+            if (adj_count_next >= adj_period) begin
+                adj_count <= adj_count_next - adj_period;
                 adj_valid <= 1'b1;
             end
             if (adj_zero) begin
@@ -281,7 +281,7 @@ module jellyvl_synctimer_adjust #(
             if (div_valid) begin
                 adj_zero   <= st4_zero;
                 adj_sign   <= st4_sign;
-                adj_pediod <= div_quotient;
+                adj_period <= div_quotient;
             end
         end
     end
@@ -303,4 +303,22 @@ module jellyvl_synctimer_adjust #(
 
         end
     end
+
+
+    // monitor
+    t_error  monitor_phase_adjust     ;
+    t_error  monitor_phase_adjust_int ;
+    t_error  monitor_period_adjust    ;
+    t_error  monitor_period_adjust_int;
+    logic    monitor_adj_sign         ;
+    t_adjust monitor_adj_period       ;
+    t_adjust monitor_adj_period_int   ;
+
+    assign monitor_phase_adjust      = st2_phase_adjust;
+    assign monitor_phase_adjust_int  = st2_phase_adjust >>> ERROR_Q;
+    assign monitor_period_adjust     = st2_period_adjust;
+    assign monitor_period_adjust_int = st2_period_adjust >>> ERROR_Q;
+    assign monitor_adj_sign          = adj_sign;
+    assign monitor_adj_period        = adj_period;
+    assign monitor_adj_period_int    = adj_period >>> ADJUST_Q;
 endmodule

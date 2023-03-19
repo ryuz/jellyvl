@@ -6,6 +6,8 @@ module jellyvl_etherneco_master #(
     input logic reset,
     input logic clk  ,
 
+    input logic force_override,
+
     output logic [TIMER_WIDTH-1:0] current_time,
 
     output logic         m_down_tx_first,
@@ -92,7 +94,7 @@ module jellyvl_etherneco_master #(
             timsync_correct  <= 1'b0;
         end else begin
             if (timsync_trigger) begin
-                timsync_override <= 1'b1; // ~timsync_correct;
+                timsync_override <= ~timsync_correct;
                 timsync_correct  <= 1'b1;
             end
         end

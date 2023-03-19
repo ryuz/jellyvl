@@ -38,9 +38,9 @@ module synctimer_timer #(
                 add_value = COUNT_NUM as t_count;
                 if adjust_valid && adjust_ready {
                     if adjust_sign {
-                        add_value = (COUNT_NUM + 1) as t_count;
-                    } else {
                         add_value = (COUNT_NUM - 1) as t_count;
+                    } else {
+                        add_value = (COUNT_NUM + 1) as t_count;
                     }
                 }
             }

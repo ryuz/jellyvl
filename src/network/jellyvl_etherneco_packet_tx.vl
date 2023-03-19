@@ -11,7 +11,7 @@ module etherneco_packet_tx #(
     param_type  : input logic<8> ,
     param_node  : input logic<8> ,
 
-    tx_start : output logic    ,
+    tx_start: output logic,
 
     s_payload_last : input  logic   ,
     s_payload_data : input  logic<8>,

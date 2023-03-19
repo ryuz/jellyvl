@@ -251,7 +251,7 @@ module synctimer_adjust #(
     // adjuster
     var adj_zero  : logic   ;
     var adj_sign  : logic   ;
-    var adj_pediod: t_adjust;
+    var adj_period: t_adjust;
     var adj_count : t_adjust;
     var adj_valid : logic   ;
 
@@ -262,15 +262,15 @@ module synctimer_adjust #(
         if_reset {
             adj_zero   = 1'b1;
             adj_sign   = 'x;
-            adj_pediod = 'x;
+            adj_period = 'x;
             adj_count  = '0;
             adj_valid  = 1'b0;
         } else {
             adj_valid = 1'b0;
 
             adj_count = adj_count_next;
-            if adj_count_next >= adj_pediod {
-                adj_count = adj_count_next - adj_pediod;
+            if adj_count_next >= adj_period {
+                adj_count = adj_count_next - adj_period;
                 adj_valid = 1'b1;
             }
             if adj_zero {
@@ -281,7 +281,7 @@ module synctimer_adjust #(
             if div_valid {
                 adj_zero   = st4_zero;
                 adj_sign   = st4_sign;
-                adj_pediod = div_quotient;
+                adj_period = div_quotient;
             }
         }
     }
@@ -303,4 +303,22 @@ module synctimer_adjust #(
 
         }
     }
+
+
+    // monitor
+    var monitor_phase_adjust     : t_error ;
+    var monitor_phase_adjust_int : t_error ;
+    var monitor_period_adjust    : t_error ;
+    var monitor_period_adjust_int: t_error ;
+    var monitor_adj_sign         : logic   ;
+    var monitor_adj_period       : t_adjust;
+    var monitor_adj_period_int   : t_adjust;
+
+    assign monitor_phase_adjust      = st2_phase_adjust;
+    assign monitor_phase_adjust_int  = st2_phase_adjust >>> ERROR_Q;
+    assign monitor_period_adjust     = st2_period_adjust;
+    assign monitor_period_adjust_int = st2_period_adjust >>> ERROR_Q;
+    assign monitor_adj_sign          = adj_sign;
+    assign monitor_adj_period        = adj_period;
+    assign monitor_adj_period_int    = adj_period >>> ADJUST_Q;
 }
