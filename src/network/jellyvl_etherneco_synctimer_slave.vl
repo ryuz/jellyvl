@@ -87,8 +87,8 @@ module etherneco_synctimer_slave #(
         reset: reset,
         clk  : clk  ,
 
-        adj_param_phase_min: -10 as t_adj_phase,
-        adj_param_phase_max: +10 as t_adj_phase,
+        adj_param_phase_min: -16 as t_adj_phase,
+        adj_param_phase_max: +16 as t_adj_phase,
 
         set_time : '0  ,
         set_valid: 1'b0,
