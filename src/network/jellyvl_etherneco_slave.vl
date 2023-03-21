@@ -10,8 +10,8 @@ module etherneco_slave #(
     parameter ADJ_ADJUST_Q       : u32 = ADJ_ERROR_Q                    , // 補正周期に追加する固定小数点数bit数
     parameter ADJ_PERIOD_WIDTH   : u32 = ADJ_ERROR_WIDTH                , // 周期補正に使うbit数
     parameter ADJ_PHASE_WIDTH    : u32 = ADJ_ERROR_WIDTH                , // 位相補正に使うbit数
-    parameter ADJ_PERIOD_LPF_GAIN: u32 = 2                              , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter ADJ_PHASE_LPF_GAIN : u32 = 2                              , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter ADJ_PERIOD_LPF_GAIN: u32 = 4                              , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter ADJ_PHASE_LPF_GAIN : u32 = 4                              , // 位相補正のLPFの更新ゲイン(1/2^N)
 ) (
     reset: input logic,
     clk  : input logic,

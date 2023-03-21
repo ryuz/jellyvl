@@ -3,7 +3,7 @@ module etherneco_master #(
     parameter NUMERATOR              : u32 = 8 , // クロック周期の分子
     parameter DENOMINATOR            : u32 = 1 , // クロック周期の分母
     parameter TIMSYNC_OFFSET_WIDTH   : u32 = 24, // オフセットbit幅
-    parameter TIMSYNC_OFFSET_LPF_GAIN: u32 = 2 , // オフセット更新LPFのゲイン (1/2^N)
+    parameter TIMSYNC_OFFSET_LPF_GAIN: u32 = 4 , // オフセット更新LPFのゲイン (1/2^N)
 ) (
     reset: input logic,
     clk  : input logic,
