@@ -10,8 +10,8 @@ module synctimer_adjust #(
     parameter ADJUST_Q       : u32 = ERROR_Q                , // 補正周期に追加する固定小数点数bit数
     parameter PERIOD_WIDTH   : u32 = ERROR_WIDTH            , // 周期補正に使うbit数
     parameter PHASE_WIDTH    : u32 = ERROR_WIDTH            , // 位相補正に使うbit数
-    parameter PERIOD_LPF_GAIN: u32 = 4                      , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter PHASE_LPF_GAIN : u32 = 4                      , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter PERIOD_LPF_GAIN: u32 = 2                      , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter PHASE_LPF_GAIN : u32 = 2                      , // 位相補正のLPFの更新ゲイン(1/2^N)
 ) (
     reset: input logic,
     clk  : input logic,
@@ -71,9 +71,11 @@ module synctimer_adjust #(
     var st0_first               : logic  ;
     var st0_phase_error         : t_phase;
     var st0_valid               : logic  ;
+    var st0_counter_trig        : logic  ;
 
     always_ff (clk, reset) {
         if_reset {
+            st0_counter_trig         = 1'bx;
             st0_previus_local_time   = 'x;
             st0_previus_correct_time = 'x;
             st0_local_period         = 'x;
@@ -82,6 +84,7 @@ module synctimer_adjust #(
             st0_phase_error          = 'x;
             st0_valid                = 1'b0;
         } else {
+            st0_counter_trig = correct_valid;
             st0_valid = 1'b0;
             if correct_valid {
                 st0_previus_local_time   = current_local_time;
@@ -101,23 +104,27 @@ module synctimer_adjust #(
 
     // stage 1
     var st1_first       : logic  ;
-    var st1_count       : t_count; // 自クロックでの経過時刻計測
+//    var st1_count       : t_count; // 自クロックでの経過時刻計測
     var st1_phase_error : t_error;
     var st1_period_error: t_error;
     var st1_valid       : logic  ;
+    var st1_counter_trig        : logic  ;
 
     always_ff (clk, reset) {
         if_reset {
+            st1_counter_trig = 1'bx;
             st1_first        = 1'b1;
-            st1_count        = 'x;
+//            st1_count        = 'x;
             st1_phase_error  = '0;
             st1_period_error = 'x;
             st1_valid        = 1'b0;
         } else {
-            st1_count += 1 as t_count;
-            if st1_valid {
-                st1_count = '0;
-            }
+            st1_counter_trig = st0_counter_trig;
+
+//            st1_count += 1 as t_count;
+//            if st1_valid {
+//                st1_count = '0;
+//            }
 
             if st0_valid {
                 st1_first       = 1'b0;
@@ -135,6 +142,7 @@ module synctimer_adjust #(
             if correct_valid && correct_override {
                 st1_first = 1'b1;
             }
+
         }
     }
     var st1_phase_error_int : t_error;
@@ -145,28 +153,34 @@ module synctimer_adjust #(
 
     // stage 2
     var st2_first        : logic  ;
-    var st2_count        : t_count;
+//    var st2_count        : t_count;
     var st2_phase_adjust : t_error;
     var st2_period_adjust: t_error;
     var st2_valid        : logic  ;
+    var st2_counter_trig        : logic  ;
+
+    var st1_period_error_t : t_error ;
+    assign st1_period_error_t = st1_period_error + st2_phase_adjust;  // st1_local_period に前回位相補正が含まれているのでその分相殺
 
     always_ff (clk, reset) {
         if_reset {
+            st2_counter_trig  = 1'bx;
             st2_first         = 1'b1;
-            st2_count         = 'x;
+//            st2_count         = 'x;
             st2_phase_adjust  = '0;
             st2_period_adjust = '0;
             st2_valid         = 1'b0;
         } else {
+            st2_counter_trig = st1_counter_trig;
             if st1_valid {
                 st2_first = 1'b0;
-                st2_count = st1_count + 1 as t_count;
+//                st2_count = st1_count + 1 as t_count;
 
                 // ゲインを 1/4 とすることで発振を抑える
-                st2_phase_adjust = st1_phase_error >>> 2;
+                st2_phase_adjust = st1_phase_error >>> PHASE_LPF_GAIN;
 
                 // st0_local_period に前回位相補正が含まれているのでその分相殺して加算(同じくゲイン 1/4 としてLPF)
-                st2_period_adjust += (st1_period_error + st2_phase_adjust) >>> 2;
+                st2_period_adjust += st1_period_error_t >>> PERIOD_LPF_GAIN;
             }
             st2_valid = st1_valid;
 
@@ -178,26 +192,30 @@ module synctimer_adjust #(
 
     // stage 3
     var st3_adjust: t_error;
-    var st3_count : t_count;
+//    var st3_count : t_count;
     var st3_valid : logic  ;
+    var st3_counter_trig        : logic  ;
 
     always_ff (clk, reset) {
         if_reset {
+            st3_counter_trig = 1'bx;
             st3_adjust = 'x;
-            st3_count  = 'x;
+//            st3_count  = 'x;
             st3_valid  = 1'b0;
         } else {
+            st3_counter_trig = st2_counter_trig;
             st3_adjust = st2_period_adjust + st2_phase_adjust;
-            st3_count  = st2_count;
+//            st3_count  = st2_count;
             st3_valid  = st2_valid;
         }
     }
 
     // stage 3
+    var st4_counter_trig : logic    ;
+    var st4_count : t_error_u; // 自クロックでの経過時刻計測
+    var st4_adjust: t_error_u;
     var st4_sign  : logic    ;
     var st4_zero  : logic    ;
-    var st4_adjust: t_error_u;
-    var st4_count : t_error_u;
     var st4_valid : logic    ;
 
     always_ff (clk, reset) {
@@ -207,7 +225,14 @@ module synctimer_adjust #(
             st4_adjust = 'x;
             st4_count  = 'x;
             st4_valid  = 1'b0;
+            st4_counter_trig = 1'b0;
         } else {
+            st4_count += 1'b1;
+            if st4_counter_trig {
+                st4_count = '0;
+            }
+            st4_counter_trig = st3_counter_trig;
+
             if st3_valid {
                 st4_sign   = st3_adjust <: 0;
                 st4_zero   = st3_adjust == 0;
@@ -216,7 +241,7 @@ module synctimer_adjust #(
                 } else {
                     st3_adjust as t_error_u
                 };
-                st4_count = st3_count as t_error_u;
+//                st4_count = st3_count as t_error_u;
             }
             st4_valid = st3_valid;
         }
@@ -309,6 +334,7 @@ module synctimer_adjust #(
             adj_calc_valid = 1'b0;
             if adj_calc_last {
                 adj_calc_update = 1'b0;
+                adj_calc_sign   = adj_param_sign;
                 adj_calc_count  = adj_calc_next;
                 adj_calc_last   = 1'b0;
                 adj_calc_valid  = ~adj_calc_zero;
@@ -391,6 +417,7 @@ module synctimer_adjust #(
     */
 
     // monitor
+    /*
     var monitor_phase_adjust     : t_error;
     var monitor_phase_adjust_int : t_error;
     var monitor_period_adjust    : t_error;
@@ -406,4 +433,36 @@ module synctimer_adjust #(
     //    assign monitor_adj_sign          = adj_sign;
     //    assign monitor_adj_period        = adj_period;
     //    assign monitor_adj_period_int    = adj_period >>> ADJUST_Q;
+    */
+
+    var monitor_local_time       : t_calc;
+    var monitor_correct_time     : t_calc;
+    var monitor_local_period     : t_calc;
+    var monitor_correct_period   : t_calc;
+    var monitor_phase_error      : real;
+    var monitor_period_error     : real;
+    var monitor_period_error_t   : real;
+    var monitor_phase_adjust     : real;
+    var monitor_period_adjust    : real;
+    var monitor_total_adjust     : real;
+
+    always_ff(clk) {
+        if correct_valid {
+            monitor_local_time   = current_local_time;
+            monitor_correct_time = current_correct_time;
+        }
+        if st1_valid {
+            monitor_period_error_t    = $itor(st1_period_error_t)  / $itor(2**ERROR_Q);
+        }
+    }
+
+
+    assign monitor_correct_period    = st0_correct_period;
+    assign monitor_local_period      = st0_local_period;
+    assign monitor_phase_error       = $itor(st1_phase_error)   / $itor(2**ERROR_Q);
+    assign monitor_period_error      = $itor(st1_period_error)  / $itor(2**ERROR_Q);
+    assign monitor_phase_adjust      = $itor(st2_phase_adjust)  / $itor(2**ERROR_Q);
+    assign monitor_period_adjust     = $itor(st2_period_adjust) / $itor(2**ERROR_Q);
+    assign monitor_total_adjust      = $itor(st3_adjust)        / $itor(2**ERROR_Q);
+
 }

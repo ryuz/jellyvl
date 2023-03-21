@@ -10,8 +10,8 @@ module jellyvl_synctimer_adjust #(
     parameter int unsigned ADJUST_Q        = ERROR_Q                , // 補正周期に追加する固定小数点数bit数
     parameter int unsigned PERIOD_WIDTH    = ERROR_WIDTH            , // 周期補正に使うbit数
     parameter int unsigned PHASE_WIDTH     = ERROR_WIDTH            , // 位相補正に使うbit数
-    parameter int unsigned PERIOD_LPF_GAIN = 4                      , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter int unsigned PHASE_LPF_GAIN  = 4                       // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned PERIOD_LPF_GAIN = 2                      , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned PHASE_LPF_GAIN  = 2                       // 位相補正のLPFの更新ゲイン(1/2^N)
 ) (
     input logic reset,
     input logic clk  ,
@@ -71,9 +71,11 @@ module jellyvl_synctimer_adjust #(
     logic   st0_first               ;
     t_phase st0_phase_error         ;
     logic   st0_valid               ;
+    logic   st0_counter_trig        ;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
+            st0_counter_trig         <= 1'bx;
             st0_previus_local_time   <= 'x;
             st0_previus_correct_time <= 'x;
             st0_local_period         <= 'x;
@@ -82,7 +84,8 @@ module jellyvl_synctimer_adjust #(
             st0_phase_error          <= 'x;
             st0_valid                <= 1'b0;
         end else begin
-            st0_valid <= 1'b0;
+            st0_counter_trig <= correct_valid;
+            st0_valid        <= 1'b0;
             if (correct_valid) begin
                 st0_previus_local_time   <= current_local_time;
                 st0_previus_correct_time <= current_correct_time;
@@ -100,24 +103,28 @@ module jellyvl_synctimer_adjust #(
 
 
     // stage 1
-    logic   st1_first       ;
-    t_count st1_count       ; // 自クロックでの経過時刻計測
+    logic st1_first;
+    //    var st1_count       : t_count; // 自クロックでの経過時刻計測
     t_error st1_phase_error ;
     t_error st1_period_error;
     logic   st1_valid       ;
+    logic   st1_counter_trig;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
+            st1_counter_trig <= 1'bx;
             st1_first        <= 1'b1;
-            st1_count        <= 'x;
+            //            st1_count        = 'x;
             st1_phase_error  <= '0;
             st1_period_error <= 'x;
             st1_valid        <= 1'b0;
         end else begin
-            st1_count <= st1_count + (t_count'(1));
-            if (st1_valid) begin
-                st1_count <= '0;
-            end
+            st1_counter_trig <= st0_counter_trig;
+
+            //            st1_count += 1 as t_count;
+            //            if st1_valid {
+            //                st1_count = '0;
+            //            }
 
             if (st0_valid) begin
                 st1_first       <= 1'b0;
@@ -135,6 +142,7 @@ module jellyvl_synctimer_adjust #(
             if (correct_valid && correct_override) begin
                 st1_first <= 1'b1;
             end
+
         end
     end
     t_error st1_phase_error_int ;
@@ -144,29 +152,35 @@ module jellyvl_synctimer_adjust #(
 
 
     // stage 2
-    logic   st2_first        ;
-    t_count st2_count        ;
+    logic st2_first;
+    //    var st2_count        : t_count;
     t_error st2_phase_adjust ;
     t_error st2_period_adjust;
     logic   st2_valid        ;
+    logic   st2_counter_trig ;
+
+    t_error st1_period_error_t;
+    assign st1_period_error_t = st1_period_error + st2_phase_adjust; // st1_local_period に前回位相補正が含まれているのでその分相殺
 
     always_ff @ (posedge clk) begin
         if (reset) begin
-            st2_first         <= 1'b1;
-            st2_count         <= 'x;
+            st2_counter_trig <= 1'bx;
+            st2_first        <= 1'b1;
+            //            st2_count         = 'x;
             st2_phase_adjust  <= '0;
             st2_period_adjust <= '0;
             st2_valid         <= 1'b0;
         end else begin
+            st2_counter_trig <= st1_counter_trig;
             if (st1_valid) begin
                 st2_first <= 1'b0;
-                st2_count <= st1_count + t_count'(1);
+                //                st2_count = st1_count + 1 as t_count;
 
                 // ゲインを 1/4 とすることで発振を抑える
-                st2_phase_adjust <= st1_phase_error >>> 2;
+                st2_phase_adjust <= st1_phase_error >>> PHASE_LPF_GAIN;
 
                 // st0_local_period に前回位相補正が含まれているのでその分相殺して加算(同じくゲイン 1/4 としてLPF)
-                st2_period_adjust <= st2_period_adjust + ((st1_period_error + st2_phase_adjust) >>> 2);
+                st2_period_adjust <= st2_period_adjust + (st1_period_error_t >>> PERIOD_LPF_GAIN);
             end
             st2_valid <= st1_valid;
 
@@ -178,36 +192,47 @@ module jellyvl_synctimer_adjust #(
 
     // stage 3
     t_error st3_adjust;
-    t_count st3_count ;
-    logic   st3_valid ;
+    //    var st3_count : t_count;
+    logic st3_valid       ;
+    logic st3_counter_trig;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
-            st3_adjust <= 'x;
-            st3_count  <= 'x;
-            st3_valid  <= 1'b0;
+            st3_counter_trig <= 1'bx;
+            st3_adjust       <= 'x;
+            //            st3_count  = 'x;
+            st3_valid <= 1'b0;
         end else begin
-            st3_adjust <= st2_period_adjust + st2_phase_adjust;
-            st3_count  <= st2_count;
-            st3_valid  <= st2_valid;
+            st3_counter_trig <= st2_counter_trig;
+            st3_adjust       <= st2_period_adjust + st2_phase_adjust;
+            //            st3_count  = st2_count;
+            st3_valid <= st2_valid;
         end
     end
 
     // stage 3
-    logic     st4_sign  ;
-    logic     st4_zero  ;
-    t_error_u st4_adjust;
-    t_error_u st4_count ;
-    logic     st4_valid ;
+    logic     st4_counter_trig;
+    t_error_u st4_count       ; // 自クロックでの経過時刻計測
+    t_error_u st4_adjust      ;
+    logic     st4_sign        ;
+    logic     st4_zero        ;
+    logic     st4_valid       ;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
-            st4_sign   <= 'x;
-            st4_zero   <= 'x;
-            st4_adjust <= 'x;
-            st4_count  <= 'x;
-            st4_valid  <= 1'b0;
+            st4_sign         <= 'x;
+            st4_zero         <= 'x;
+            st4_adjust       <= 'x;
+            st4_count        <= 'x;
+            st4_valid        <= 1'b0;
+            st4_counter_trig <= 1'b0;
         end else begin
+            st4_count <= st4_count + (1'b1);
+            if (st4_counter_trig) begin
+                st4_count <= '0;
+            end
+            st4_counter_trig <= st3_counter_trig;
+
             if (st3_valid) begin
                 st4_sign   <= st3_adjust < 0;
                 st4_zero   <= st3_adjust == 0;
@@ -216,7 +241,7 @@ module jellyvl_synctimer_adjust #(
                 ) : (
                     t_error_u'(st3_adjust)
                 ));
-                st4_count <= t_error_u'(st3_count);
+                //                st4_count = st3_count as t_error_u;
             end
             st4_valid <= st3_valid;
         end
@@ -309,6 +334,7 @@ module jellyvl_synctimer_adjust #(
             adj_calc_valid <= 1'b0;
             if (adj_calc_last) begin
                 adj_calc_update <= 1'b0;
+                adj_calc_sign   <= adj_param_sign;
                 adj_calc_count  <= adj_calc_next;
                 adj_calc_last   <= 1'b0;
                 adj_calc_valid  <= ~adj_calc_zero;
@@ -391,10 +417,11 @@ module jellyvl_synctimer_adjust #(
     */
 
     // monitor
-    t_error monitor_phase_adjust     ;
-    t_error monitor_phase_adjust_int ;
-    t_error monitor_period_adjust    ;
-    t_error monitor_period_adjust_int;
+    /*
+    var monitor_phase_adjust     : t_error;
+    var monitor_phase_adjust_int : t_error;
+    var monitor_period_adjust    : t_error;
+    var monitor_period_adjust_int: t_error;
     //    var monitor_adj_sign         : logic   ;
     //    var monitor_adj_period       : t_adjust;
     //    var monitor_adj_period_int   : t_adjust;
@@ -406,4 +433,35 @@ module jellyvl_synctimer_adjust #(
     //    assign monitor_adj_sign          = adj_sign;
     //    assign monitor_adj_period        = adj_period;
     //    assign monitor_adj_period_int    = adj_period >>> ADJUST_Q;
+    */
+
+    t_calc monitor_local_time    ;
+    t_calc monitor_correct_time  ;
+    t_calc monitor_local_period  ;
+    t_calc monitor_correct_period;
+    real   monitor_phase_error   ;
+    real   monitor_period_error  ;
+    real   monitor_period_error_t;
+    real   monitor_phase_adjust  ;
+    real   monitor_period_adjust ;
+    real   monitor_total_adjust  ;
+
+    always_ff @ (posedge clk) begin
+        if (correct_valid) begin
+            monitor_local_time   <= current_local_time;
+            monitor_correct_time <= current_correct_time;
+        end
+        if (st1_valid) begin
+            monitor_period_error_t <= $itor(st1_period_error_t) / $itor(2 ** ERROR_Q);
+        end
+    end
+
+    assign monitor_correct_period = st0_correct_period;
+    assign monitor_local_period   = st0_local_period;
+    assign monitor_phase_error    = $itor(st1_phase_error) / $itor(2 ** ERROR_Q);
+    assign monitor_period_error   = $itor(st1_period_error) / $itor(2 ** ERROR_Q);
+    assign monitor_phase_adjust   = $itor(st2_phase_adjust) / $itor(2 ** ERROR_Q);
+    assign monitor_period_adjust  = $itor(st2_period_adjust) / $itor(2 ** ERROR_Q);
+    assign monitor_total_adjust   = $itor(st3_adjust) / $itor(2 ** ERROR_Q);
+
 endmodule
