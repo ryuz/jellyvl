@@ -1,15 +1,17 @@
 
 // 調整機構
 module synctimer_adjust #(
-    parameter TIMER_WIDTH  : u32 = 64                     , // タイマのbit幅
-    parameter COUNTER_WIDTH: u32 = 32                     , // 自クロックで経過時間カウンタのbit数
-    parameter CALC_WIDTH   : u32 = 32                     , // タイマのうち計算に使う部分
-    parameter ERROR_WIDTH  : u32 = 32                     , // 誤差計算時のbit幅
-    parameter ERROR_Q      : u32 = 8                      , // 誤差計算時に追加する固定小数点数bit数
-    parameter ADJUST_WIDTH : u32 = COUNTER_WIDTH + ERROR_Q, // 補正周期のbit幅
-    parameter ADJUST_Q     : u32 = ERROR_Q                , // 補正周期に追加する固定小数点数bit数
-    parameter PERIOD_WIDTH : u32 = ERROR_WIDTH            , // 周期補正に使うbit数
-    parameter PHASE_WIDTH  : u32 = ERROR_WIDTH            , // 位相補正に使うbit数
+    parameter TIMER_WIDTH    : u32 = 64                     , // タイマのbit幅
+    parameter COUNTER_WIDTH  : u32 = 32                     , // 自クロックで経過時間カウンタのbit数
+    parameter CALC_WIDTH     : u32 = 32                     , // タイマのうち計算に使う部分
+    parameter ERROR_WIDTH    : u32 = 32                     , // 誤差計算時のbit幅
+    parameter ERROR_Q        : u32 = 8                      , // 誤差計算時に追加する固定小数点数bit数
+    parameter ADJUST_WIDTH   : u32 = COUNTER_WIDTH + ERROR_Q, // 補正周期のbit幅
+    parameter ADJUST_Q       : u32 = ERROR_Q                , // 補正周期に追加する固定小数点数bit数
+    parameter PERIOD_WIDTH   : u32 = ERROR_WIDTH            , // 周期補正に使うbit数
+    parameter PHASE_WIDTH    : u32 = ERROR_WIDTH            , // 位相補正に使うbit数
+    parameter PERIOD_LPF_GAIN: u32 = 4                      , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter PHASE_LPF_GAIN : u32 = 4                      , // 位相補正のLPFの更新ゲイン(1/2^N)
 ) (
     reset: input logic,
     clk  : input logic,

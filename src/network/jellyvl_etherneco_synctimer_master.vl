@@ -1,11 +1,10 @@
 module etherneco_synctimer_master #(
-    parameter TIMER_WIDTH : u32 = 64, // タイマのbit幅
-    parameter NUMERATOR   : u32 = 10, // クロック周期の分子
-    parameter DENOMINATOR : u32 = 3 , // クロック周期の分母
-    parameter MAX_NODES   : u32 = 2 , // 最大ノード数
-    parameter OFFSET_WIDTH: u32 = 24, // オフセットbit幅
-    parameter OFFSET_GAIN : u32 = 3 , // オフセット更新ゲイン
-
+    parameter TIMER_WIDTH    : u32 = 64, // タイマのbit幅
+    parameter NUMERATOR      : u32 = 10, // クロック周期の分子
+    parameter DENOMINATOR    : u32 = 3 , // クロック周期の分母
+    parameter MAX_NODES      : u32 = 2 , // 最大ノード数
+    parameter OFFSET_WIDTH   : u32 = 24, // オフセットbit幅
+    parameter OFFSET_LPF_GAIN: u32 = 4 , // オフセット更新LPFのゲイン (1/2^N)
 ) (
     reset: input logic,
     clk  : input logic,
@@ -219,7 +218,7 @@ module etherneco_synctimer_master #(
             }
         } else {
             for i: int in 0..MAX_NODES {
-                offset_gain[i] = (offset_time[i] << OFFSET_GAIN) - (offset_time[i] << 1);
+                offset_gain[i] = (offset_time[i] << (OFFSET_LPF_GAIN + 1)) - (offset_time[i] << 1);
             }
 
             if res_payload_valid {
@@ -245,7 +244,7 @@ module etherneco_synctimer_master #(
                     if offset_first {
                         offset_time[i] = (measured_time[i] >> 1);
                     } else {
-                        offset_time[i] = (offset_gain[i] + measured_time[i]) >> OFFSET_GAIN;
+                        offset_time[i] = (offset_gain[i] + measured_time[i]) >> (OFFSET_LPF_GAIN + 1);
                     }
                 }
             }

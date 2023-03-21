@@ -1,11 +1,10 @@
 module jellyvl_etherneco_synctimer_master #(
-    parameter int unsigned TIMER_WIDTH  = 64, // タイマのbit幅
-    parameter int unsigned NUMERATOR    = 10, // クロック周期の分子
-    parameter int unsigned DENOMINATOR  = 3 , // クロック周期の分母
-    parameter int unsigned MAX_NODES    = 2 , // 最大ノード数
-    parameter int unsigned OFFSET_WIDTH = 24, // オフセットbit幅
-    parameter int unsigned OFFSET_GAIN  = 3  // オフセット更新ゲイン
-
+    parameter int unsigned TIMER_WIDTH     = 64, // タイマのbit幅
+    parameter int unsigned NUMERATOR       = 10, // クロック周期の分子
+    parameter int unsigned DENOMINATOR     = 3 , // クロック周期の分母
+    parameter int unsigned MAX_NODES       = 2 , // 最大ノード数
+    parameter int unsigned OFFSET_WIDTH    = 24, // オフセットbit幅
+    parameter int unsigned OFFSET_LPF_GAIN = 4  // オフセット更新LPFのゲイン (1/2^N)
 ) (
     input logic reset,
     input logic clk  ,
@@ -219,7 +218,7 @@ module jellyvl_etherneco_synctimer_master #(
             end
         end else begin
             for (int i = 0; i < MAX_NODES; i++) begin
-                offset_gain[i] <= (offset_time[i] << OFFSET_GAIN) - (offset_time[i] << 1);
+                offset_gain[i] <= (offset_time[i] << (OFFSET_LPF_GAIN + 1)) - (offset_time[i] << 1);
             end
 
             if (res_payload_valid) begin
@@ -245,7 +244,7 @@ module jellyvl_etherneco_synctimer_master #(
                     if (offset_first) begin
                         offset_time[i] <= (measured_time[i] >> 1);
                     end else begin
-                        offset_time[i] <= (offset_gain[i] + measured_time[i]) >> OFFSET_GAIN;
+                        offset_time[i] <= (offset_gain[i] + measured_time[i]) >> (OFFSET_LPF_GAIN + 1);
                     end
                 end
             end

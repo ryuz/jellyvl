@@ -1,7 +1,9 @@
 module etherneco_master #(
-    parameter TIMER_WIDTH: u32 = 64, // タイマのbit幅
-    parameter NUMERATOR  : u32 = 8 , // クロック周期の分子
-    parameter DENOMINATOR: u32 = 1 , // クロック周期の分母
+    parameter TIMER_WIDTH            : u32 = 64, // タイマのbit幅
+    parameter NUMERATOR              : u32 = 8 , // クロック周期の分子
+    parameter DENOMINATOR            : u32 = 1 , // クロック周期の分母
+    parameter TIMSYNC_OFFSET_WIDTH   : u32 = 24, // オフセットbit幅
+    parameter TIMSYNC_OFFSET_LPF_GAIN: u32 = 2 , // オフセット更新LPFのゲイン (1/2^N)
 ) (
     reset: input logic,
     clk  : input logic,
@@ -250,9 +252,11 @@ module etherneco_master #(
 
     // タイマ合わせマスター
     inst u_etherneco_synctimer_master: etherneco_synctimer_master #(
-        TIMER_WIDTH: TIMER_WIDTH,
-        NUMERATOR  : NUMERATOR  ,
-        DENOMINATOR: DENOMINATOR,
+        TIMER_WIDTH    : TIMER_WIDTH            ,
+        NUMERATOR      : NUMERATOR              ,
+        DENOMINATOR    : DENOMINATOR            ,
+        OFFSET_WIDTH   : TIMSYNC_OFFSET_WIDTH   ,
+        OFFSET_LPF_GAIN: TIMSYNC_OFFSET_LPF_GAIN,
     ) (
         reset: reset,
         clk  : clk  ,

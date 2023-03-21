@@ -1,15 +1,17 @@
 
 // 調整機構
 module jellyvl_synctimer_adjust #(
-    parameter int unsigned TIMER_WIDTH   = 64                     , // タイマのbit幅
-    parameter int unsigned COUNTER_WIDTH = 32                     , // 自クロックで経過時間カウンタのbit数
-    parameter int unsigned CALC_WIDTH    = 32                     , // タイマのうち計算に使う部分
-    parameter int unsigned ERROR_WIDTH   = 32                     , // 誤差計算時のbit幅
-    parameter int unsigned ERROR_Q       = 8                      , // 誤差計算時に追加する固定小数点数bit数
-    parameter int unsigned ADJUST_WIDTH  = COUNTER_WIDTH + ERROR_Q, // 補正周期のbit幅
-    parameter int unsigned ADJUST_Q      = ERROR_Q                , // 補正周期に追加する固定小数点数bit数
-    parameter int unsigned PERIOD_WIDTH  = ERROR_WIDTH            , // 周期補正に使うbit数
-    parameter int unsigned PHASE_WIDTH   = ERROR_WIDTH             // 位相補正に使うbit数
+    parameter int unsigned TIMER_WIDTH     = 64                     , // タイマのbit幅
+    parameter int unsigned COUNTER_WIDTH   = 32                     , // 自クロックで経過時間カウンタのbit数
+    parameter int unsigned CALC_WIDTH      = 32                     , // タイマのうち計算に使う部分
+    parameter int unsigned ERROR_WIDTH     = 32                     , // 誤差計算時のbit幅
+    parameter int unsigned ERROR_Q         = 8                      , // 誤差計算時に追加する固定小数点数bit数
+    parameter int unsigned ADJUST_WIDTH    = COUNTER_WIDTH + ERROR_Q, // 補正周期のbit幅
+    parameter int unsigned ADJUST_Q        = ERROR_Q                , // 補正周期に追加する固定小数点数bit数
+    parameter int unsigned PERIOD_WIDTH    = ERROR_WIDTH            , // 周期補正に使うbit数
+    parameter int unsigned PHASE_WIDTH     = ERROR_WIDTH            , // 位相補正に使うbit数
+    parameter int unsigned PERIOD_LPF_GAIN = 4                      , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned PHASE_LPF_GAIN  = 4                       // 位相補正のLPFの更新ゲイン(1/2^N)
 ) (
     input logic reset,
     input logic clk  ,
