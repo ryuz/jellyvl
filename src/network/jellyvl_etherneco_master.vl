@@ -60,7 +60,7 @@ module etherneco_master #(
         }
     }
 
-    localparam PERIOD_WIDTH: u32 = 16;
+    localparam PERIOD_WIDTH: u32 = 32;
 
     var timsync_trigger : logic    ;
     var timsync_override: logic    ;
@@ -83,9 +83,9 @@ module etherneco_master #(
         reset: reset,
         clk  : clk  ,
 
-        enable: 1'b1     , //trig_enable ,
-        phase : '0       , //current_time as PERIOD_WIDTH,
-        period: 16'd20000,
+        enable: 1'b1      , //trig_enable ,
+        phase : '0        , //current_time as PERIOD_WIDTH,
+        period: 32'd100000,
 
         current_time: current_time,
 
@@ -98,7 +98,7 @@ module etherneco_master #(
             timsync_correct  = 1'b0;
         } else {
             if timsync_trigger {
-                timsync_override = ~timsync_correct;
+                timsync_override = ~timsync_correct || force_override;
                 timsync_correct  = 1'b1;
             }
         }

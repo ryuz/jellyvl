@@ -60,7 +60,7 @@ module jellyvl_etherneco_master #(
         end
     end
 
-    localparam int unsigned PERIOD_WIDTH = 16;
+    localparam int unsigned PERIOD_WIDTH = 32;
 
     logic          timsync_trigger ;
     logic          timsync_override;
@@ -83,9 +83,9 @@ module jellyvl_etherneco_master #(
         .reset (reset),
         .clk   (clk  ),
         .
-        enable (1'b1     ), //trig_enable ,
-        .phase  ('0       ), //current_time as PERIOD_WIDTH,
-        .period (16'd20000),
+        enable (1'b1      ), //trig_enable ,
+        .phase  ('0        ), //current_time as PERIOD_WIDTH,
+        .period (32'd100000),
         .
         current_time (current_time),
         .
@@ -98,7 +98,7 @@ module jellyvl_etherneco_master #(
             timsync_correct  <= 1'b0;
         end else begin
             if (timsync_trigger) begin
-                timsync_override <= ~timsync_correct;
+                timsync_override <= ~timsync_correct || force_override;
                 timsync_correct  <= 1'b1;
             end
         end

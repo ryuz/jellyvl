@@ -123,12 +123,12 @@ module jellyvl_synctimer_adjust #(
             if (st0_valid) begin
                 st1_first       <= 1'b0;
                 st1_phase_error <= PhaseToAdjust(st0_phase_error);
-                if (st0_phase_error <= param_phase_min) begin
-                    st1_phase_error <= PhaseToAdjust(param_phase_min);
-                end
-                if (st0_phase_error >= param_phase_max) begin
-                    st1_phase_error <= PhaseToAdjust(param_phase_max);
-                end
+                //                if st0_phase_error <= param_phase_min {
+                //                    st1_phase_error = PhaseToAdjust(param_phase_min);
+                //                }
+                //                if st0_phase_error >= param_phase_max {
+                //                    st1_phase_error = PhaseToAdjust(param_phase_max);
+                //                }
                 st1_period_error <= PeriodToAdjust(t_period'((st0_correct_period - st0_local_period)));
             end
             st1_valid <= st0_valid && !st1_first;
@@ -139,10 +139,10 @@ module jellyvl_synctimer_adjust #(
 
         end
     end
-    t_error st1_phase_error_int ;
-    t_error st1_period_error_int;
-    assign st1_phase_error_int  = st1_phase_error >>> ERROR_Q;
-    assign st1_period_error_int = st1_period_error >>> ERROR_Q;
+    //    var st1_phase_error_int : t_error;
+    //    var st1_period_error_int: t_error;
+    //    assign st1_phase_error_int  = st1_phase_error >>> ERROR_Q;
+    //    assign st1_period_error_int = st1_period_error >>> ERROR_Q;
 
 
     // stage 2
@@ -152,8 +152,11 @@ module jellyvl_synctimer_adjust #(
     logic   st2_valid        ;
     logic   st2_counter_trig ;
 
-    t_error st1_period_error_t;
-    assign st1_period_error_t = st1_period_error + st2_phase_adjust; // st1_local_period に前回位相補正が含まれているのでその分相殺
+    t_error st1_pahse_corrected_error;
+    assign st1_pahse_corrected_error = st1_phase_error - st1_period_error; // st1_local_period に前回位相補正が含まれているのでその分相殺
+
+    t_error st1_period_corrected_error;
+    assign st1_period_corrected_error = st1_period_error + st2_phase_adjust; // st1_local_period に前回位相補正が含まれているのでその分相殺
 
     always_ff @ (posedge clk) begin
         if (reset) begin
@@ -168,10 +171,16 @@ module jellyvl_synctimer_adjust #(
                 st2_first <= 1'b0;
 
                 // ゲインを与えてLPFをかける
-                st2_phase_adjust <= st1_phase_error >>> PHASE_LPF_GAIN;
+                st2_phase_adjust <= st1_pahse_corrected_error >>> PHASE_LPF_GAIN;
+                if (st1_pahse_corrected_error <= PhaseToAdjust(param_phase_min)) begin
+                    st2_phase_adjust <= PhaseToAdjust(param_phase_min) >>> PHASE_LPF_GAIN;
+                end
+                if (st1_pahse_corrected_error >= PhaseToAdjust(param_phase_max)) begin
+                    st2_phase_adjust <= PhaseToAdjust(param_phase_max) >>> PHASE_LPF_GAIN;
+                end
 
                 // ゲインを与えてLPFをかける
-                st2_period_adjust <= st2_period_adjust + (st1_period_error_t >>> PERIOD_LPF_GAIN);
+                st2_period_adjust <= st2_period_adjust + (st1_period_corrected_error >>> PERIOD_LPF_GAIN);
             end
             st2_valid <= st1_valid;
 
@@ -355,16 +364,17 @@ module jellyvl_synctimer_adjust #(
     end
 
     if (SIMULATION) begin :sim_monitor
-        t_calc sim_monitor_time_local    ;
-        t_calc sim_monitor_time_correct  ;
-        t_calc sim_monitor_period_local  ;
-        t_calc sim_monitor_period_correct;
-        real   sim_monitor_error_phase   ;
-        real   sim_monitor_error_period  ;
-        real   sim_monitor_error_period_t;
-        real   sim_monitor_adjust_phase  ;
-        real   sim_monitor_adjust_period ;
-        real   sim_monitor_adjust_total  ;
+        t_calc sim_monitor_time_local            ;
+        t_calc sim_monitor_time_correct          ;
+        t_calc sim_monitor_period_local          ;
+        t_calc sim_monitor_period_correct        ;
+        real   sim_monitor_error_phase           ;
+        real   sim_monitor_error_period          ;
+        real   sim_monitor_phase_corrected_error ;
+        real   sim_monitor_period_corrected_error;
+        real   sim_monitor_adjust_phase          ;
+        real   sim_monitor_adjust_period         ;
+        real   sim_monitor_adjust_total          ;
 
         always_ff @ (posedge clk) begin
             if (correct_valid) begin
@@ -372,7 +382,8 @@ module jellyvl_synctimer_adjust #(
                 sim_monitor_time_correct <= current_correct_time;
             end
             if (st1_valid) begin
-                sim_monitor_error_period_t <= $itor(st1_period_error_t) / $itor(2 ** ERROR_Q);
+                sim_monitor_phase_corrected_error  <= $itor(st1_pahse_corrected_error) / $itor(2 ** ERROR_Q);
+                sim_monitor_period_corrected_error <= $itor(st1_period_corrected_error) / $itor(2 ** ERROR_Q);
             end
         end
 

@@ -86,8 +86,8 @@ module jellyvl_etherneco_synctimer_slave #(
         .reset (reset),
         .clk   (clk  ),
         .
-        adj_param_phase_min (t_adj_phase'(-10)),
-        .adj_param_phase_max (t_adj_phase'(+10)),
+        adj_param_phase_min (t_adj_phase'(-100)),
+        .adj_param_phase_max (t_adj_phase'(+100)),
         .
         set_time  ('0  ),
         .set_valid (1'b0),

@@ -123,12 +123,12 @@ module synctimer_adjust #(
             if st0_valid {
                 st1_first       = 1'b0;
                 st1_phase_error = PhaseToAdjust(st0_phase_error);
-                if st0_phase_error <= param_phase_min {
-                    st1_phase_error = PhaseToAdjust(param_phase_min);
-                }
-                if st0_phase_error >= param_phase_max {
-                    st1_phase_error = PhaseToAdjust(param_phase_max);
-                }
+                //                if st0_phase_error <= param_phase_min {
+                //                    st1_phase_error = PhaseToAdjust(param_phase_min);
+                //                }
+                //                if st0_phase_error >= param_phase_max {
+                //                    st1_phase_error = PhaseToAdjust(param_phase_max);
+                //                }
                 st1_period_error = PeriodToAdjust((st0_correct_period - st0_local_period) as t_period);
             }
             st1_valid = st0_valid && !st1_first;
@@ -139,10 +139,10 @@ module synctimer_adjust #(
 
         }
     }
-    var st1_phase_error_int : t_error;
-    var st1_period_error_int: t_error;
-    assign st1_phase_error_int  = st1_phase_error >>> ERROR_Q;
-    assign st1_period_error_int = st1_period_error >>> ERROR_Q;
+    //    var st1_phase_error_int : t_error;
+    //    var st1_period_error_int: t_error;
+    //    assign st1_phase_error_int  = st1_phase_error >>> ERROR_Q;
+    //    assign st1_period_error_int = st1_period_error >>> ERROR_Q;
 
 
     // stage 2
@@ -152,8 +152,11 @@ module synctimer_adjust #(
     var st2_valid        : logic  ;
     var st2_counter_trig : logic  ;
 
-    var st1_period_error_t: t_error;
-    assign st1_period_error_t = st1_period_error + st2_phase_adjust; // st1_local_period に前回位相補正が含まれているのでその分相殺
+    var st1_pahse_corrected_error: t_error;
+    assign st1_pahse_corrected_error = st1_phase_error - st1_period_error; // st1_local_period に前回位相補正が含まれているのでその分相殺
+
+    var st1_period_corrected_error: t_error;
+    assign st1_period_corrected_error = st1_period_error + st2_phase_adjust; // st1_local_period に前回位相補正が含まれているのでその分相殺
 
     always_ff (clk, reset) {
         if_reset {
@@ -168,10 +171,16 @@ module synctimer_adjust #(
                 st2_first = 1'b0;
 
                 // ゲインを与えてLPFをかける
-                st2_phase_adjust = st1_phase_error >>> PHASE_LPF_GAIN;
+                st2_phase_adjust = st1_pahse_corrected_error >>> PHASE_LPF_GAIN;
+                if st1_pahse_corrected_error <= PhaseToAdjust(param_phase_min) {
+                    st2_phase_adjust = PhaseToAdjust(param_phase_min) >>> PHASE_LPF_GAIN;
+                }
+                if st1_pahse_corrected_error >= PhaseToAdjust(param_phase_max) {
+                    st2_phase_adjust = PhaseToAdjust(param_phase_max) >>> PHASE_LPF_GAIN;
+                }
 
                 // ゲインを与えてLPFをかける
-                st2_period_adjust += st1_period_error_t >>> PERIOD_LPF_GAIN;
+                st2_period_adjust += st1_period_corrected_error >>> PERIOD_LPF_GAIN;
             }
             st2_valid = st1_valid;
 
@@ -355,16 +364,17 @@ module synctimer_adjust #(
     }
 
     if SIMULATION :sim_monitor {
-        var sim_monitor_time_local    : t_calc;
-        var sim_monitor_time_correct  : t_calc;
-        var sim_monitor_period_local  : t_calc;
-        var sim_monitor_period_correct: t_calc;
-        var sim_monitor_error_phase   : real  ;
-        var sim_monitor_error_period  : real  ;
-        var sim_monitor_error_period_t: real  ;
-        var sim_monitor_adjust_phase  : real  ;
-        var sim_monitor_adjust_period : real  ;
-        var sim_monitor_adjust_total  : real  ;
+        var sim_monitor_time_local            : t_calc;
+        var sim_monitor_time_correct          : t_calc;
+        var sim_monitor_period_local          : t_calc;
+        var sim_monitor_period_correct        : t_calc;
+        var sim_monitor_error_phase           : real  ;
+        var sim_monitor_error_period          : real  ;
+        var sim_monitor_phase_corrected_error : real  ;
+        var sim_monitor_period_corrected_error: real  ;
+        var sim_monitor_adjust_phase          : real  ;
+        var sim_monitor_adjust_period         : real  ;
+        var sim_monitor_adjust_total          : real  ;
 
         always_ff (clk) {
             if correct_valid {
@@ -372,7 +382,8 @@ module synctimer_adjust #(
                 sim_monitor_time_correct = current_correct_time;
             }
             if st1_valid {
-                sim_monitor_error_period_t = $itor(st1_period_error_t) / $itor(2 ** ERROR_Q);
+                sim_monitor_phase_corrected_error  = $itor(st1_pahse_corrected_error) / $itor(2 ** ERROR_Q);
+                sim_monitor_period_corrected_error = $itor(st1_period_corrected_error) / $itor(2 ** ERROR_Q);
             }
         }
 
