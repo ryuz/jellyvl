@@ -1,8 +1,11 @@
 module jellyvl_etherneco_synctimer_master #(
-    parameter int unsigned TIMER_WIDTH = 64, // タイマのbit幅
-    parameter int unsigned NUMERATOR   = 10, // クロック周期の分子
-    parameter int unsigned DENOMINATOR = 3 , // クロック周期の分母
-    parameter int unsigned MAX_NODES   = 2 
+    parameter int unsigned TIMER_WIDTH  = 64, // タイマのbit幅
+    parameter int unsigned NUMERATOR    = 10, // クロック周期の分子
+    parameter int unsigned DENOMINATOR  = 3 , // クロック周期の分母
+    parameter int unsigned MAX_NODES    = 2 , // 最大ノード数
+    parameter int unsigned OFFSET_WIDTH = 24, // オフセットbit幅
+    parameter int unsigned OFFSET_GAIN  = 3  // オフセット更新ゲイン
+
 ) (
     input logic reset,
     input logic clk  ,
@@ -73,12 +76,12 @@ module jellyvl_etherneco_synctimer_master #(
 
 
     // 応答時間計測
-    localparam type t_offset = logic [32-1:0];
+    localparam type t_offset = logic [OFFSET_WIDTH-1:0];
 
     function automatic t_offset CycleToOffset(
         input int unsigned cycle
     ) ;
-        return NUMERATOR * cycle / DENOMINATOR;
+        return t_offset'((NUMERATOR * cycle / DENOMINATOR));
     endfunction
 
     t_offset tx_start_time;
@@ -105,8 +108,14 @@ module jellyvl_etherneco_synctimer_master #(
 
     // オフセット時間
     localparam type         t_offset_pkt = logic [4-1:0][8-1:0];
-    t_offset_pkt offset_time  [0:MAX_NODES-1];
-
+    t_offset     offset_gain  [0:MAX_NODES-1];
+    t_offset     offset_time  [0:MAX_NODES-1];
+    t_offset_pkt offset_pkt   [0:MAX_NODES-1];
+    always_comb begin
+        for (int i = 0; i < MAX_NODES; i++) begin
+            offset_pkt[i] = t_offset_pkt'(offset_time[i]);
+        end
+    end
 
     // send command
     localparam type     t_length    = logic [16-1:0];
@@ -175,7 +184,7 @@ module jellyvl_etherneco_synctimer_master #(
             for (int i = 0; i < MAX_NODES; i++) begin
                 for (int j = 0; j < 4; j++) begin
                     if (int'(cmd_count) == 9 + i * 4 + j) begin
-                        m_cmd_tx_data <= offset_time[i][j];
+                        m_cmd_tx_data <= offset_pkt[i][j];
                     end
                 end
             end
@@ -203,11 +212,16 @@ module jellyvl_etherneco_synctimer_master #(
             calc_wait    <= '0;
             for (int unsigned i = 0; i < MAX_NODES; i++) begin
                 offset_time[i]   <= '0;
+                offset_gain[i]   <= 'x;
                 delay_time[i]    <= 'x;
                 measured_time[i] <= 'x;
                 rx_offset[i]     <= 'x;
             end
         end else begin
+            for (int i = 0; i < MAX_NODES; i++) begin
+                offset_gain[i] <= (offset_time[i] << OFFSET_GAIN) - (offset_time[i] << 1);
+            end
+
             if (res_payload_valid) begin
                 for (int i = 0; i < MAX_NODES; i++) begin
                     for (int j = 0; j < 4; j++) begin
@@ -220,7 +234,7 @@ module jellyvl_etherneco_synctimer_master #(
 
             // calc
             for (int unsigned i = 0; i < MAX_NODES; i++) begin
-                delay_time[i]    <= response_time - rx_offset[i];
+                delay_time[i]    <= response_time - t_offset'(rx_offset[i]);
                 measured_time[i] <= delay_time[i] + 2 * packet_time; // 2倍の時間
             end
 
@@ -231,7 +245,7 @@ module jellyvl_etherneco_synctimer_master #(
                     if (offset_first) begin
                         offset_time[i] <= (measured_time[i] >> 1);
                     end else begin
-                        offset_time[i] <= (offset_time[i] * 6 + measured_time[i]) >> 3;
+                        offset_time[i] <= (offset_gain[i] + measured_time[i]) >> OFFSET_GAIN;
                     end
                 end
             end

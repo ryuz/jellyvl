@@ -1,8 +1,11 @@
 module etherneco_synctimer_master #(
-    parameter TIMER_WIDTH: u32 = 64, // タイマのbit幅
-    parameter NUMERATOR  : u32 = 10, // クロック周期の分子
-    parameter DENOMINATOR: u32 = 3 , // クロック周期の分母
-    parameter MAX_NODES  : u32 = 2 ,
+    parameter TIMER_WIDTH : u32 = 64, // タイマのbit幅
+    parameter NUMERATOR   : u32 = 10, // クロック周期の分子
+    parameter DENOMINATOR : u32 = 3 , // クロック周期の分母
+    parameter MAX_NODES   : u32 = 2 , // 最大ノード数
+    parameter OFFSET_WIDTH: u32 = 24, // オフセットbit幅
+    parameter OFFSET_GAIN : u32 = 3 , // オフセット更新ゲイン
+
 ) (
     reset: input logic,
     clk  : input logic,
@@ -73,12 +76,12 @@ module etherneco_synctimer_master #(
 
 
     // 応答時間計測
-    localparam t_offset: type = logic<32>;
+    localparam t_offset: type = logic<OFFSET_WIDTH>;
 
     function CycleToOffset (
         cycle: input u32,
     ) -> t_offset {
-        return NUMERATOR * cycle / DENOMINATOR;
+        return (NUMERATOR * cycle / DENOMINATOR) as t_offset;
     }
 
     var tx_start_time: t_offset;
@@ -105,8 +108,14 @@ module etherneco_synctimer_master #(
 
     // オフセット時間
     localparam t_offset_pkt: type         = logic<4, 8>;
-    var offset_time : t_offset_pkt [MAX_NODES];
-
+    var offset_gain : t_offset     [MAX_NODES];
+    var offset_time : t_offset     [MAX_NODES];
+    var offset_pkt  : t_offset_pkt [MAX_NODES];
+    always_comb {
+        for i: int in 0..MAX_NODES {
+            offset_pkt[i] = offset_time[i] as t_offset_pkt;
+        }
+    }
 
     // send command
     localparam t_length   : type     = logic<16>;
@@ -175,7 +184,7 @@ module etherneco_synctimer_master #(
             for i: int in 0..MAX_NODES {
                 for j: int in 0..4 {
                     if cmd_count as int == 9 + i * 4 + j {
-                        m_cmd_tx_data = offset_time[i][j];
+                        m_cmd_tx_data = offset_pkt[i][j];
                     }
                 }
             }
@@ -203,11 +212,16 @@ module etherneco_synctimer_master #(
             calc_wait    = '0;
             for i: u32 in 0..MAX_NODES {
                 offset_time[i]   = '0;
+                offset_gain[i]   = 'x;
                 delay_time[i]    = 'x;
                 measured_time[i] = 'x;
                 rx_offset[i]     = 'x;
             }
         } else {
+            for i: int in 0..MAX_NODES {
+                offset_gain[i] = (offset_time[i] << OFFSET_GAIN) - (offset_time[i] << 1);
+            }
+
             if res_payload_valid {
                 for i: int in 0..MAX_NODES {
                     for j: int in 0..4 {
@@ -220,7 +234,7 @@ module etherneco_synctimer_master #(
 
             // calc
             for i: u32 in 0..MAX_NODES {
-                delay_time[i]    = response_time - rx_offset[i];
+                delay_time[i]    = response_time - rx_offset[i] as t_offset;
                 measured_time[i] = delay_time[i] + 2 * packet_time; // 2倍の時間
             }
 
@@ -231,7 +245,7 @@ module etherneco_synctimer_master #(
                     if offset_first {
                         offset_time[i] = (measured_time[i] >> 1);
                     } else {
-                        offset_time[i] = (offset_time[i] * 6 + measured_time[i]) >> 3;
+                        offset_time[i] = (offset_gain[i] + measured_time[i]) >> OFFSET_GAIN;
                     }
                 }
             }
