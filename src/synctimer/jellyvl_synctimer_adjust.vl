@@ -248,7 +248,93 @@ module synctimer_adjust #(
     );
 
 
+    // adjust parameter
+    localparam ADJ_STEP : t_adjust = (1 << ADJUST_Q) as t_adjust;
+
+    var adj_param_zero   : logic   ;
+    var adj_param_sign   : logic   ;
+    var adj_param_period : t_adjust;
+    var adj_param_update : logic   ;
+
+    always_ff (clk, reset) {
+        if_reset {
+            adj_param_zero   = 1'b1;
+            adj_param_sign   = 1'bx;
+            adj_param_period = 'x;
+            adj_param_update = 1'b0;
+        }
+        else {
+            adj_param_update = 1'b0;
+            if div_valid {
+                adj_param_zero   = st4_zero;
+                adj_param_sign   = st4_sign;
+                adj_param_period = div_quotient - ADJ_STEP;
+                adj_param_update = (div_quotient - ADJ_STEP) != adj_param_period;
+            }
+        }
+    }
+
     // adjuster
+    var adj_calc_update : logic   ;
+    var adj_calc_zero   : logic   ;
+    var adj_calc_sign   : logic   ;
+    var adj_calc_count  : t_adjust;
+    var adj_calc_next   : t_adjust;
+    var adj_calc_last   : logic   ;
+    var adj_calc_valid  : logic   ;
+
+    always_ff (clk, reset) {
+        if_reset {
+            adj_calc_update = 1'b1;
+            adj_calc_zero   = 1'b1;
+            adj_calc_sign   = 'x;
+            adj_calc_count  = 'x;
+            adj_calc_next   = 'x;
+            adj_calc_last   = '0;
+            adj_calc_valid  = 1'b0;
+        } else {
+            if adj_param_update {
+                adj_calc_update = 1'b1;
+            }
+            adj_calc_zero  = adj_param_zero;
+            adj_calc_count = adj_calc_count + (1 << ADJUST_Q) as t_adjust;
+            adj_calc_last  = adj_calc_count >= adj_param_period;
+            if adj_calc_update || adj_calc_zero {
+                adj_calc_next = '0;
+            }
+            else {
+                adj_calc_next = adj_calc_count - adj_param_period;
+            }
+
+            adj_calc_valid = 1'b0;
+            if adj_calc_last {
+                adj_calc_update = 1'b0;
+                adj_calc_count = adj_calc_next;
+                adj_calc_last  = 1'b0;
+                adj_calc_valid = ~adj_calc_zero;
+            }
+        }
+    }
+
+    // output
+    always_ff (clk, reset) {
+        if_reset {
+            adjust_sign  = 'x;
+            adjust_valid = 1'b0;
+        } else {
+            if adjust_ready {
+                adjust_valid = 1'b0;
+            }
+
+            if adj_calc_valid {
+                adjust_sign  = adj_calc_sign;
+                adjust_valid = ~adj_calc_zero;
+            }
+        }
+    }
+
+    // adjuster
+    /*
     var adj_zero  : logic   ;
     var adj_sign  : logic   ;
     var adj_period: t_adjust;
@@ -285,7 +371,7 @@ module synctimer_adjust #(
             }
         }
     }
-
+    
     // output
     always_ff (clk, reset) {
         if_reset {
@@ -298,27 +384,26 @@ module synctimer_adjust #(
 
             if (adj_valid) {
                 adjust_sign  = adj_sign;
-                adjust_valid = 1'b1;
+                adjust_valid = ~adj_zero;
             }
-
         }
     }
-
+    */
 
     // monitor
     var monitor_phase_adjust     : t_error ;
     var monitor_phase_adjust_int : t_error ;
     var monitor_period_adjust    : t_error ;
     var monitor_period_adjust_int: t_error ;
-    var monitor_adj_sign         : logic   ;
-    var monitor_adj_period       : t_adjust;
-    var monitor_adj_period_int   : t_adjust;
+//    var monitor_adj_sign         : logic   ;
+//    var monitor_adj_period       : t_adjust;
+//    var monitor_adj_period_int   : t_adjust;
 
     assign monitor_phase_adjust      = st2_phase_adjust;
     assign monitor_phase_adjust_int  = st2_phase_adjust >>> ERROR_Q;
     assign monitor_period_adjust     = st2_period_adjust;
     assign monitor_period_adjust_int = st2_period_adjust >>> ERROR_Q;
-    assign monitor_adj_sign          = adj_sign;
-    assign monitor_adj_period        = adj_period;
-    assign monitor_adj_period_int    = adj_period >>> ADJUST_Q;
+//    assign monitor_adj_sign          = adj_sign;
+//    assign monitor_adj_period        = adj_period;
+//    assign monitor_adj_period_int    = adj_period >>> ADJUST_Q;
 }

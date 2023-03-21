@@ -248,40 +248,68 @@ module jellyvl_synctimer_adjust #(
     );
 
 
-    // adjuster
-    logic    adj_zero  ;
-    logic    adj_sign  ;
-    t_adjust adj_period;
-    t_adjust adj_count ;
-    logic    adj_valid ;
+    // adjust parameter
+    localparam t_adjust ADJ_STEP = t_adjust'((1 << ADJUST_Q));
 
-    t_adjust adj_count_next;
-    assign adj_count_next = adj_count + t_adjust'((1 << ADJUST_Q));
+    logic    adj_param_zero  ;
+    logic    adj_param_sign  ;
+    t_adjust adj_param_period;
+    logic    adj_param_update;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
-            adj_zero   <= 1'b1;
-            adj_sign   <= 'x;
-            adj_period <= 'x;
-            adj_count  <= '0;
-            adj_valid  <= 1'b0;
+            adj_param_zero   <= 1'b1;
+            adj_param_sign   <= 1'bx;
+            adj_param_period <= 'x;
+            adj_param_update <= 1'b0;
         end else begin
-            adj_valid <= 1'b0;
-
-            adj_count <= adj_count_next;
-            if (adj_count_next >= adj_period) begin
-                adj_count <= adj_count_next - adj_period;
-                adj_valid <= 1'b1;
-            end
-            if (adj_zero) begin
-                adj_count <= '0;
-                adj_valid <= 1'b0;
-            end
-
+            adj_param_update <= 1'b0;
             if (div_valid) begin
-                adj_zero   <= st4_zero;
-                adj_sign   <= st4_sign;
-                adj_period <= div_quotient;
+                adj_param_zero   <= st4_zero;
+                adj_param_sign   <= st4_sign;
+                adj_param_period <= div_quotient - ADJ_STEP;
+                adj_param_update <= (div_quotient - ADJ_STEP) != adj_param_period;
+            end
+        end
+    end
+
+    // adjuster
+    logic    adj_calc_update;
+    logic    adj_calc_zero  ;
+    logic    adj_calc_sign  ;
+    t_adjust adj_calc_count ;
+    t_adjust adj_calc_next  ;
+    logic    adj_calc_last  ;
+    logic    adj_calc_valid ;
+
+    always_ff @ (posedge clk) begin
+        if (reset) begin
+            adj_calc_update <= 1'b1;
+            adj_calc_zero   <= 1'b1;
+            adj_calc_sign   <= 'x;
+            adj_calc_count  <= 'x;
+            adj_calc_next   <= 'x;
+            adj_calc_last   <= '0;
+            adj_calc_valid  <= 1'b0;
+        end else begin
+            if (adj_param_update) begin
+                adj_calc_update <= 1'b1;
+            end
+            adj_calc_zero  <= adj_param_zero;
+            adj_calc_count <= adj_calc_count + t_adjust'((1 << ADJUST_Q));
+            adj_calc_last  <= adj_calc_count >= adj_param_period;
+            if (adj_calc_update || adj_calc_zero) begin
+                adj_calc_next <= '0;
+            end else begin
+                adj_calc_next <= adj_calc_count - adj_param_period;
+            end
+
+            adj_calc_valid <= 1'b0;
+            if (adj_calc_last) begin
+                adj_calc_update <= 1'b0;
+                adj_calc_count  <= adj_calc_next;
+                adj_calc_last   <= 1'b0;
+                adj_calc_valid  <= ~adj_calc_zero;
             end
         end
     end
@@ -292,33 +320,88 @@ module jellyvl_synctimer_adjust #(
             adjust_sign  <= 'x;
             adjust_valid <= 1'b0;
         end else begin
-            if ((adjust_ready)) begin
+            if (adjust_ready) begin
                 adjust_valid <= 1'b0;
             end
 
-            if ((adj_valid)) begin
-                adjust_sign  <= adj_sign;
-                adjust_valid <= 1'b1;
+            if (adj_calc_valid) begin
+                adjust_sign  <= adj_calc_sign;
+                adjust_valid <= ~adj_calc_zero;
             end
-
         end
     end
 
+    // adjuster
+    /*
+    var adj_zero  : logic   ;
+    var adj_sign  : logic   ;
+    var adj_period: t_adjust;
+    var adj_count : t_adjust;
+    var adj_valid : logic   ;
+
+    var adj_count_next: t_adjust;
+    assign adj_count_next = adj_count + (1 << ADJUST_Q) as t_adjust;
+
+    always_ff (clk, reset) {
+        if_reset {
+            adj_zero   = 1'b1;
+            adj_sign   = 'x;
+            adj_period = 'x;
+            adj_count  = '0;
+            adj_valid  = 1'b0;
+        } else {
+            adj_valid = 1'b0;
+
+            adj_count = adj_count_next;
+            if adj_count_next >= adj_period {
+                adj_count = adj_count_next - adj_period;
+                adj_valid = 1'b1;
+            }
+            if adj_zero {
+                adj_count = '0;
+                adj_valid = 1'b0;
+            }
+
+            if div_valid {
+                adj_zero   = st4_zero;
+                adj_sign   = st4_sign;
+                adj_period = div_quotient;
+            }
+        }
+    }
+    
+    // output
+    always_ff (clk, reset) {
+        if_reset {
+            adjust_sign  = 'x;
+            adjust_valid = 1'b0;
+        } else {
+            if (adjust_ready) {
+                adjust_valid = 1'b0;
+            }
+
+            if (adj_valid) {
+                adjust_sign  = adj_sign;
+                adjust_valid = ~adj_zero;
+            }
+        }
+    }
+    */
 
     // monitor
-    t_error  monitor_phase_adjust     ;
-    t_error  monitor_phase_adjust_int ;
-    t_error  monitor_period_adjust    ;
-    t_error  monitor_period_adjust_int;
-    logic    monitor_adj_sign         ;
-    t_adjust monitor_adj_period       ;
-    t_adjust monitor_adj_period_int   ;
+    t_error monitor_phase_adjust     ;
+    t_error monitor_phase_adjust_int ;
+    t_error monitor_period_adjust    ;
+    t_error monitor_period_adjust_int;
+    //    var monitor_adj_sign         : logic   ;
+    //    var monitor_adj_period       : t_adjust;
+    //    var monitor_adj_period_int   : t_adjust;
 
     assign monitor_phase_adjust      = st2_phase_adjust;
     assign monitor_phase_adjust_int  = st2_phase_adjust >>> ERROR_Q;
     assign monitor_period_adjust     = st2_period_adjust;
     assign monitor_period_adjust_int = st2_period_adjust >>> ERROR_Q;
-    assign monitor_adj_sign          = adj_sign;
-    assign monitor_adj_period        = adj_period;
-    assign monitor_adj_period_int    = adj_period >>> ADJUST_Q;
+    //    assign monitor_adj_sign          = adj_sign;
+    //    assign monitor_adj_period        = adj_period;
+    //    assign monitor_adj_period_int    = adj_period >>> ADJUST_Q;
 endmodule
