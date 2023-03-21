@@ -13,7 +13,7 @@ module synctimer_adjust #(
     parameter PERIOD_LPF_GAIN: u32 = 4                      , // 周期補正のLPFの更新ゲイン(1/2^N)
     parameter PHASE_LPF_GAIN : u32 = 4                      , // 位相補正のLPFの更新ゲイン(1/2^N)
     parameter DEBUG          : bit = 1'b0                   ,
-    parameter SIMULATION     : bit = 1'b1                   ,
+    parameter SIMULATION     : bit = 1'b0                   ,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -87,7 +87,7 @@ module synctimer_adjust #(
             st0_valid                = 1'b0;
         } else {
             st0_counter_trig = correct_valid;
-            st0_valid = 1'b0;
+            st0_valid        = 1'b0;
             if correct_valid {
                 st0_previus_local_time   = current_local_time;
                 st0_previus_correct_time = current_correct_time;
@@ -109,7 +109,7 @@ module synctimer_adjust #(
     var st1_phase_error : t_error;
     var st1_period_error: t_error;
     var st1_valid       : logic  ;
-    var st1_counter_trig        : logic  ;
+    var st1_counter_trig: logic  ;
 
     always_ff (clk, reset) {
         if_reset {
@@ -150,10 +150,10 @@ module synctimer_adjust #(
     var st2_phase_adjust : t_error;
     var st2_period_adjust: t_error;
     var st2_valid        : logic  ;
-    var st2_counter_trig        : logic  ;
+    var st2_counter_trig : logic  ;
 
-    var st1_period_error_t : t_error ;
-    assign st1_period_error_t = st1_period_error + st2_phase_adjust;  // st1_local_period に前回位相補正が含まれているのでその分相殺
+    var st1_period_error_t: t_error;
+    assign st1_period_error_t = st1_period_error + st2_phase_adjust; // st1_local_period に前回位相補正が含まれているのでその分相殺
 
     always_ff (clk, reset) {
         if_reset {
@@ -182,37 +182,37 @@ module synctimer_adjust #(
     }
 
     // stage 3
-    var st3_adjust: t_error;
-    var st3_valid : logic  ;
-    var st3_counter_trig        : logic  ;
+    var st3_adjust      : t_error;
+    var st3_valid       : logic  ;
+    var st3_counter_trig: logic  ;
 
     always_ff (clk, reset) {
         if_reset {
             st3_counter_trig = 1'bx;
-            st3_adjust = 'x;
-            st3_valid  = 1'b0;
+            st3_adjust       = 'x;
+            st3_valid        = 1'b0;
         } else {
             st3_counter_trig = st2_counter_trig;
-            st3_adjust = st2_period_adjust + st2_phase_adjust;
-            st3_valid  = st2_valid;
+            st3_adjust       = st2_period_adjust + st2_phase_adjust;
+            st3_valid        = st2_valid;
         }
     }
 
     // stage 3
-    var st4_counter_trig : logic    ;
-    var st4_count : t_error_u; // 自クロックでの経過時刻計測
-    var st4_adjust: t_error_u;
-    var st4_sign  : logic    ;
-    var st4_zero  : logic    ;
-    var st4_valid : logic    ;
+    var st4_counter_trig: logic    ;
+    var st4_count       : t_error_u; // 自クロックでの経過時刻計測
+    var st4_adjust      : t_error_u;
+    var st4_sign        : logic    ;
+    var st4_zero        : logic    ;
+    var st4_valid       : logic    ;
 
     always_ff (clk, reset) {
         if_reset {
-            st4_sign   = 'x;
-            st4_zero   = 'x;
-            st4_adjust = 'x;
-            st4_count  = 'x;
-            st4_valid  = 1'b0;
+            st4_sign         = 'x;
+            st4_zero         = 'x;
+            st4_adjust       = 'x;
+            st4_count        = 'x;
+            st4_valid        = 1'b0;
             st4_counter_trig = 1'b0;
         } else {
             st4_count += 1'b1;
@@ -288,8 +288,7 @@ module synctimer_adjust #(
                     adj_param_sign   = 1'b0;
                     adj_param_period = '0;
                     adj_param_valid  = !adj_param_zero; // 変化があれば発行
-                }
-                else {
+                } else {
                     adj_param_zero   = st4_zero;
                     adj_param_sign   = st4_sign;
                     adj_param_period = div_quotient - ADJ_STEP;
@@ -316,21 +315,20 @@ module synctimer_adjust #(
             adj_calc_next   = 'x;
             adj_calc_valid  = 1'b0;
         } else {
-            
+
             // adj_param_valid は連続で来ない、period は2以上の前提で事前計算
             adj_calc_count += (1 << ADJUST_Q) as t_adjust;
-            adj_calc_next   = adj_calc_count - adj_calc_period;
-            adj_calc_valid  = adj_calc_count >= adj_calc_period;
-            
+            adj_calc_next  =  adj_calc_count - adj_calc_period;
+            adj_calc_valid =  adj_calc_count >= adj_calc_period;
+
             if adj_calc_valid {
                 if adj_param_valid {
                     adj_calc_zero   = adj_param_zero;
                     adj_calc_sign   = adj_param_sign;
                     adj_calc_period = adj_param_period;
                     adj_calc_count  = '0;
-                }
-                else {
-                    adj_calc_count  = adj_calc_next;
+                } else {
+                    adj_calc_count = adj_calc_next;
                 }
             }
         }
@@ -356,35 +354,34 @@ module synctimer_adjust #(
         }
     }
 
+    if SIMULATION :sim_monitor {
+        var sim_monitor_time_local    : t_calc;
+        var sim_monitor_time_correct  : t_calc;
+        var sim_monitor_period_local  : t_calc;
+        var sim_monitor_period_correct: t_calc;
+        var sim_monitor_error_phase   : real  ;
+        var sim_monitor_error_period  : real  ;
+        var sim_monitor_error_period_t: real  ;
+        var sim_monitor_adjust_phase  : real  ;
+        var sim_monitor_adjust_period : real  ;
+        var sim_monitor_adjust_total  : real  ;
 
-    if SIMULATION : monitor {
-        var monitor_local_time       : t_calc;
-        var monitor_correct_time     : t_calc;
-        var monitor_local_period     : t_calc;
-        var monitor_correct_period   : t_calc;
-        var monitor_phase_error      : real;
-        var monitor_period_error     : real;
-        var monitor_period_error_t   : real;
-        var monitor_phase_adjust     : real;
-        var monitor_period_adjust    : real;
-        var monitor_total_adjust     : real;
-
-        always_ff(clk) {
+        always_ff (clk) {
             if correct_valid {
-                monitor_local_time   = current_local_time;
-                monitor_correct_time = current_correct_time;
+                sim_monitor_time_local   = current_local_time;
+                sim_monitor_time_correct = current_correct_time;
             }
             if st1_valid {
-                monitor_period_error_t    = $itor(st1_period_error_t)  / $itor(2**ERROR_Q);
+                sim_monitor_error_period_t = $itor(st1_period_error_t) / $itor(2 ** ERROR_Q);
             }
         }
 
-        assign monitor_correct_period    = st0_correct_period;
-        assign monitor_local_period      = st0_local_period;
-        assign monitor_phase_error       = $itor(st1_phase_error)   / $itor(2**ERROR_Q);
-        assign monitor_period_error      = $itor(st1_period_error)  / $itor(2**ERROR_Q);
-        assign monitor_phase_adjust      = $itor(st2_phase_adjust)  / $itor(2**ERROR_Q);
-        assign monitor_period_adjust     = $itor(st2_period_adjust) / $itor(2**ERROR_Q);
-        assign monitor_total_adjust      = $itor(st3_adjust)        / $itor(2**ERROR_Q);
+        assign sim_monitor_period_correct = st0_correct_period;
+        assign sim_monitor_period_local   = st0_local_period;
+        assign sim_monitor_error_phase    = $itor(st1_phase_error) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_error_period   = $itor(st1_period_error) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_adjust_phase   = $itor(st2_phase_adjust) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_adjust_period  = $itor(st2_period_adjust) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_adjust_total   = $itor(st3_adjust) / $itor(2 ** ERROR_Q);
     }
 }

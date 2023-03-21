@@ -12,6 +12,8 @@ module synctimer_core #(
     parameter ADJ_PHASE_WIDTH    : u32 = ADJ_ERROR_WIDTH                , // 位相補正に使うbit数
     parameter ADJ_PERIOD_LPF_GAIN: u32 = 4                              , // 周期補正のLPFの更新ゲイン(1/2^N)
     parameter ADJ_PHASE_LPF_GAIN : u32 = 4                              , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter DEBUG              : bit = 1'b0                           ,
+    parameter SIMULATION         : bit = 1'b0                           ,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -70,6 +72,8 @@ module synctimer_core #(
         PHASE_WIDTH    : ADJ_PHASE_WIDTH    ,
         PERIOD_LPF_GAIN: ADJ_PERIOD_LPF_GAIN,
         PHASE_LPF_GAIN : ADJ_PHASE_LPF_GAIN ,
+        DEBUG          : DEBUG              ,
+        SIMULATION     : SIMULATION         ,
     ) (
         reset: reset,
         clk  : clk  ,

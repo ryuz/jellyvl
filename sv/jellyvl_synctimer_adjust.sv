@@ -13,7 +13,7 @@ module jellyvl_synctimer_adjust #(
     parameter int unsigned PERIOD_LPF_GAIN = 4                      , // 周期補正のLPFの更新ゲイン(1/2^N)
     parameter int unsigned PHASE_LPF_GAIN  = 4                      , // 位相補正のLPFの更新ゲイン(1/2^N)
     parameter bit          DEBUG           = 1'b0                   ,
-    parameter bit          SIMULATION      = 1'b1               
+    parameter bit          SIMULATION      = 1'b0               
 ) (
     input logic reset,
     input logic clk  ,
@@ -354,34 +354,34 @@ module jellyvl_synctimer_adjust #(
         end
     end
 
-    if (SIMULATION) begin :monitor
-        t_calc monitor_local_time    ;
-        t_calc monitor_correct_time  ;
-        t_calc monitor_local_period  ;
-        t_calc monitor_correct_period;
-        real   monitor_phase_error   ;
-        real   monitor_period_error  ;
-        real   monitor_period_error_t;
-        real   monitor_phase_adjust  ;
-        real   monitor_period_adjust ;
-        real   monitor_total_adjust  ;
+    if (SIMULATION) begin :sim_monitor
+        t_calc sim_monitor_time_local    ;
+        t_calc sim_monitor_time_correct  ;
+        t_calc sim_monitor_period_local  ;
+        t_calc sim_monitor_period_correct;
+        real   sim_monitor_error_phase   ;
+        real   sim_monitor_error_period  ;
+        real   sim_monitor_error_period_t;
+        real   sim_monitor_adjust_phase  ;
+        real   sim_monitor_adjust_period ;
+        real   sim_monitor_adjust_total  ;
 
         always_ff @ (posedge clk) begin
             if (correct_valid) begin
-                monitor_local_time   <= current_local_time;
-                monitor_correct_time <= current_correct_time;
+                sim_monitor_time_local   <= current_local_time;
+                sim_monitor_time_correct <= current_correct_time;
             end
             if (st1_valid) begin
-                monitor_period_error_t <= $itor(st1_period_error_t) / $itor(2 ** ERROR_Q);
+                sim_monitor_error_period_t <= $itor(st1_period_error_t) / $itor(2 ** ERROR_Q);
             end
         end
 
-        assign monitor_correct_period = st0_correct_period;
-        assign monitor_local_period   = st0_local_period;
-        assign monitor_phase_error    = $itor(st1_phase_error) / $itor(2 ** ERROR_Q);
-        assign monitor_period_error   = $itor(st1_period_error) / $itor(2 ** ERROR_Q);
-        assign monitor_phase_adjust   = $itor(st2_phase_adjust) / $itor(2 ** ERROR_Q);
-        assign monitor_period_adjust  = $itor(st2_period_adjust) / $itor(2 ** ERROR_Q);
-        assign monitor_total_adjust   = $itor(st3_adjust) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_period_correct = st0_correct_period;
+        assign sim_monitor_period_local   = st0_local_period;
+        assign sim_monitor_error_phase    = $itor(st1_phase_error) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_error_period   = $itor(st1_period_error) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_adjust_phase   = $itor(st2_phase_adjust) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_adjust_period  = $itor(st2_period_adjust) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_adjust_total   = $itor(st3_adjust) / $itor(2 ** ERROR_Q);
     end
 endmodule

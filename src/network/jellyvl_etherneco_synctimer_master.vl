@@ -1,10 +1,12 @@
 module etherneco_synctimer_master #(
-    parameter TIMER_WIDTH    : u32 = 64, // タイマのbit幅
-    parameter NUMERATOR      : u32 = 10, // クロック周期の分子
-    parameter DENOMINATOR    : u32 = 3 , // クロック周期の分母
-    parameter MAX_NODES      : u32 = 2 , // 最大ノード数
-    parameter OFFSET_WIDTH   : u32 = 24, // オフセットbit幅
-    parameter OFFSET_LPF_GAIN: u32 = 4 , // オフセット更新LPFのゲイン (1/2^N)
+    parameter TIMER_WIDTH    : u32 = 64  , // タイマのbit幅
+    parameter NUMERATOR      : u32 = 10  , // クロック周期の分子
+    parameter DENOMINATOR    : u32 = 3   , // クロック周期の分母
+    parameter MAX_NODES      : u32 = 2   , // 最大ノード数
+    parameter OFFSET_WIDTH   : u32 = 24  , // オフセットbit幅
+    parameter OFFSET_LPF_GAIN: u32 = 4   , // オフセット更新LPFのゲイン (1/2^N)
+    parameter DEBUG          : bit = 1'b0,
+    parameter SIMULATION     : bit = 1'b0,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -254,27 +256,29 @@ module etherneco_synctimer_master #(
 
 
     // monitor (debug)
-    localparam t_monitor_time      : type           = logic<32>;
-    var monitor_cmd_tx_start: t_monitor_time;
-    var monitor_ret_rx_start: t_monitor_time;
-    var monitor_ret_rx_end  : t_monitor_time;
-    var monitor_res_rx_start: t_monitor_time;
-    var monitor_res_rx_end  : t_monitor_time;
-    always_ff (clk) {
-        if cmd_tx_start {
-            monitor_cmd_tx_start = current_time as t_monitor_time;
-        }
-        if ret_rx_start {
-            monitor_ret_rx_start = current_time as t_monitor_time;
-        }
-        if ret_rx_end {
-            monitor_ret_rx_end = current_time as t_monitor_time;
-        }
-        if res_rx_start {
-            monitor_res_rx_start = current_time as t_monitor_time;
-        }
-        if res_rx_end {
-            monitor_res_rx_end = current_time as t_monitor_time;
+    if SIMULATION :sim_monitor {
+        localparam t_monitor_time          : type           = logic<32>;
+        var sim_monitor_cmd_tx_start: t_monitor_time;
+        var sim_monitor_ret_rx_start: t_monitor_time;
+        var sim_monitor_ret_rx_end  : t_monitor_time;
+        var sim_monitor_res_rx_start: t_monitor_time;
+        var sim_monitor_res_rx_end  : t_monitor_time;
+        always_ff (clk) {
+            if cmd_tx_start {
+                sim_monitor_cmd_tx_start = current_time as t_monitor_time;
+            }
+            if ret_rx_start {
+                sim_monitor_ret_rx_start = current_time as t_monitor_time;
+            }
+            if ret_rx_end {
+                sim_monitor_ret_rx_end = current_time as t_monitor_time;
+            }
+            if res_rx_start {
+                sim_monitor_res_rx_start = current_time as t_monitor_time;
+            }
+            if res_rx_end {
+                sim_monitor_res_rx_end = current_time as t_monitor_time;
+            }
         }
     }
 }

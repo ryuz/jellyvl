@@ -1,9 +1,11 @@
 module jellyvl_etherneco_master #(
-    parameter int unsigned TIMER_WIDTH             = 64, // タイマのbit幅
-    parameter int unsigned NUMERATOR               = 8 , // クロック周期の分子
-    parameter int unsigned DENOMINATOR             = 1 , // クロック周期の分母
-    parameter int unsigned TIMSYNC_OFFSET_WIDTH    = 24, // オフセットbit幅
-    parameter int unsigned TIMSYNC_OFFSET_LPF_GAIN = 2  // オフセット更新LPFのゲイン (1/2^N)
+    parameter int unsigned TIMER_WIDTH             = 64  , // タイマのbit幅
+    parameter int unsigned NUMERATOR               = 8   , // クロック周期の分子
+    parameter int unsigned DENOMINATOR             = 1   , // クロック周期の分母
+    parameter int unsigned TIMSYNC_OFFSET_WIDTH    = 24  , // オフセットbit幅
+    parameter int unsigned TIMSYNC_OFFSET_LPF_GAIN = 4   , // オフセット更新LPFのゲイン (1/2^N)
+    parameter bit          DEBUG                   = 1'b0,
+    parameter bit          SIMULATION              = 1'b1
 ) (
     input logic reset,
     input logic clk  ,
@@ -256,7 +258,10 @@ module jellyvl_etherneco_master #(
         .NUMERATOR       (NUMERATOR              ),
         .DENOMINATOR     (DENOMINATOR            ),
         .OFFSET_WIDTH    (TIMSYNC_OFFSET_WIDTH   ),
-        .OFFSET_LPF_GAIN (TIMSYNC_OFFSET_LPF_GAIN)
+        .OFFSET_LPF_GAIN (TIMSYNC_OFFSET_LPF_GAIN),
+        .DEBUG           (DEBUG                  ),
+        .SIMULATION      (SIMULATION             )
+
     ) u_etherneco_synctimer_master (
         .reset (reset),
         .clk   (clk  ),

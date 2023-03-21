@@ -11,7 +11,9 @@ module jellyvl_etherneco_synctimer_slave #(
     parameter int unsigned ADJ_PERIOD_WIDTH    = ADJ_ERROR_WIDTH                , // 周期補正に使うbit数
     parameter int unsigned ADJ_PHASE_WIDTH     = ADJ_ERROR_WIDTH                , // 位相補正に使うbit数
     parameter int unsigned ADJ_PERIOD_LPF_GAIN = 4                              , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter int unsigned ADJ_PHASE_LPF_GAIN  = 4                               // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned ADJ_PHASE_LPF_GAIN  = 4                              , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter bit          DEBUG               = 1'b0                           ,
+    parameter bit          SIMULATION          = 1'b0                       
 ) (
     input logic reset,
     input logic clk  ,
@@ -77,7 +79,9 @@ module jellyvl_etherneco_synctimer_slave #(
         .ADJ_PERIOD_WIDTH    (ADJ_PERIOD_WIDTH   ),
         .ADJ_PHASE_WIDTH     (ADJ_PHASE_WIDTH    ),
         .ADJ_PERIOD_LPF_GAIN (ADJ_PERIOD_LPF_GAIN),
-        .ADJ_PHASE_LPF_GAIN  (ADJ_PHASE_LPF_GAIN )
+        .ADJ_PHASE_LPF_GAIN  (ADJ_PHASE_LPF_GAIN ),
+        .DEBUG               (DEBUG              ),
+        .SIMULATION          (SIMULATION         )
     ) u_synctimer_core (
         .reset (reset),
         .clk   (clk  ),

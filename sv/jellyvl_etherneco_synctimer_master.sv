@@ -1,10 +1,12 @@
 module jellyvl_etherneco_synctimer_master #(
-    parameter int unsigned TIMER_WIDTH     = 64, // タイマのbit幅
-    parameter int unsigned NUMERATOR       = 10, // クロック周期の分子
-    parameter int unsigned DENOMINATOR     = 3 , // クロック周期の分母
-    parameter int unsigned MAX_NODES       = 2 , // 最大ノード数
-    parameter int unsigned OFFSET_WIDTH    = 24, // オフセットbit幅
-    parameter int unsigned OFFSET_LPF_GAIN = 4  // オフセット更新LPFのゲイン (1/2^N)
+    parameter int unsigned TIMER_WIDTH     = 64  , // タイマのbit幅
+    parameter int unsigned NUMERATOR       = 10  , // クロック周期の分子
+    parameter int unsigned DENOMINATOR     = 3   , // クロック周期の分母
+    parameter int unsigned MAX_NODES       = 2   , // 最大ノード数
+    parameter int unsigned OFFSET_WIDTH    = 24  , // オフセットbit幅
+    parameter int unsigned OFFSET_LPF_GAIN = 4   , // オフセット更新LPFのゲイン (1/2^N)
+    parameter bit          DEBUG           = 1'b0,
+    parameter bit          SIMULATION      = 1'b0
 ) (
     input logic reset,
     input logic clk  ,
@@ -254,27 +256,29 @@ module jellyvl_etherneco_synctimer_master #(
 
 
     // monitor (debug)
-    localparam type           t_monitor_time       = logic [32-1:0];
-    t_monitor_time monitor_cmd_tx_start;
-    t_monitor_time monitor_ret_rx_start;
-    t_monitor_time monitor_ret_rx_end  ;
-    t_monitor_time monitor_res_rx_start;
-    t_monitor_time monitor_res_rx_end  ;
-    always_ff @ (posedge clk) begin
-        if (cmd_tx_start) begin
-            monitor_cmd_tx_start <= t_monitor_time'(current_time);
-        end
-        if (ret_rx_start) begin
-            monitor_ret_rx_start <= t_monitor_time'(current_time);
-        end
-        if (ret_rx_end) begin
-            monitor_ret_rx_end <= t_monitor_time'(current_time);
-        end
-        if (res_rx_start) begin
-            monitor_res_rx_start <= t_monitor_time'(current_time);
-        end
-        if (res_rx_end) begin
-            monitor_res_rx_end <= t_monitor_time'(current_time);
+    if (SIMULATION) begin :sim_monitor
+        localparam type           t_monitor_time           = logic [32-1:0];
+        t_monitor_time sim_monitor_cmd_tx_start;
+        t_monitor_time sim_monitor_ret_rx_start;
+        t_monitor_time sim_monitor_ret_rx_end  ;
+        t_monitor_time sim_monitor_res_rx_start;
+        t_monitor_time sim_monitor_res_rx_end  ;
+        always_ff @ (posedge clk) begin
+            if (cmd_tx_start) begin
+                sim_monitor_cmd_tx_start <= t_monitor_time'(current_time);
+            end
+            if (ret_rx_start) begin
+                sim_monitor_ret_rx_start <= t_monitor_time'(current_time);
+            end
+            if (ret_rx_end) begin
+                sim_monitor_ret_rx_end <= t_monitor_time'(current_time);
+            end
+            if (res_rx_start) begin
+                sim_monitor_res_rx_start <= t_monitor_time'(current_time);
+            end
+            if (res_rx_end) begin
+                sim_monitor_res_rx_end <= t_monitor_time'(current_time);
+            end
         end
     end
 endmodule
