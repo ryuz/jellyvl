@@ -182,13 +182,14 @@ module etherneco_synctimer_slave #(
     assign down_reset = reset || res_rx_error;
 
     var res_pos: int;
-    assign res_pos = 9 + (cmd_rx_node as int - 1) * 4;
 
     always_ff (clk, up_reset) {
         if_reset {
+            res_pos = 'x;
             m_res_data  = 'x;
             m_res_valid = 1'b0;
         } else {
+            res_pos = 9 + (cmd_rx_node as int - 1) * 4;
             m_res_data  = 'x;
             m_res_valid = 1'b0;
             if s_res_valid {

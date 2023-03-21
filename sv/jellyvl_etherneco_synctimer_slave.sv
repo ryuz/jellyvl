@@ -181,13 +181,14 @@ module jellyvl_etherneco_synctimer_slave #(
     assign down_reset = reset || res_rx_error;
 
     int res_pos;
-    assign res_pos = 9 + (int'(cmd_rx_node) - 1) * 4;
 
     always_ff @ (posedge clk) begin
         if (up_reset) begin
+            res_pos     <= 'x;
             m_res_data  <= 'x;
             m_res_valid <= 1'b0;
         end else begin
+            res_pos     <= 9 + (int'(cmd_rx_node) - 1) * 4;
             m_res_data  <= 'x;
             m_res_valid <= 1'b0;
             if (s_res_valid) begin
