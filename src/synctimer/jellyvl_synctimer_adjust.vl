@@ -2,6 +2,7 @@
 // 調整機構
 module synctimer_adjust #(
     parameter TIMER_WIDTH    : u32 = 64                     , // タイマのbit幅
+    parameter LIMIT_WIDTH    : u32 = TIMER_WIDTH            , // 補正限界のbit幅
     parameter COUNTER_WIDTH  : u32 = 32                     , // 自クロックで経過時間カウンタのbit数
     parameter CALC_WIDTH     : u32 = 32                     , // タイマのうち計算に使う部分
     parameter ERROR_WIDTH    : u32 = 32                     , // 誤差計算時のbit幅
@@ -12,16 +13,23 @@ module synctimer_adjust #(
     parameter PHASE_WIDTH    : u32 = ERROR_WIDTH            , // 位相補正に使うbit数
     parameter PERIOD_LPF_GAIN: u32 = 4                      , // 周期補正のLPFの更新ゲイン(1/2^N)
     parameter PHASE_LPF_GAIN : u32 = 4                      , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter INIT_OVERRIDE  : bit = 1                      , // 初回の補正
     parameter DEBUG          : bit = 1'b0                   ,
     parameter SIMULATION     : bit = 1'b0                   ,
 ) (
     reset: input logic,
     clk  : input logic,
 
-    param_phase_min: input signed logic<PHASE_WIDTH>,
-    param_phase_max: input signed logic<PHASE_WIDTH>,
+    param_limit_min : input signed logic<LIMIT_WIDTH> ,
+    param_limit_max : input signed logic<LIMIT_WIDTH> ,
+    param_phase_min : input signed logic<PHASE_WIDTH> ,
+    param_phase_max : input signed logic<PHASE_WIDTH> ,
+    param_period_min: input signed logic<PERIOD_WIDTH>,
+    param_period_max: input signed logic<PERIOD_WIDTH>,
 
-    local_time: input logic<TIMER_WIDTH>,
+    current_time: input logic<TIMER_WIDTH>,
+
+    override_request: output logic,
 
     correct_override: input logic             ,
     correct_time    : input logic<TIMER_WIDTH>,
@@ -34,6 +42,7 @@ module synctimer_adjust #(
 ) {
 
     // type
+    localparam t_diff   : type = signed logic<TIMER_WIDTH>;
     localparam t_count  : type = logic<COUNTER_WIDTH>;
     localparam t_count_q: type = logic<COUNTER_WIDTH + ADJUST_Q>;
     localparam t_calc   : type = logic<CALC_WIDTH>;
@@ -57,189 +66,291 @@ module synctimer_adjust #(
         return period as t_error <<< ERROR_Q;
     }
 
+    function AdjustToCalc (
+        adjust: input t_error,
+    ) -> t_calc {
+        adjust >>>= ERROR_Q;
+        return adjust as t_calc;
+    }
+
+    // 範囲パラメータ固定小数点化
+    var error_phase_min : t_error;
+    var error_phase_max : t_error;
+    var error_period_min: t_error;
+    var error_period_max: t_error;
+    assign error_phase_min  = PhaseToAdjust(param_phase_min);
+    assign error_phase_max  = PhaseToAdjust(param_phase_max);
+    assign error_period_min = PeriodToAdjust(param_period_min);
+    assign error_period_max = PeriodToAdjust(param_period_max);
+
+
+    // リミッターによる補正要求
+    var override: logic;
+    assign override = correct_override || override_request;
+
+    var diff_time : t_diff;
+    var diff_valid: logic ;
+    always_ff (clk, reset) {
+        if_reset {
+            diff_time        = 'x;
+            diff_valid       = 1'b0;
+            override_request = INIT_OVERRIDE;
+        } else {
+            diff_time  = (correct_time - current_time) as t_diff;
+            diff_valid = correct_valid && !override;
+
+            if correct_valid {
+                override_request = 1'b0;
+            }
+
+            if diff_valid {
+                if diff_time <: param_limit_min as t_diff || diff_time >: param_limit_max as t_diff {
+                    override_request = 1'b1;
+                }
+            }
+        }
+    }
+
 
     // input
-    var current_local_time  : t_calc;
-    var current_correct_time: t_calc;
-    assign current_local_time   = local_time as t_calc;
-    assign current_correct_time = correct_time as t_calc;
+    var current_time_local  : t_calc;
+    var current_time_correct: t_calc;
+    assign current_time_local   = current_time as t_calc;
+    assign current_time_correct = correct_time as t_calc;
+
+    // change
+    var next_change_total: t_calc;
+    var next_change_valid: logic ;
 
 
     // stage 0
     var st0_previus_local_time  : t_calc ;
     var st0_previus_correct_time: t_calc ;
-    var st0_local_period        : t_calc ;
-    var st0_correct_period      : t_calc ;
-    var st0_first               : logic  ;
-    var st0_phase_error         : t_phase;
+    var st0_previus_enable      : logic  ;
+    var st0_period_local        : t_calc ;
+    var st0_period_correct      : t_calc ;
+    var st0_period_enable       : logic  ;
+    var st0_error_phase         : t_phase;
     var st0_valid               : logic  ;
-    var st0_counter_trig        : logic  ;
 
     always_ff (clk, reset) {
         if_reset {
-            st0_counter_trig         = 1'bx;
             st0_previus_local_time   = 'x;
             st0_previus_correct_time = 'x;
-            st0_local_period         = 'x;
-            st0_correct_period       = 'x;
-            st0_first                = 1'b1;
-            st0_phase_error          = 'x;
+            st0_previus_enable       = 1'b0;
+            st0_period_local         = 'x;
+            st0_period_correct       = 'x;
+            st0_period_enable        = 1'b0;
+            st0_error_phase          = 'x;
             st0_valid                = 1'b0;
         } else {
-            st0_counter_trig = correct_valid;
-            st0_valid        = 1'b0;
-            if correct_valid {
-                st0_previus_local_time   = current_local_time;
-                st0_previus_correct_time = current_correct_time;
-                st0_local_period         = current_local_time - st0_previus_local_time;
-                st0_correct_period       = current_correct_time - st0_previus_correct_time;
+            st0_valid = correct_valid;
 
-                st0_first       = 1'b0;
-                st0_phase_error = (current_correct_time - current_local_time) as t_phase;
-                if !(st0_first || correct_override) {
-                    st0_valid = 1'b1;
+            // 補正追加分基準を補正する
+            if next_change_valid {
+                st0_previus_local_time += next_change_total;
+            }
+
+            if correct_valid {
+                // 前回の時刻の記録
+                st0_previus_local_time   = current_time_local;
+                st0_previus_correct_time = current_time_correct;
+                st0_previus_enable       = 1'b1;
+
+                // 前回との期間を算出
+                st0_period_local   = current_time_local - st0_previus_local_time;
+                st0_period_correct = current_time_correct - st0_previus_correct_time;
+                st0_period_enable  = st0_previus_enable; // 前回時刻が有効なら期間有効
+
+                // 時刻の上書き
+                if override {
+                    st0_previus_local_time = current_time_correct;
+                    //                  st0_previus_enable     = 1'b0; // 時効が飛んだので無効にする
+                    st0_period_enable = 1'b0; // 時効が飛んだので無効にする
                 }
+
+                // 誤差計算
+                st0_error_phase = (current_time_correct - current_time_local) as t_phase;
             }
         }
     }
 
 
     // stage 1
-    var st1_first       : logic  ;
-    var st1_phase_error : t_error;
-    var st1_period_error: t_error;
-    var st1_valid       : logic  ;
-    var st1_counter_trig: logic  ;
+    var st1_error_phase : t_phase ;
+    var st1_error_period: t_period;
+    var st1_error_enable: logic   ;
+    var st1_valid       : logic   ;
 
     always_ff (clk, reset) {
         if_reset {
-            st1_counter_trig = 1'bx;
-            st1_first        = 1'b1;
-            st1_phase_error  = '0;
-            st1_period_error = 'x;
+            st1_error_phase  = 'x;
+            st1_error_period = 'x;
+            st1_error_enable = 1'b0;
             st1_valid        = 1'b0;
         } else {
-            st1_counter_trig = st0_counter_trig;
             if st0_valid {
-                st1_first       = 1'b0;
-                st1_phase_error = PhaseToAdjust(st0_phase_error);
-                //                if st0_phase_error <= param_phase_min {
-                //                    st1_phase_error = PhaseToAdjust(param_phase_min);
-                //                }
-                //                if st0_phase_error >= param_phase_max {
-                //                    st1_phase_error = PhaseToAdjust(param_phase_max);
-                //                }
-                st1_period_error = PeriodToAdjust((st0_correct_period - st0_local_period) as t_period);
+                st1_error_phase  = st0_error_phase;
+                st1_error_period = (st0_period_correct - st0_period_local) as t_period;
+                st1_error_enable = st0_period_enable; // 周期が有効なら誤差も有効
             }
-            st1_valid = st0_valid && !st1_first;
-
-            if correct_valid && correct_override {
-                st1_first = 1'b1;
-            }
-
+            st1_valid = st0_valid;
         }
     }
-    //    var st1_phase_error_int : t_error;
-    //    var st1_period_error_int: t_error;
-    //    assign st1_phase_error_int  = st1_phase_error >>> ERROR_Q;
-    //    assign st1_period_error_int = st1_period_error >>> ERROR_Q;
-
 
     // stage 2
-    var st2_first        : logic  ;
-    var st2_phase_adjust : t_error;
-    var st2_period_adjust: t_error;
-    var st2_valid        : logic  ;
-    var st2_counter_trig : logic  ;
-
-    var st1_pahse_corrected_error: t_error;
-    assign st1_pahse_corrected_error = st1_phase_error - st1_period_error; // st1_local_period に前回位相補正が含まれているのでその分相殺
-
-    var st1_period_corrected_error: t_error;
-    assign st1_period_corrected_error = st1_period_error + st2_phase_adjust; // st1_local_period に前回位相補正が含まれているのでその分相殺
+    var st2_error_phase : t_error;
+    var st2_error_period: t_error;
+    var st2_error_enable: logic  ;
+    var st2_valid       : logic  ;
 
     always_ff (clk, reset) {
         if_reset {
-            st2_counter_trig  = 1'bx;
-            st2_first         = 1'b1;
-            st2_phase_adjust  = '0;
-            st2_period_adjust = '0;
-            st2_valid         = 1'b0;
+            st2_error_phase  = 'x;
+            st2_error_period = 'x;
+            st2_error_enable = 1'b0;
+            st2_valid        = 1'b0;
         } else {
-            st2_counter_trig = st1_counter_trig;
-            if st1_valid {
-                st2_first = 1'b0;
-
-                // ゲインを与えてLPFをかける
-                st2_phase_adjust = st1_pahse_corrected_error >>> PHASE_LPF_GAIN;
-                if st1_pahse_corrected_error <= PhaseToAdjust(param_phase_min) {
-                    st2_phase_adjust = PhaseToAdjust(param_phase_min) >>> PHASE_LPF_GAIN;
-                }
-                if st1_pahse_corrected_error >= PhaseToAdjust(param_phase_max) {
-                    st2_phase_adjust = PhaseToAdjust(param_phase_max) >>> PHASE_LPF_GAIN;
-                }
-
-                // ゲインを与えてLPFをかける
-                st2_period_adjust += st1_period_corrected_error >>> PERIOD_LPF_GAIN;
-            }
-            st2_valid = st1_valid;
-
-            if correct_valid && correct_override {
-                st2_first = 1'b1;
-            }
+            // 今回周期補償する分を、位相誤差誤差から取り除く
+            //          st2_error_phase  = PhaseToAdjust(st1_error_phase - st1_error_period as t_phase) >>> PHASE_LPF_GAIN;
+            st2_error_phase  = PhaseToAdjust(st1_error_phase) >>> PHASE_LPF_GAIN;
+            st2_error_period = PhaseToAdjust(st1_error_period);
+            st2_error_enable = st1_error_enable;
+            st2_valid        = st1_valid;
         }
     }
 
     // stage 3
-    var st3_adjust      : t_error;
+    var st3_error_phase : t_error;
+    var st3_error_period: t_error;
+    var st3_error_enable: logic  ;
     var st3_valid       : logic  ;
-    var st3_counter_trig: logic  ;
 
     always_ff (clk, reset) {
         if_reset {
-            st3_counter_trig = 1'bx;
-            st3_adjust       = 'x;
+            st3_error_phase  = 'x;
+            st3_error_period = 'x;
+            st3_error_enable = 1'b0;
             st3_valid        = 1'b0;
         } else {
-            st3_counter_trig = st2_counter_trig;
-            st3_adjust       = st2_period_adjust + st2_phase_adjust;
+            st3_error_phase = st2_error_phase;
+            if st2_error_phase <: error_phase_min {
+                st3_error_phase = error_phase_min;
+            }
+            if st2_error_phase >: error_phase_max {
+                st3_error_phase = error_phase_max;
+            }
+            st3_error_period = st2_error_period;
+            st3_error_enable = st2_error_enable & st2_valid;
             st3_valid        = st2_valid;
         }
     }
 
-    // stage 3
-    var st4_counter_trig: logic    ;
-    var st4_count       : t_error_u; // 自クロックでの経過時刻計測
-    var st4_adjust      : t_error_u;
-    var st4_sign        : logic    ;
-    var st4_zero        : logic    ;
-    var st4_valid       : logic    ;
+
+    // stage 4
+    var st4_adjust_phase : t_error;
+    var st4_adjust_period: t_error;
+    var st4_change_phase : t_error;
+    var st4_change_period: t_error;
+    var st4_enable       : logic  ;
+    var st4_valid        : logic  ;
+
+    var st3_corrected_error_period: t_error;
+    //    assign st3_corrected_error_period = st3_error_period + st4_adjust_phase; // 前回の位相補正に含まれている分を、周期誤差から取り除く
+    assign st3_corrected_error_period = st3_error_period; // 基準時間自体動かしたのでそんなものは不要
 
     always_ff (clk, reset) {
         if_reset {
-            st4_sign         = 'x;
-            st4_zero         = 'x;
-            st4_adjust       = 'x;
-            st4_count        = 'x;
-            st4_valid        = 1'b0;
-            st4_counter_trig = 1'b0;
+            st4_adjust_phase  = '0;
+            st4_adjust_period = '0;
+            st4_change_phase  = 'x;
+            st4_change_period = 'x;
+            st4_enable        = 1'b0;
+            st4_valid         = 1'b0;
         } else {
-            st4_count += 1'b1;
-            if st4_counter_trig {
-                st4_count = '0;
-            }
-            st4_counter_trig = st3_counter_trig;
-
-            if st3_valid {
-                st4_sign   = st3_adjust <: 0;
-                st4_zero   = st3_adjust == 0;
-                st4_adjust = if st3_adjust <: 0 {
-                    (-st3_adjust) as t_error_u
+            if st3_error_enable {
+                if st4_enable {
+                    // ゲインを与えてLPFをかける
+                    st4_adjust_phase  =  st3_error_phase;
+                    st4_adjust_period += st3_corrected_error_period >>> PERIOD_LPF_GAIN;
+                    st4_change_phase  =  st3_error_phase;
+                    st4_change_period =  st3_corrected_error_period >>> PERIOD_LPF_GAIN;
                 } else {
-                    st3_adjust as t_error_u
-                };
+                    // 初回設定
+                    st4_adjust_phase  = st3_error_phase;
+                    st4_adjust_period = st3_corrected_error_period;
+                    st4_change_phase  = st3_error_phase;
+                    st4_change_period = st3_corrected_error_period;
+                    st4_enable        = 1'b1;
+                }
             }
             st4_valid = st3_valid;
+        }
+    }
+
+    // stage 5
+    var st5_adjust_total: t_error;
+    var st5_change_total: t_error;
+    var st5_enable      : logic  ;
+    var st5_valid       : logic  ;
+
+    always_ff (clk, reset) {
+        if_reset {
+            st5_adjust_total = 'x;
+            st5_change_total = 'x;
+            st5_enable       = 1'b0;
+            st5_valid        = 1'b0;
+        } else {
+            st5_adjust_total = st4_adjust_period + st4_adjust_phase;
+            st5_change_total = st4_change_period + st4_change_phase;
+            st5_enable       = st4_enable;
+            st5_valid        = st4_valid;
+        }
+    }
+
+    // stage 6
+    var st6_count : t_error_u; // 自クロックでの経過時刻計測
+    var st6_adjust: t_error_u;
+    var st6_sign  : logic    ;
+    var st6_zero  : logic    ;
+    var st6_enable: logic    ;
+    var st6_valid : logic    ;
+
+    always_ff (clk, reset) {
+        if_reset {
+            st6_sign   = 'x;
+            st6_zero   = 'x;
+            st6_adjust = 'x;
+            st6_count  = 'x;
+            st6_enable = 1'b0;
+            st6_valid  = 1'b0;
+        } else {
+            st6_count += 1'b1;
+            if st6_valid {
+                st6_count = '0;
+            }
+
+            if st5_valid {
+                st6_sign   = st5_adjust_total <: 0;
+                st6_zero   = st5_adjust_total == 0;
+                st6_adjust = if st5_adjust_total <: 0 {
+                    (-st5_adjust_total) as t_error_u
+                } else {
+                    st5_adjust_total as t_error_u
+                };
+            }
+            st6_enable = st5_valid & st5_enable;
+            st6_valid  = st5_valid;
+        }
+    }
+
+    always_ff (clk, reset) {
+        if_reset {
+            next_change_total = 'x;
+            next_change_valid = 1'b0;
+        } else {
+            next_change_total = AdjustToCalc(st5_change_total);
+            next_change_valid = st5_valid & st5_enable;
         }
     }
 
@@ -259,9 +370,9 @@ module synctimer_adjust #(
         clk  : clk  ,
         cke  : 1'b1 ,
 
-        s_dividend: st4_count as t_count_q << (ERROR_Q + ADJUST_Q),
-        s_divisor : st4_adjust                                  ,
-        s_valid   : st4_valid                                   ,
+        s_dividend: st6_count as t_count_q << (ERROR_Q + ADJUST_Q),
+        s_divisor : st6_adjust                                  ,
+        s_valid   : st6_enable                                  ,
         s_ready   : tmp_ready                                   ,
 
         m_quotient : div_quotient ,
@@ -292,14 +403,14 @@ module synctimer_adjust #(
             }
 
             if div_valid {
-                if st4_zero {
+                if st6_zero {
                     adj_param_zero   = 1'b1;
                     adj_param_sign   = 1'b0;
                     adj_param_period = '0;
                     adj_param_valid  = !adj_param_zero; // 変化があれば発行
                 } else {
-                    adj_param_zero   = st4_zero;
-                    adj_param_sign   = st4_sign;
+                    adj_param_zero   = st6_zero;
+                    adj_param_sign   = st6_sign;
                     adj_param_period = div_quotient - ADJ_STEP;
                     adj_param_valid  = adj_param_zero || ((div_quotient - ADJ_STEP) != adj_param_period);
                 }
@@ -364,35 +475,35 @@ module synctimer_adjust #(
     }
 
     if SIMULATION :sim_monitor {
-        var sim_monitor_time_local            : t_calc;
-        var sim_monitor_time_correct          : t_calc;
-        var sim_monitor_period_local          : t_calc;
-        var sim_monitor_period_correct        : t_calc;
-        var sim_monitor_error_phase           : real  ;
-        var sim_monitor_error_period          : real  ;
-        var sim_monitor_phase_corrected_error : real  ;
-        var sim_monitor_period_corrected_error: real  ;
-        var sim_monitor_adjust_phase          : real  ;
-        var sim_monitor_adjust_period         : real  ;
-        var sim_monitor_adjust_total          : real  ;
+        var sim_monitor_time_local            : t_calc  ;
+        var sim_monitor_time_correct          : t_calc  ;
+        var sim_monitor_period_local          : t_calc  ;
+        var sim_monitor_period_correct        : t_calc  ;
+        var sim_monitor_error_phase           : t_phase ;
+        var sim_monitor_error_period          : t_period;
+        var sim_monitor_corrected_error_phase : real    ;
+        var sim_monitor_corrected_error_period: real    ;
+        var sim_monitor_adjust_phase          : real    ;
+        var sim_monitor_adjust_period         : real    ;
+        var sim_monitor_adjust_total          : real    ;
 
         always_ff (clk) {
             if correct_valid {
-                sim_monitor_time_local   = current_local_time;
-                sim_monitor_time_correct = current_correct_time;
+                sim_monitor_time_local   = current_time_local;
+                sim_monitor_time_correct = current_time_correct;
             }
-            if st1_valid {
-                sim_monitor_phase_corrected_error  = $itor(st1_pahse_corrected_error) / $itor(2 ** ERROR_Q);
-                sim_monitor_period_corrected_error = $itor(st1_period_corrected_error) / $itor(2 ** ERROR_Q);
+            if st3_valid {
+                sim_monitor_corrected_error_phase  = $itor(st3_error_phase) / $itor(2 ** ERROR_Q);
+                sim_monitor_corrected_error_period = $itor(st3_corrected_error_period) / $itor(2 ** ERROR_Q);
             }
         }
 
-        assign sim_monitor_period_correct = st0_correct_period;
-        assign sim_monitor_period_local   = st0_local_period;
-        assign sim_monitor_error_phase    = $itor(st1_phase_error) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_error_period   = $itor(st1_period_error) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_adjust_phase   = $itor(st2_phase_adjust) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_adjust_period  = $itor(st2_period_adjust) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_adjust_total   = $itor(st3_adjust) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_period_correct = st0_period_correct;
+        assign sim_monitor_period_local   = st0_period_local;
+        assign sim_monitor_error_phase    = st1_error_phase;
+        assign sim_monitor_error_period   = st1_error_period;
+        assign sim_monitor_adjust_phase   = $itor(st4_adjust_phase) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_adjust_period  = $itor(st4_adjust_period) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_adjust_total   = $itor(st5_adjust_total) / $itor(2 ** ERROR_Q);
     }
 }

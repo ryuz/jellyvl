@@ -2,6 +2,7 @@ module jellyvl_etherneco_synctimer_slave #(
     parameter int unsigned TIMER_WIDTH         = 64                             , // タイマのbit幅
     parameter int unsigned NUMERATOR           = 10                             , // クロック周期の分子
     parameter int unsigned DENOMINATOR         = 3                              , // クロック周期の分母
+    parameter int unsigned ADJ_LIMIT_WIDTH     = TIMER_WIDTH                    , // 補正限界のbit幅
     parameter int unsigned ADJ_COUNTER_WIDTH   = 32                             , // 自クロックで経過時間カウンタのbit数
     parameter int unsigned ADJ_CALC_WIDTH      = 32                             , // タイマのうち計算に使う部分
     parameter int unsigned ADJ_ERROR_WIDTH     = 32                             , // 誤差計算時のbit幅
@@ -17,6 +18,8 @@ module jellyvl_etherneco_synctimer_slave #(
 ) (
     input logic reset,
     input logic clk  ,
+
+    input logic adj_enable,
 
     output logic [TIMER_WIDTH-1:0] current_time,
 
@@ -58,6 +61,7 @@ module jellyvl_etherneco_synctimer_slave #(
     // ---------------------------------
 
     localparam type t_adj_phase = logic signed [ADJ_PHASE_WIDTH-1:0];
+    localparam type t_adj_limit = logic signed [ADJ_LIMIT_WIDTH-1:0];
     localparam type t_time      = logic [8-1:0][8-1:0];
     (* mark_debug="true" *)
     logic correct_override;
@@ -65,11 +69,15 @@ module jellyvl_etherneco_synctimer_slave #(
     logic [TIMER_WIDTH-1:0] correct_time;
     (* mark_debug="true" *)
     logic correct_valid;
+    (* mark_debug="true" *)
+    logic [TIMER_WIDTH-1:0] dbg_current_time;
+    assign dbg_current_time = current_time;
 
     jellyvl_synctimer_core #(
         .TIMER_WIDTH         (TIMER_WIDTH        ),
         .NUMERATOR           (NUMERATOR          ),
         .DENOMINATOR         (DENOMINATOR        ),
+        .ADJ_LIMIT_WIDTH     (ADJ_LIMIT_WIDTH    ),
         .ADJ_COUNTER_WIDTH   (ADJ_COUNTER_WIDTH  ),
         .ADJ_CALC_WIDTH      (ADJ_CALC_WIDTH     ),
         .ADJ_ERROR_WIDTH     (ADJ_ERROR_WIDTH    ),
@@ -86,17 +94,21 @@ module jellyvl_etherneco_synctimer_slave #(
         .reset (reset),
         .clk   (clk  ),
         .
-        adj_param_phase_min (t_adj_phase'(-100)),
-        .adj_param_phase_max (t_adj_phase'(+100)),
+        adj_param_limit_min  (t_adj_limit'(-10000)),
+        .adj_param_limit_max  (t_adj_limit'(+10000)),
+        .adj_param_phase_min  (t_adj_phase  '(-100)),
+        .adj_param_phase_max  (t_adj_phase  '(+100)),
+        .adj_param_period_min (t_adj_phase '(-1000)),
+        .adj_param_period_max (t_adj_phase '(+1000)),
         .
         set_time  ('0  ),
         .set_valid (1'b0),
         .
         current_time (current_time),
         .
-        correct_override (correct_override),
-        .correct_time     (correct_time    ),
-        .correct_valid    (correct_valid   )
+        correct_override (correct_override          ),
+        .correct_time     (correct_time              ),
+        .correct_valid    (correct_valid & adj_enable)
     );
 
 

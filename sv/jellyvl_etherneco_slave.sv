@@ -2,6 +2,7 @@ module jellyvl_etherneco_slave #(
     parameter int unsigned TIMER_WIDTH             = 64                                     , // タイマのbit幅
     parameter int unsigned NUMERATOR               = 8                                      , // クロック周期の分子
     parameter int unsigned DENOMINATOR             = 1                                      , // クロック周期の分母
+    parameter int unsigned TIMSYNC_LIMIT_WIDTH     = TIMER_WIDTH                            , // 補正限界のbit幅
     parameter int unsigned TIMSYNC_COUNTER_WIDTH   = 48                                     , // 自クロックで経過時間カウンタのbit数
     parameter int unsigned TIMSYNC_CALC_WIDTH      = 48                                     , // タイマのうち計算に使う部分
     parameter int unsigned TIMSYNC_ERROR_WIDTH     = 32                                     , // 誤差計算時のbit幅
@@ -19,6 +20,8 @@ module jellyvl_etherneco_slave #(
     input logic clk  ,
 
     output logic [TIMER_WIDTH-1:0] current_time,
+
+    input logic timsync_adj_enable,
 
     input  logic         s_up_rx_first,
     input  logic         s_up_rx_last ,
@@ -155,6 +158,7 @@ module jellyvl_etherneco_slave #(
         .TIMER_WIDTH         (TIMER_WIDTH            ),
         .NUMERATOR           (NUMERATOR              ),
         .DENOMINATOR         (DENOMINATOR            ),
+        .ADJ_LIMIT_WIDTH     (TIMSYNC_LIMIT_WIDTH    ),
         .ADJ_COUNTER_WIDTH   (TIMSYNC_COUNTER_WIDTH  ),
         .ADJ_CALC_WIDTH      (TIMSYNC_CALC_WIDTH     ),
         .ADJ_ERROR_WIDTH     (TIMSYNC_ERROR_WIDTH    ),
@@ -170,6 +174,8 @@ module jellyvl_etherneco_slave #(
     ) u_etherneco_synctimer_slave (
         .reset (reset),
         .clk   (clk  ),
+        .
+        adj_enable (timsync_adj_enable),
         .
         current_time (current_time),
         .
