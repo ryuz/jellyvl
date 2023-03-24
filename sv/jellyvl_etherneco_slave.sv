@@ -1,20 +1,19 @@
 module jellyvl_etherneco_slave #(
-    parameter int unsigned TIMER_WIDTH             = 64                                     , // タイマのbit幅
-    parameter int unsigned NUMERATOR               = 8                                      , // クロック周期の分子
-    parameter int unsigned DENOMINATOR             = 1                                      , // クロック周期の分母
-    parameter int unsigned TIMSYNC_LIMIT_WIDTH     = TIMER_WIDTH                            , // 補正限界のbit幅
-    parameter int unsigned TIMSYNC_COUNTER_WIDTH   = 48                                     , // 自クロックで経過時間カウンタのbit数
-    parameter int unsigned TIMSYNC_CALC_WIDTH      = 48                                     , // タイマのうち計算に使う部分
-    parameter int unsigned TIMSYNC_ERROR_WIDTH     = 32                                     , // 誤差計算時のbit幅
-    parameter int unsigned TIMSYNC_ERROR_Q         = 8                                      , // 誤差計算時に追加する固定小数点数bit数
-    parameter int unsigned TIMSYNC_ADJUST_WIDTH    = TIMSYNC_COUNTER_WIDTH + TIMSYNC_ERROR_Q, // 補正周期のbit幅
-    parameter int unsigned TIMSYNC_ADJUST_Q        = TIMSYNC_ERROR_Q                        , // 補正周期に追加する固定小数点数bit数
-    parameter int unsigned TIMSYNC_PERIOD_WIDTH    = TIMSYNC_ERROR_WIDTH                    , // 周期補正に使うbit数
-    parameter int unsigned TIMSYNC_PHASE_WIDTH     = TIMSYNC_ERROR_WIDTH                    , // 位相補正に使うbit数
-    parameter int unsigned TIMSYNC_PERIOD_LPF_GAIN = 4                                      , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter int unsigned TIMSYNC_PHASE_LPF_GAIN  = 4                                      , // 位相補正のLPFの更新ゲイン(1/2^N)
-    parameter bit          DEBUG                   = 1'b0                                   ,
-    parameter bit          SIMULATION              = 1'b0                               
+    parameter int unsigned TIMER_WIDTH             = 64                                   , // タイマのbit幅
+    parameter int unsigned NUMERATOR               = 8                                    , // クロック周期の分子
+    parameter int unsigned DENOMINATOR             = 1                                    , // クロック周期の分母
+    parameter int unsigned TIMSYNC_LIMIT_WIDTH     = TIMER_WIDTH                          , // 補正限界のbit幅
+    parameter int unsigned TIMSYNC_TIMER_WIDTH     = 32                                   , // 補正に使う範囲のタイマ幅
+    parameter int unsigned TIMSYNC_CYCLE_WIDTH     = 32                                   , // 自クロックサイクルカウンタのbit数
+    parameter int unsigned TIMSYNC_ERROR_WIDTH     = 32                                   , // 誤差計算時のbit幅
+    parameter int unsigned TIMSYNC_ERROR_Q         = 8                                    , // 誤差計算時に追加する固定小数点数bit数
+    parameter int unsigned TIMSYNC_ADJUST_WIDTH    = TIMSYNC_CYCLE_WIDTH + TIMSYNC_ERROR_Q, // 補正周期のbit幅
+    parameter int unsigned TIMSYNC_ADJUST_Q        = TIMSYNC_ERROR_Q                      , // 補正周期に追加する固定小数点数bit数
+    parameter int unsigned TIMSYNC_LPF_GAIN_CYCLE  = 6                                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter int unsigned TIMSYNC_LPF_GAIN_PERIOD = 6                                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned TIMSYNC_LPF_GAIN_PHASE  = 6                                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter bit          DEBUG                   = 1'b0                                 ,
+    parameter bit          SIMULATION              = 1'b0                             
 ) (
     input logic reset,
     input logic clk  ,
@@ -159,16 +158,15 @@ module jellyvl_etherneco_slave #(
         .NUMERATOR           (NUMERATOR              ),
         .DENOMINATOR         (DENOMINATOR            ),
         .ADJ_LIMIT_WIDTH     (TIMSYNC_LIMIT_WIDTH    ),
-        .ADJ_COUNTER_WIDTH   (TIMSYNC_COUNTER_WIDTH  ),
-        .ADJ_CALC_WIDTH      (TIMSYNC_CALC_WIDTH     ),
+        .ADJ_TIMER_WIDTH     (TIMSYNC_TIMER_WIDTH    ),
+        .ADJ_CYCLE_WIDTH     (TIMSYNC_CYCLE_WIDTH    ),
         .ADJ_ERROR_WIDTH     (TIMSYNC_ERROR_WIDTH    ),
         .ADJ_ERROR_Q         (TIMSYNC_ERROR_Q        ),
         .ADJ_ADJUST_WIDTH    (TIMSYNC_ADJUST_WIDTH   ),
         .ADJ_ADJUST_Q        (TIMSYNC_ADJUST_Q       ),
-        .ADJ_PERIOD_WIDTH    (TIMSYNC_PERIOD_WIDTH   ),
-        .ADJ_PHASE_WIDTH     (TIMSYNC_PHASE_WIDTH    ),
-        .ADJ_PERIOD_LPF_GAIN (TIMSYNC_PERIOD_LPF_GAIN),
-        .ADJ_PHASE_LPF_GAIN  (TIMSYNC_PHASE_LPF_GAIN ),
+        .ADJ_LPF_GAIN_CYCLE  (TIMSYNC_LPF_GAIN_CYCLE ),
+        .ADJ_LPF_GAIN_PERIOD (TIMSYNC_LPF_GAIN_PERIOD),
+        .ADJ_LPF_GAIN_PHASE  (TIMSYNC_LPF_GAIN_PHASE ),
         .DEBUG               (DEBUG                  ),
         .SIMULATION          (SIMULATION             )
     ) u_etherneco_synctimer_slave (

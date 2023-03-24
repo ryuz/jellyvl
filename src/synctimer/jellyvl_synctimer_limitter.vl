@@ -1,5 +1,5 @@
 
-// 調整機構
+// リミッター
 module synctimer_limitter #(
     parameter TIMER_WIDTH  : u32 = 64         , // タイマのbit幅
     parameter LIMIT_WIDTH  : u32 = TIMER_WIDTH, // 補正限界のbit幅

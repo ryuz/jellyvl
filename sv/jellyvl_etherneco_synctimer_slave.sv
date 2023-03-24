@@ -1,20 +1,19 @@
 module jellyvl_etherneco_synctimer_slave #(
-    parameter int unsigned TIMER_WIDTH         = 64                             , // タイマのbit幅
-    parameter int unsigned NUMERATOR           = 10                             , // クロック周期の分子
-    parameter int unsigned DENOMINATOR         = 3                              , // クロック周期の分母
-    parameter int unsigned ADJ_LIMIT_WIDTH     = TIMER_WIDTH                    , // 補正限界のbit幅
-    parameter int unsigned ADJ_COUNTER_WIDTH   = 32                             , // 自クロックで経過時間カウンタのbit数
-    parameter int unsigned ADJ_CALC_WIDTH      = 32                             , // タイマのうち計算に使う部分
-    parameter int unsigned ADJ_ERROR_WIDTH     = 32                             , // 誤差計算時のbit幅
-    parameter int unsigned ADJ_ERROR_Q         = 8                              , // 誤差計算時に追加する固定小数点数bit数
-    parameter int unsigned ADJ_ADJUST_WIDTH    = ADJ_COUNTER_WIDTH + ADJ_ERROR_Q, // 補正周期のbit幅
-    parameter int unsigned ADJ_ADJUST_Q        = ADJ_ERROR_Q                    , // 補正周期に追加する固定小数点数bit数
-    parameter int unsigned ADJ_PERIOD_WIDTH    = ADJ_ERROR_WIDTH                , // 周期補正に使うbit数
-    parameter int unsigned ADJ_PHASE_WIDTH     = ADJ_ERROR_WIDTH                , // 位相補正に使うbit数
-    parameter int unsigned ADJ_PERIOD_LPF_GAIN = 4                              , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter int unsigned ADJ_PHASE_LPF_GAIN  = 4                              , // 位相補正のLPFの更新ゲイン(1/2^N)
-    parameter bit          DEBUG               = 1'b0                           ,
-    parameter bit          SIMULATION          = 1'b0                       
+    parameter int unsigned TIMER_WIDTH         = 64                           , // タイマのbit幅
+    parameter int unsigned NUMERATOR           = 10                           , // クロック周期の分子
+    parameter int unsigned DENOMINATOR         = 3                            , // クロック周期の分母
+    parameter int unsigned ADJ_LIMIT_WIDTH     = TIMER_WIDTH                  , // 補正限界のbit幅
+    parameter int unsigned ADJ_TIMER_WIDTH     = 32                           , // 補正に使う範囲のタイマ幅
+    parameter int unsigned ADJ_CYCLE_WIDTH     = 32                           , // 自クロックサイクルカウンタのbit数
+    parameter int unsigned ADJ_ERROR_WIDTH     = 32                           , // 誤差計算時のbit幅
+    parameter int unsigned ADJ_ERROR_Q         = 8                            , // 誤差計算時に追加する固定小数点数bit数
+    parameter int unsigned ADJ_ADJUST_WIDTH    = ADJ_CYCLE_WIDTH + ADJ_ERROR_Q, // 補正周期のbit幅
+    parameter int unsigned ADJ_ADJUST_Q        = ADJ_ERROR_Q                  , // 補正周期に追加する固定小数点数bit数
+    parameter int unsigned ADJ_LPF_GAIN_CYCLE  = 6                            , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter int unsigned ADJ_LPF_GAIN_PERIOD = 6                            , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned ADJ_LPF_GAIN_PHASE  = 6                            , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter bit          DEBUG               = 1'b0                         ,
+    parameter bit          SIMULATION          = 1'b0                     
 ) (
     input logic reset,
     input logic clk  ,
@@ -60,9 +59,9 @@ module jellyvl_etherneco_synctimer_slave #(
     //  Timer
     // ---------------------------------
 
-    localparam type t_adj_phase = logic signed [ADJ_PHASE_WIDTH-1:0];
-    localparam type t_adj_limit = logic signed [ADJ_LIMIT_WIDTH-1:0];
     localparam type t_time      = logic [8-1:0][8-1:0];
+    localparam type t_adj_limit = logic [ADJ_LIMIT_WIDTH-1:0];
+    localparam type t_adj_error = logic [ADJ_ERROR_WIDTH-1:0];
     (* mark_debug="true" *)
     logic correct_override;
     (* mark_debug="true" *)
@@ -78,28 +77,25 @@ module jellyvl_etherneco_synctimer_slave #(
         .NUMERATOR           (NUMERATOR          ),
         .DENOMINATOR         (DENOMINATOR        ),
         .ADJ_LIMIT_WIDTH     (ADJ_LIMIT_WIDTH    ),
-        .ADJ_COUNTER_WIDTH   (ADJ_COUNTER_WIDTH  ),
-        .ADJ_CALC_WIDTH      (ADJ_CALC_WIDTH     ),
+        .ADJ_TIMER_WIDTH     (ADJ_TIMER_WIDTH    ),
+        .ADJ_CYCLE_WIDTH     (ADJ_CYCLE_WIDTH    ),
         .ADJ_ERROR_WIDTH     (ADJ_ERROR_WIDTH    ),
         .ADJ_ERROR_Q         (ADJ_ERROR_Q        ),
         .ADJ_ADJUST_WIDTH    (ADJ_ADJUST_WIDTH   ),
         .ADJ_ADJUST_Q        (ADJ_ADJUST_Q       ),
-        .ADJ_PERIOD_WIDTH    (ADJ_PERIOD_WIDTH   ),
-        .ADJ_PHASE_WIDTH     (ADJ_PHASE_WIDTH    ),
-        .ADJ_PERIOD_LPF_GAIN (ADJ_PERIOD_LPF_GAIN),
-        .ADJ_PHASE_LPF_GAIN  (ADJ_PHASE_LPF_GAIN ),
+        .ADJ_LPF_GAIN_CYCLE  (ADJ_LPF_GAIN_CYCLE ),
+        .ADJ_LPF_GAIN_PERIOD (ADJ_LPF_GAIN_PERIOD),
+        .ADJ_LPF_GAIN_PHASE  (ADJ_LPF_GAIN_PHASE ),
         .DEBUG               (DEBUG              ),
         .SIMULATION          (SIMULATION         )
     ) u_synctimer_core (
         .reset (reset),
         .clk   (clk  ),
         .
-        adj_param_limit_min  (t_adj_limit'(-10000)),
-        .adj_param_limit_max  (t_adj_limit'(+10000)),
-        .adj_param_phase_min  (t_adj_phase  '(-100)),
-        .adj_param_phase_max  (t_adj_phase  '(+100)),
-        .adj_param_period_min (t_adj_phase '(-1000)),
-        .adj_param_period_max (t_adj_phase '(+1000)),
+        adj_param_limit_min  (t_adj_limit'(-100000)),
+        .adj_param_limit_max  (t_adj_limit'(+100000)),
+        .adj_param_adjust_min (t_adj_error  '(-1000)),
+        .adj_param_adjust_max (t_adj_error  '(+1000)),
         .
         set_time  ('0  ),
         .set_valid (1'b0),

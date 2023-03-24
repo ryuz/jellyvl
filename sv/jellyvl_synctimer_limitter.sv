@@ -1,5 +1,5 @@
 
-// 調整機構
+// リミッター
 module jellyvl_synctimer_limitter #(
     parameter int unsigned TIMER_WIDTH   = 64         , // タイマのbit幅
     parameter int unsigned LIMIT_WIDTH   = TIMER_WIDTH, // 補正限界のbit幅

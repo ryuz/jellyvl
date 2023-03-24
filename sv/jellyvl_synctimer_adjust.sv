@@ -7,17 +7,15 @@ module jellyvl_synctimer_adjust #(
     parameter int unsigned ERROR_Q         = 8                    , // 誤差計算時に追加する固定小数点数bit数
     parameter int unsigned ADJUST_WIDTH    = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
     parameter int unsigned ADJUST_Q        = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
-    parameter int unsigned LPF_GAIN_CYCLE  = 2                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter int unsigned LPF_GAIN_PERIOD = 2                    , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter int unsigned LPF_GAIN_PHASE  = 2                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned LPF_GAIN_CYCLE  = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter int unsigned LPF_GAIN_PERIOD = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned LPF_GAIN_PHASE  = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
     parameter bit          DEBUG           = 1'b0                 ,
     parameter bit          SIMULATION      = 1'b0             
 ) (
     input logic reset,
     input logic clk  ,
 
-    //    param_cycle_min : input signed logic<CYCLE_WIDTH>,
-    //    param_cycle_max : input signed logic<CYCLE_WIDTH>,
     input logic signed [ERROR_WIDTH-1:0] param_adjust_min,
     input logic signed [ERROR_WIDTH-1:0] param_adjust_max,
 
@@ -36,6 +34,7 @@ module jellyvl_synctimer_adjust #(
 
 
     // type
+    localparam type t_time    = logic [TIMER_WIDTH-1:0];
     localparam type t_count   = logic [CYCLE_WIDTH-1:0];
     localparam type t_cycle   = logic [CYCLE_WIDTH + CYCLE_Q-1:0];
     localparam type t_error   = logic signed [ERROR_WIDTH + ERROR_Q-1:0];
@@ -156,6 +155,9 @@ module jellyvl_synctimer_adjust #(
     assign error_predict_v    = error_estimate_v0; // 周期予測はひとつ前の推定値と同じ
     assign error_predict_v_en = error_estimate_v0_en;
 
+    t_time current_error;
+    assign current_error = correct_time - current_time;
+
     always_ff @ (posedge clk) begin
         if (reset) begin
             error_observe_x         <= 'x;
@@ -181,11 +183,13 @@ module jellyvl_synctimer_adjust #(
             error_stage             <= '0;
             error_valid             <= 1'b0;
         end else begin
-            error_stage    <= error_stage    << (1);
-            error_stage[0] <=   correct_valid;
+            error_stage <= error_stage << (1);
 
             if (correct_valid) begin
+                error_stage[0] <= 1'b1;
+
                 if (correct_override) begin
+                    // 時刻上書き時
                     error_observe_x         <= '0;
                     error_observe_x_en      <= 1'b1;
                     error_predict_x         <= 'x;
@@ -206,7 +210,7 @@ module jellyvl_synctimer_adjust #(
                     error_estimate_v0_en    <= 1'b0;
                 end else begin
                     // 観測値ラッチ
-                    error_observe_x    <= (t_error'((correct_time - current_time)) <<< ERROR_Q);
+                    error_observe_x    <= t_error'(current_error) <<< ERROR_Q;
                     error_observe_x_en <= 1'b1;
 
                     // 1つ前の予測保存
@@ -218,18 +222,20 @@ module jellyvl_synctimer_adjust #(
                 end
             end
 
-            // 位相ずれ推定
             if (error_stage[0]) begin
+                // 位相ずれ予測
                 error_predict_x    <= error_estimate_x0 + error_estimate_v0 - error_adjust_value;
                 error_predict_x_en <= error_estimate_x0_en & error_estimate_v0_en;
             end
 
             if (error_stage[1]) begin
+                // LPF用ゲイン計算
                 error_predict_x_gain    <= error_predict_x - (error_predict_x >>> LPF_GAIN_PHASE);
                 error_predict_x_gain_en <= error_predict_x_en;
             end
 
             if (error_stage[2]) begin
+                // 位相ずれ推定
                 if (error_observe_x_en) begin
                     if (error_predict_x_gain_en) begin
                         error_estimate_x <= error_predict_x_gain + (error_observe_x >>> LPF_GAIN_PHASE);
@@ -240,16 +246,18 @@ module jellyvl_synctimer_adjust #(
                 end
             end
 
-            // 周期ずれ推定
             if (error_stage[3]) begin
+                // 周期ずれ予測
                 error_observe_v    <= error_estimate_x - (error_estimate_x0 - error_adjust_value);
                 error_observe_v_en <= error_estimate_x_en && error_estimate_x0_en;
 
+                // LPF用ゲイン計算
                 error_predict_v_gain    <= error_predict_v - (error_predict_v >>> LPF_GAIN_PERIOD);
                 error_predict_v_gain_en <= error_predict_v_en;
             end
 
             if (error_stage[4]) begin
+                // 周期ずれ推定
                 if (error_observe_v_en) begin
                     if (error_predict_v_gain_en) begin
                         error_estimate_v <= error_predict_v_gain + (error_observe_v >>> LPF_GAIN_PHASE);
@@ -261,6 +269,7 @@ module jellyvl_synctimer_adjust #(
             end
 
             if (error_stage[5]) begin
+                // 制御量合計
                 error_adjust_total <= error_estimate_x + error_estimate_v;
             end
 
@@ -274,6 +283,8 @@ module jellyvl_synctimer_adjust #(
                 if (error_adjust_total > limit_adjust_max) begin
                     error_adjust_value <= limit_adjust_max;
                 end
+
+                // データがなら発行
                 error_valid <= error_estimate_v_en;
             end
         end

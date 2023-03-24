@@ -7,17 +7,15 @@ module synctimer_adjust #(
     parameter ERROR_Q        : u32 = 8                    , // 誤差計算時に追加する固定小数点数bit数
     parameter ADJUST_WIDTH   : u32 = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
     parameter ADJUST_Q       : u32 = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
-    parameter LPF_GAIN_CYCLE : u32 = 2                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter LPF_GAIN_PERIOD: u32 = 2                    , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter LPF_GAIN_PHASE : u32 = 2                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter LPF_GAIN_CYCLE : u32 = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter LPF_GAIN_PERIOD: u32 = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter LPF_GAIN_PHASE : u32 = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
     parameter DEBUG          : bit = 1'b0                 ,
     parameter SIMULATION     : bit = 1'b0                 ,
 ) (
     reset: input logic,
     clk  : input logic,
 
-    //    param_cycle_min : input signed logic<CYCLE_WIDTH>,
-    //    param_cycle_max : input signed logic<CYCLE_WIDTH>,
     param_adjust_min: input signed logic<ERROR_WIDTH>,
     param_adjust_max: input signed logic<ERROR_WIDTH>,
 
@@ -36,6 +34,7 @@ module synctimer_adjust #(
 
 
     // type
+    localparam t_time   : type = logic<TIMER_WIDTH>;
     localparam t_count  : type = logic<CYCLE_WIDTH>;
     localparam t_cycle  : type = logic<CYCLE_WIDTH + CYCLE_Q>;
     localparam t_error  : type = signed logic<ERROR_WIDTH + ERROR_Q>;
@@ -123,30 +122,30 @@ module synctimer_adjust #(
     // -------------------------------------
 
     // 誤差推定
-    var error_observe_x        : t_error; // 位相誤差の観測値
-    var error_observe_x_en     : logic  ;
-    var error_predict_x        : t_error; // 位相誤差の予測値
-    var error_predict_x_en     : logic  ;
-    var error_predict_x_gain   : t_error; // 位相誤差の予測値にゲインを掛けたもの
-    var error_predict_x_gain_en: logic  ;
-    var error_estimate_x       : t_error; // 位相誤差の推定値
-    var error_estimate_x_en    : logic  ;
-    var error_estimate_x0      : t_error; // １つ前の位相誤差の推定値
-    var error_estimate_x0_en   : logic  ;
-    var error_observe_v        : t_error; // 周期誤差の観測値
-    var error_observe_v_en     : logic  ;
-    var error_predict_v        : t_error; // 位相誤差の予測値
-    var error_predict_v_en     : logic  ;
-    var error_predict_v_gain   : t_error; // 周期誤差の予測値にゲインを掛けたもの
-    var error_predict_v_gain_en: logic  ;
-    var error_estimate_v       : t_error; // 周期誤差の推定値
-    var error_estimate_v_en    : logic  ;
-    var error_estimate_v0      : t_error; // １つ前の周期誤差の推定値
-    var error_estimate_v0_en   : logic  ;
-    var error_adjust_total     : t_error;
-    var error_adjust_value     : t_error; // 制御量(一周期の補正量)
-    var error_stage: logic<7>;
-    var error_valid: logic;
+    var error_observe_x        : t_error   ; // 位相誤差の観測値
+    var error_observe_x_en     : logic     ;
+    var error_predict_x        : t_error   ; // 位相誤差の予測値
+    var error_predict_x_en     : logic     ;
+    var error_predict_x_gain   : t_error   ; // 位相誤差の予測値にゲインを掛けたもの
+    var error_predict_x_gain_en: logic     ;
+    var error_estimate_x       : t_error   ; // 位相誤差の推定値
+    var error_estimate_x_en    : logic     ;
+    var error_estimate_x0      : t_error   ; // １つ前の位相誤差の推定値
+    var error_estimate_x0_en   : logic     ;
+    var error_observe_v        : t_error   ; // 周期誤差の観測値
+    var error_observe_v_en     : logic     ;
+    var error_predict_v        : t_error   ; // 位相誤差の予測値
+    var error_predict_v_en     : logic     ;
+    var error_predict_v_gain   : t_error   ; // 周期誤差の予測値にゲインを掛けたもの
+    var error_predict_v_gain_en: logic     ;
+    var error_estimate_v       : t_error   ; // 周期誤差の推定値
+    var error_estimate_v_en    : logic     ;
+    var error_estimate_v0      : t_error   ; // １つ前の周期誤差の推定値
+    var error_estimate_v0_en   : logic     ;
+    var error_adjust_total     : t_error   ;
+    var error_adjust_value     : t_error   ; // 制御量(一周期の補正量)
+    var error_stage            : logic  <7>;
+    var error_valid            : logic     ;
 
     var limit_adjust_min: t_error;
     var limit_adjust_max: t_error;
@@ -155,6 +154,9 @@ module synctimer_adjust #(
 
     assign error_predict_v    = error_estimate_v0; // 周期予測はひとつ前の推定値と同じ
     assign error_predict_v_en = error_estimate_v0_en;
+
+    var current_error : t_time;
+    assign current_error = correct_time - current_time;
 
     always_ff (clk, reset) {
         if_reset {
@@ -176,16 +178,18 @@ module synctimer_adjust #(
             error_estimate_v_en     = 1'b0;
             error_estimate_v0       = 'x;
             error_estimate_v0_en    = 1'b0;
-            error_adjust_total = 'x;
-            error_adjust_value = 'x;
+            error_adjust_total      = 'x;
+            error_adjust_value      = 'x;
             error_stage             = '0;
-            error_valid = 1'b0;
+            error_valid             = 1'b0;
         } else {
             error_stage <<= 1;
-            error_stage[0] = correct_valid;
 
             if correct_valid {
+                error_stage[0] = 1'b1;
+
                 if correct_override {
+                    // 時刻上書き時
                     error_observe_x         = '0;
                     error_observe_x_en      = 1'b1;
                     error_predict_x         = 'x;
@@ -206,7 +210,7 @@ module synctimer_adjust #(
                     error_estimate_v0_en    = 1'b0;
                 } else {
                     // 観測値ラッチ
-                    error_observe_x    = ((correct_time - current_time) as t_error <<< ERROR_Q);
+                    error_observe_x    = current_error as t_error <<< ERROR_Q;
                     error_observe_x_en = 1'b1;
 
                     // 1つ前の予測保存
@@ -218,18 +222,20 @@ module synctimer_adjust #(
                 }
             }
 
-            // 位相ずれ推定
             if error_stage[0] {
+                // 位相ずれ予測
                 error_predict_x    = error_estimate_x0 + error_estimate_v0 - error_adjust_value;
                 error_predict_x_en = error_estimate_x0_en & error_estimate_v0_en;
             }
 
             if error_stage[1] {
+                // LPF用ゲイン計算
                 error_predict_x_gain    = error_predict_x - (error_predict_x >>> LPF_GAIN_PHASE);
                 error_predict_x_gain_en = error_predict_x_en;
             }
 
             if error_stage[2] {
+                // 位相ずれ推定
                 if error_observe_x_en {
                     if error_predict_x_gain_en {
                         error_estimate_x = error_predict_x_gain + (error_observe_x >>> LPF_GAIN_PHASE);
@@ -240,16 +246,18 @@ module synctimer_adjust #(
                 }
             }
 
-            // 周期ずれ推定
             if error_stage[3] {
+                // 周期ずれ予測
                 error_observe_v    = error_estimate_x - (error_estimate_x0 - error_adjust_value);
                 error_observe_v_en = error_estimate_x_en && error_estimate_x0_en;
 
+                // LPF用ゲイン計算
                 error_predict_v_gain    = error_predict_v - (error_predict_v >>> LPF_GAIN_PERIOD);
                 error_predict_v_gain_en = error_predict_v_en;
             }
 
             if error_stage[4] {
+                // 周期ずれ推定
                 if error_observe_v_en {
                     if error_predict_v_gain_en {
                         error_estimate_v = error_predict_v_gain + (error_observe_v >>> LPF_GAIN_PHASE);
@@ -261,6 +269,7 @@ module synctimer_adjust #(
             }
 
             if error_stage[5] {
+                // 制御量合計
                 error_adjust_total = error_estimate_x + error_estimate_v;
             }
 
@@ -274,6 +283,8 @@ module synctimer_adjust #(
                 if error_adjust_total >: limit_adjust_max {
                     error_adjust_value = limit_adjust_max;
                 }
+
+                // データがなら発行
                 error_valid = error_estimate_v_en;
             }
         }
@@ -462,8 +473,8 @@ module synctimer_adjust #(
         var sim_monitor_error_estimate_v    : real; // 周期誤差の推定値
         var sim_monitor_error_estimate_v0   : real; // １つ前の周期誤差の推定値
         var sim_monitor_error_adjust_value  : real;
-        var sim_monitor_adj_param_period:  real;
-        var sim_monitor_debug_count:  real;
+        var sim_monitor_adj_param_period    : real;
+        var sim_monitor_debug_count         : real;
 
         assign sim_monitor_cycle_estimate_t     = $itor(cycle_estimate_t) / $itor(2 ** CYCLE_Q);
         assign sim_monitor_error_observe_x      = $itor(error_observe_x) / $itor(2 ** ERROR_Q);
@@ -477,7 +488,7 @@ module synctimer_adjust #(
         assign sim_monitor_error_estimate_v     = $itor(error_estimate_v) / $itor(2 ** ERROR_Q);
         assign sim_monitor_error_estimate_v0    = $itor(error_estimate_v0) / $itor(2 ** ERROR_Q);
         assign sim_monitor_error_adjust_value   = $itor(error_adjust_value) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_adj_param_period     = $itor(adj_param_period)  / $itor(2 ** ADJUST_Q);
+        assign sim_monitor_adj_param_period     = $itor(adj_param_period) / $itor(2 ** ADJUST_Q);
         assign sim_monitor_debug_count          = sim_monitor_cycle_estimate_t / sim_monitor_adj_param_period;
     }
 
