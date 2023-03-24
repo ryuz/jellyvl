@@ -143,8 +143,15 @@ module synctimer_adjust #(
     var error_estimate_v_en    : logic  ;
     var error_estimate_v0      : t_error; // １つ前の周期誤差の推定値
     var error_estimate_v0_en   : logic  ;
+    var error_adjust_total     : t_error;
+    var error_adjust_value     : t_error; // 制御量(一周期の補正量)
+    var error_stage: logic<7>;
+    var error_valid: logic;
 
-    var error_adjust_value: t_error; // 制御量(一周期の補正量)
+    var limit_adjust_min: t_error;
+    var limit_adjust_max: t_error;
+    assign limit_adjust_min = param_adjust_min as t_error <<< ERROR_Q;
+    assign limit_adjust_max = param_adjust_max as t_error <<< ERROR_Q;
 
     assign error_predict_v    = error_estimate_v0; // 周期予測はひとつ前の推定値と同じ
     assign error_predict_v_en = error_estimate_v0_en;
@@ -169,7 +176,13 @@ module synctimer_adjust #(
             error_estimate_v_en     = 1'b0;
             error_estimate_v0       = 'x;
             error_estimate_v0_en    = 1'b0;
+            error_adjust_total = 'x;
+            error_adjust_value = 'x;
+            error_stage             = '0;
+            error_valid = 1'b0;
         } else {
+            error_stage <<= 1;
+            error_stage[0] = correct_valid;
 
             if correct_valid {
                 if correct_override {
@@ -202,70 +215,58 @@ module synctimer_adjust #(
 
                     error_estimate_v0    = error_estimate_v;
                     error_estimate_v0_en = error_estimate_v_en;
-
                 }
             }
 
             // 位相ずれ推定
-            error_predict_x    = error_estimate_x0 + error_estimate_v0 - error_adjust_value;
-            error_predict_x_en = error_estimate_x0_en & error_estimate_v0_en;
+            if error_stage[0] {
+                error_predict_x    = error_estimate_x0 + error_estimate_v0 - error_adjust_value;
+                error_predict_x_en = error_estimate_x0_en & error_estimate_v0_en;
+            }
 
-            error_predict_x_gain    = error_predict_x - (error_predict_x >>> LPF_GAIN_PHASE);
-            error_predict_x_gain_en = error_predict_x_en;
+            if error_stage[1] {
+                error_predict_x_gain    = error_predict_x - (error_predict_x >>> LPF_GAIN_PHASE);
+                error_predict_x_gain_en = error_predict_x_en;
+            }
 
-            if error_observe_x_en {
-                if error_predict_x_gain_en {
-                    error_estimate_x = error_predict_x_gain + (error_observe_x >>> LPF_GAIN_PHASE);
-                } else {
-                    error_estimate_x = error_observe_x;
+            if error_stage[2] {
+                if error_observe_x_en {
+                    if error_predict_x_gain_en {
+                        error_estimate_x = error_predict_x_gain + (error_observe_x >>> LPF_GAIN_PHASE);
+                    } else {
+                        error_estimate_x = error_observe_x;
+                    }
+                    error_estimate_x_en = 1'b1;
                 }
-                error_estimate_x_en = 1'b1;
             }
 
             // 周期ずれ推定
-            error_observe_v    = error_estimate_x - (error_estimate_x0 - error_adjust_value);
-            error_observe_v_en = error_estimate_x_en && error_estimate_x0_en;
+            if error_stage[3] {
+                error_observe_v    = error_estimate_x - (error_estimate_x0 - error_adjust_value);
+                error_observe_v_en = error_estimate_x_en && error_estimate_x0_en;
 
-            error_predict_v_gain    = error_predict_v - (error_predict_v >>> LPF_GAIN_PERIOD);
-            error_predict_v_gain_en = error_predict_v_en;
-
-            if error_observe_v_en {
-                if error_predict_v_gain_en {
-                    error_estimate_v = error_predict_v_gain + (error_observe_v >>> LPF_GAIN_PHASE);
-                } else {
-                    error_estimate_v = error_observe_v;
-                }
-                error_estimate_v_en = 1'b1;
+                error_predict_v_gain    = error_predict_v - (error_predict_v >>> LPF_GAIN_PERIOD);
+                error_predict_v_gain_en = error_predict_v_en;
             }
-        }
-    }
 
+            if error_stage[4] {
+                if error_observe_v_en {
+                    if error_predict_v_gain_en {
+                        error_estimate_v = error_predict_v_gain + (error_observe_v >>> LPF_GAIN_PHASE);
+                    } else {
+                        error_estimate_v = error_observe_v;
+                    }
+                    error_estimate_v_en = 1'b1;
+                }
+            }
 
-    // limitter
-    var limit_adjust_min: t_error;
-    var limit_adjust_max: t_error;
-    assign limit_adjust_min = param_adjust_min as t_error <<< ERROR_Q;
-    assign limit_adjust_max = param_adjust_max as t_error <<< ERROR_Q;
-
-    var error_calc_delay: logic<6>;
-    var error_adjust_total: t_error;
-    var error_valid: logic;
-    always_ff (clk, reset) {
-        if_reset {
-            error_adjust_total = 'x;
-            error_adjust_value = '0;
-            error_calc_delay = '0;
-            error_valid        = 1'b0;
-        } else {
-            error_adjust_total = error_estimate_x + error_estimate_v;
-
-            error_calc_delay <<= 1;
-            if correct_valid {
-                error_calc_delay[0] = 1;
+            if error_stage[5] {
+                error_adjust_total = error_estimate_x + error_estimate_v;
             }
 
             error_valid = 1'b0;
-            if error_calc_delay[5] {
+            if error_stage[6] {
+                // limitter
                 error_adjust_value = error_adjust_total;
                 if error_adjust_total <: limit_adjust_min {
                     error_adjust_value = limit_adjust_min;
@@ -277,7 +278,6 @@ module synctimer_adjust #(
             }
         }
     }
-
 
 
 

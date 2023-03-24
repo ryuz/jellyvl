@@ -123,28 +123,35 @@ module jellyvl_synctimer_adjust #(
     // -------------------------------------
 
     // 誤差推定
-    t_error error_observe_x        ; // 位相誤差の観測値
-    logic   error_observe_x_en     ;
-    t_error error_predict_x        ; // 位相誤差の予測値
-    logic   error_predict_x_en     ;
-    t_error error_predict_x_gain   ; // 位相誤差の予測値にゲインを掛けたもの
-    logic   error_predict_x_gain_en;
-    t_error error_estimate_x       ; // 位相誤差の推定値
-    logic   error_estimate_x_en    ;
-    t_error error_estimate_x0      ; // １つ前の位相誤差の推定値
-    logic   error_estimate_x0_en   ;
-    t_error error_observe_v        ; // 周期誤差の観測値
-    logic   error_observe_v_en     ;
-    t_error error_predict_v        ; // 位相誤差の予測値
-    logic   error_predict_v_en     ;
-    t_error error_predict_v_gain   ; // 周期誤差の予測値にゲインを掛けたもの
-    logic   error_predict_v_gain_en;
-    t_error error_estimate_v       ; // 周期誤差の推定値
-    logic   error_estimate_v_en    ;
-    t_error error_estimate_v0      ; // １つ前の周期誤差の推定値
-    logic   error_estimate_v0_en   ;
+    t_error         error_observe_x        ; // 位相誤差の観測値
+    logic           error_observe_x_en     ;
+    t_error         error_predict_x        ; // 位相誤差の予測値
+    logic           error_predict_x_en     ;
+    t_error         error_predict_x_gain   ; // 位相誤差の予測値にゲインを掛けたもの
+    logic           error_predict_x_gain_en;
+    t_error         error_estimate_x       ; // 位相誤差の推定値
+    logic           error_estimate_x_en    ;
+    t_error         error_estimate_x0      ; // １つ前の位相誤差の推定値
+    logic           error_estimate_x0_en   ;
+    t_error         error_observe_v        ; // 周期誤差の観測値
+    logic           error_observe_v_en     ;
+    t_error         error_predict_v        ; // 位相誤差の予測値
+    logic           error_predict_v_en     ;
+    t_error         error_predict_v_gain   ; // 周期誤差の予測値にゲインを掛けたもの
+    logic           error_predict_v_gain_en;
+    t_error         error_estimate_v       ; // 周期誤差の推定値
+    logic           error_estimate_v_en    ;
+    t_error         error_estimate_v0      ; // １つ前の周期誤差の推定値
+    logic           error_estimate_v0_en   ;
+    t_error         error_adjust_total     ;
+    t_error         error_adjust_value     ; // 制御量(一周期の補正量)
+    logic   [7-1:0] error_stage            ;
+    logic           error_valid            ;
 
-    t_error error_adjust_value; // 制御量(一周期の補正量)
+    t_error limit_adjust_min;
+    t_error limit_adjust_max;
+    assign limit_adjust_min = t_error'(param_adjust_min) <<< ERROR_Q;
+    assign limit_adjust_max = t_error'(param_adjust_max) <<< ERROR_Q;
 
     assign error_predict_v    = error_estimate_v0; // 周期予測はひとつ前の推定値と同じ
     assign error_predict_v_en = error_estimate_v0_en;
@@ -169,7 +176,13 @@ module jellyvl_synctimer_adjust #(
             error_estimate_v_en     <= 1'b0;
             error_estimate_v0       <= 'x;
             error_estimate_v0_en    <= 1'b0;
+            error_adjust_total      <= 'x;
+            error_adjust_value      <= 'x;
+            error_stage             <= '0;
+            error_valid             <= 1'b0;
         end else begin
+            error_stage    <= error_stage    << (1);
+            error_stage[0] <=   correct_valid;
 
             if (correct_valid) begin
                 if (correct_override) begin
@@ -202,70 +215,58 @@ module jellyvl_synctimer_adjust #(
 
                     error_estimate_v0    <= error_estimate_v;
                     error_estimate_v0_en <= error_estimate_v_en;
-
                 end
             end
 
             // 位相ずれ推定
-            error_predict_x    <= error_estimate_x0 + error_estimate_v0 - error_adjust_value;
-            error_predict_x_en <= error_estimate_x0_en & error_estimate_v0_en;
+            if (error_stage[0]) begin
+                error_predict_x    <= error_estimate_x0 + error_estimate_v0 - error_adjust_value;
+                error_predict_x_en <= error_estimate_x0_en & error_estimate_v0_en;
+            end
 
-            error_predict_x_gain    <= error_predict_x - (error_predict_x >>> LPF_GAIN_PHASE);
-            error_predict_x_gain_en <= error_predict_x_en;
+            if (error_stage[1]) begin
+                error_predict_x_gain    <= error_predict_x - (error_predict_x >>> LPF_GAIN_PHASE);
+                error_predict_x_gain_en <= error_predict_x_en;
+            end
 
-            if (error_observe_x_en) begin
-                if (error_predict_x_gain_en) begin
-                    error_estimate_x <= error_predict_x_gain + (error_observe_x >>> LPF_GAIN_PHASE);
-                end else begin
-                    error_estimate_x <= error_observe_x;
+            if (error_stage[2]) begin
+                if (error_observe_x_en) begin
+                    if (error_predict_x_gain_en) begin
+                        error_estimate_x <= error_predict_x_gain + (error_observe_x >>> LPF_GAIN_PHASE);
+                    end else begin
+                        error_estimate_x <= error_observe_x;
+                    end
+                    error_estimate_x_en <= 1'b1;
                 end
-                error_estimate_x_en <= 1'b1;
             end
 
             // 周期ずれ推定
-            error_observe_v    <= error_estimate_x - (error_estimate_x0 - error_adjust_value);
-            error_observe_v_en <= error_estimate_x_en && error_estimate_x0_en;
+            if (error_stage[3]) begin
+                error_observe_v    <= error_estimate_x - (error_estimate_x0 - error_adjust_value);
+                error_observe_v_en <= error_estimate_x_en && error_estimate_x0_en;
 
-            error_predict_v_gain    <= error_predict_v - (error_predict_v >>> LPF_GAIN_PERIOD);
-            error_predict_v_gain_en <= error_predict_v_en;
-
-            if (error_observe_v_en) begin
-                if (error_predict_v_gain_en) begin
-                    error_estimate_v <= error_predict_v_gain + (error_observe_v >>> LPF_GAIN_PHASE);
-                end else begin
-                    error_estimate_v <= error_observe_v;
-                end
-                error_estimate_v_en <= 1'b1;
+                error_predict_v_gain    <= error_predict_v - (error_predict_v >>> LPF_GAIN_PERIOD);
+                error_predict_v_gain_en <= error_predict_v_en;
             end
-        end
-    end
 
+            if (error_stage[4]) begin
+                if (error_observe_v_en) begin
+                    if (error_predict_v_gain_en) begin
+                        error_estimate_v <= error_predict_v_gain + (error_observe_v >>> LPF_GAIN_PHASE);
+                    end else begin
+                        error_estimate_v <= error_observe_v;
+                    end
+                    error_estimate_v_en <= 1'b1;
+                end
+            end
 
-    // limitter
-    t_error limit_adjust_min;
-    t_error limit_adjust_max;
-    assign limit_adjust_min = t_error'(param_adjust_min) <<< ERROR_Q;
-    assign limit_adjust_max = t_error'(param_adjust_max) <<< ERROR_Q;
-
-    logic   [6-1:0] error_calc_delay  ;
-    t_error         error_adjust_total;
-    logic           error_valid       ;
-    always_ff @ (posedge clk) begin
-        if (reset) begin
-            error_adjust_total <= 'x;
-            error_adjust_value <= '0;
-            error_calc_delay   <= '0;
-            error_valid        <= 1'b0;
-        end else begin
-            error_adjust_total <= error_estimate_x + error_estimate_v;
-
-            error_calc_delay <= error_calc_delay << (1);
-            if (correct_valid) begin
-                error_calc_delay[0] <= 1;
+            if (error_stage[5]) begin
+                error_adjust_total <= error_estimate_x + error_estimate_v;
             end
 
             error_valid <= 1'b0;
-            if (error_calc_delay[5]) begin
+            if (error_stage[6]) begin
+                // limitter
                 error_adjust_value <= error_adjust_total;
                 if (error_adjust_total < limit_adjust_min) begin
                     error_adjust_value <= limit_adjust_min;
@@ -277,7 +278,6 @@ module jellyvl_synctimer_adjust #(
             end
         end
     end
-
 
 
 

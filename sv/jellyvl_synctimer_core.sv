@@ -68,8 +68,8 @@ module jellyvl_synctimer_core #(
 
         //        param_cycle_min :  -32'd100,
         //       param_cycle_max :  +32'd100,
-        .param_adjust_min (-32'd100),
-        .param_adjust_max (+32'd100),
+        .param_adjust_min (-32'd10000),
+        .param_adjust_max (+32'd10000),
         .
         correct_override (correct_override),
         .correct_time     (correct_time    ),
