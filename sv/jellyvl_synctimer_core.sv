@@ -39,6 +39,7 @@ module jellyvl_synctimer_core #(
 
     // 補正ユニット
     logic override_request;
+    assign override_request = 1'b0;
 
     logic adjust_sign ;
     logic adjust_valid;

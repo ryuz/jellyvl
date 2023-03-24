@@ -4,15 +4,15 @@ module jellyvl_synctimer_adjust #(
     parameter int unsigned TIMER_WIDTH = 32, // タイマのbit幅
     //    parameter LIMIT_WIDTH    : u32 = TIMER_WIDTH            , // 補正限界のbit幅
     parameter int unsigned CYCLE_WIDTH = 32, // 自クロックサイクルカウンタのbit数
-    //    parameter ERROR_WIDTH    : u32 = 32                     , // 誤差計算時のbit幅
-    //    parameter ERROR_Q        : u32 = 8                      , // 誤差計算時に追加する固定小数点数bit数
+    parameter int unsigned ERROR_WIDTH = 32, // 誤差計算時のbit幅
+    parameter int unsigned ERROR_Q     = 8 , // 誤差計算時に追加する固定小数点数bit数
     //    parameter ADJUST_WIDTH   : u32 = COUNTER_WIDTH + ERROR_Q, // 補正周期のbit幅
     //    parameter ADJUST_Q       : u32 = ERROR_Q                , // 補正周期に追加する固定小数点数bit数
     //    parameter PERIOD_WIDTH   : u32 = ERROR_WIDTH            , // 周期補正に使うbit数
     //    parameter PHASE_WIDTH    : u32 = ERROR_WIDTH            , // 位相補正に使うbit数
-    parameter int unsigned LPF_GAIN_CYCLE = 4, // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    //    parameter LPF_GAIN_PERIOD: u32 = 4                      , // 周期補正のLPFの更新ゲイン(1/2^N)
-    //    parameter LPF_GAIN_PHASE : u32 = 4                      , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned LPF_GAIN_CYCLE  = 2, // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter int unsigned LPF_GAIN_PERIOD = 2, // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned LPF_GAIN_PHASE  = 2, // 位相補正のLPFの更新ゲイン(1/2^N)
     //    parameter INIT_OVERRIDE  : bit = 1                      , // 初回の補正
     parameter bit DEBUG      = 1'b0,
     parameter bit SIMULATION = 1'b0
@@ -54,7 +54,7 @@ module jellyvl_synctimer_adjust #(
     localparam type t_cycle = logic [CYCLE_WIDTH + CYCLE_Q-1:0];
     //    localparam t_period : type = signed logic<PERIOD_WIDTH>;
     //    localparam t_phase  : type = signed logic<PHASE_WIDTH>;
-    //    localparam t_error  : type = signed logic<ERROR_WIDTH + ERROR_Q>;
+    localparam type t_error = logic signed [ERROR_WIDTH + ERROR_Q-1:0];
     //    localparam t_error_u: type = logic<ERROR_WIDTH + ERROR_Q>;
     //    localparam t_adjust : type = logic<ADJUST_WIDTH + ADJUST_Q>;
     //
@@ -96,7 +96,12 @@ module jellyvl_synctimer_adjust #(
     //    assign error_period_min = PeriodToAdjust(param_period_min);
     //    assign error_period_max = PeriodToAdjust(param_period_max);
 
+    t_error adj_value;
 
+
+    // -------------------------------------
+    //  一周期の自クロックのサイクル数推定
+    // -------------------------------------
 
     // サイクルカウント
     t_count count_cycle ;
@@ -118,121 +123,175 @@ module jellyvl_synctimer_adjust #(
 
 
     // １周期のサイクル数予測
-    t_cycle         cycle_observe_t         ; // サイクル数の観測値
-    t_cycle         cycle_predict_t         ; // サイクル数の観測値
-    t_cycle         cycle_predict_t_gain    ; // 位相誤差の予測値にゲインを掛けたもの
-    t_cycle         cycle_estimate_t        ; // 位相誤差の推定値
-    t_cycle         cycle_estimate_t0       ; // １つ前の位相誤差の推定値
-    logic           cycle_observe_t_enable  ;
-    logic           cycle_estimate_t_enable ;
-    logic           cycle_estimate_t0_enable;
-    logic   [3-1:0] cycle_valid             ;
+    t_cycle cycle_observe_t        ; // サイクル数の観測値
+    logic   cycle_observe_t_en     ;
+    t_cycle cycle_predict_t        ; // サイクル数の観測値
+    logic   cycle_predict_t_en     ;
+    t_cycle cycle_predict_t_gain   ; // 位相誤差の予測値にゲインを掛けたもの
+    logic   cycle_predict_t_gain_en;
+    t_cycle cycle_estimate_t       ; // 位相誤差の推定値
+    logic   cycle_estimate_t_en    ;
+    t_cycle cycle_estimate_t0      ; // １つ前の位相誤差の推定値
+    logic   cycle_estimate_t0_en   ;
 
-    assign cycle_predict_t = cycle_estimate_t0;
+    assign cycle_predict_t    = cycle_estimate_t0;
+    assign cycle_predict_t_en = cycle_estimate_t0_en;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
-            cycle_observe_t          <= 'x;
-            cycle_predict_t_gain     <= 'x;
-            cycle_estimate_t         <= 'x;
-            cycle_estimate_t0        <= 'x;
-            cycle_observe_t_enable   <= 1'b0;
-            cycle_estimate_t_enable  <= 1'b0;
-            cycle_estimate_t0_enable <= 1'b0;
-            cycle_valid              <= '0;
+            cycle_observe_t         <= 'x;
+            cycle_observe_t_en      <= 1'b0;
+            cycle_predict_t_gain    <= 'x;
+            cycle_predict_t_gain_en <= 1'b0;
+            cycle_estimate_t        <= 'x;
+            cycle_estimate_t_en     <= 1'b0;
+            cycle_estimate_t0       <= 'x;
+            cycle_estimate_t0_en    <= 1'b0;
         end else begin
             if (count_valid) begin
-                cycle_observe_t        <= t_cycle'(count_cycle) <<< CYCLE_Q;
-                cycle_observe_t_enable <= count_enable;
+                // 観測値ラッチ
+                cycle_observe_t    <= t_cycle'(count_cycle) <<< CYCLE_Q;
+                cycle_observe_t_en <= count_enable;
 
-                cycle_estimate_t0        <= cycle_estimate_t;
-                cycle_estimate_t0_enable <= cycle_estimate_t_enable;
+                // １つ前の値保存
+                cycle_estimate_t0    <= cycle_estimate_t;
+                cycle_estimate_t0_en <= cycle_estimate_t_en;
             end
 
-            cycle_predict_t_gain <= cycle_predict_t - (cycle_predict_t >>> CYCLE_Q);
-            if (cycle_observe_t_enable) begin
-                if (cycle_estimate_t0_enable) begin
+            // LPFをかけて推定値とする
+            cycle_predict_t_gain    <= cycle_predict_t - (cycle_predict_t >>> CYCLE_Q);
+            cycle_predict_t_gain_en <= cycle_predict_t_en;
+            if (cycle_observe_t_en) begin
+                if (cycle_predict_t_gain_en) begin
                     cycle_estimate_t <= cycle_predict_t_gain + (cycle_observe_t >>> CYCLE_Q);
                 end else begin
-                    cycle_estimate_t <= cycle_observe_t;
+                    cycle_estimate_t <= cycle_observe_t; // 初回のみ計測値そのまま
                 end
-                cycle_estimate_t_enable <= 1'b1;
-            end
-
-            cycle_valid <= cycle_valid >> (1);
-            if (count_valid && count_enable) begin
-                cycle_valid[2] <= 1'b1;
+                cycle_estimate_t_en <= cycle_observe_t_en;
             end
         end
     end
 
 
+    // 誤差推定
+    t_error error_observe_x        ; // 位相誤差の観測値
+    logic   error_observe_x_en     ;
+    t_error error_predict_x        ; // 位相誤差の予測値
+    logic   error_predict_x_en     ;
+    t_error error_predict_x_gain   ; // 位相誤差の予測値にゲインを掛けたもの
+    logic   error_predict_x_gain_en;
+    t_error error_estimate_x       ; // 位相誤差の推定値
+    logic   error_estimate_x_en    ;
+    t_error error_estimate_x0      ; // １つ前の位相誤差の推定値
+    logic   error_estimate_x0_en   ;
+    t_error error_observe_v        ; // 周期誤差の観測値
+    logic   error_observe_v_en     ;
+    t_error error_predict_v        ; // 位相誤差の予測値
+    logic   error_predict_v_en     ;
+    t_error error_predict_v_gain   ; // 周期誤差の予測値にゲインを掛けたもの
+    logic   error_predict_v_gain_en;
+    t_error error_estimate_v       ; // 周期誤差の推定値
+    logic   error_estimate_v_en    ;
+    t_error error_estimate_v0      ; // １つ前の周期誤差の推定値
+    logic   error_estimate_v0_en   ;
+
+    assign error_predict_v    = error_estimate_v0; // 周期予測はひとつ前の推定値と同じ
+    assign error_predict_v_en = error_estimate_v0_en;
+
+    always_ff @ (posedge clk) begin
+        if (reset) begin
+            error_observe_x         <= 'x;
+            error_observe_x_en      <= 1'b0;
+            error_predict_x         <= 'x;
+            error_predict_x_en      <= 1'b0;
+            error_predict_x_gain    <= 'x;
+            error_predict_x_gain_en <= 1'b0;
+            error_estimate_x        <= 'x;
+            error_estimate_x_en     <= 1'b0;
+            error_estimate_x0       <= 'x;
+            error_estimate_x0_en    <= 1'b0;
+            error_observe_v         <= 'x;
+            error_observe_v_en      <= 1'b0;
+            error_predict_v_gain    <= 'x;
+            error_predict_v_gain_en <= 1'b0;
+            error_estimate_v        <= 'x;
+            error_estimate_v_en     <= 1'b0;
+            error_estimate_v0       <= 'x;
+            error_estimate_v0_en    <= 1'b0;
+        end else begin
+
+            if (correct_valid) begin
+                if (correct_override) begin
+                    error_observe_x         <= '0;
+                    error_observe_x_en      <= 1'b1;
+                    error_predict_x         <= 'x;
+                    error_predict_x_en      <= 1'b0;
+                    error_predict_x_gain    <= 'x;
+                    error_predict_x_gain_en <= 1'b0;
+                    error_estimate_x        <= 'x;
+                    error_estimate_x_en     <= 1'b0;
+                    error_estimate_x0       <= 'x;
+                    error_estimate_x0_en    <= 1'b0;
+                    error_observe_v         <= 'x;
+                    error_observe_v_en      <= 1'b0;
+                    error_predict_v_gain    <= 'x;
+                    error_predict_v_gain_en <= 1'b0;
+                    error_estimate_v        <= 'x;
+                    error_estimate_v_en     <= 1'b0;
+                    error_estimate_v0       <= 'x;
+                    error_estimate_v0_en    <= 1'b0;
+                end else begin
+                    // 観測値ラッチ
+                    error_observe_x    <= (t_error'((correct_time - current_time)) <<< ERROR_Q);
+                    error_observe_x_en <= 1'b1;
+
+                    // 1つ前の予測保存
+                    error_estimate_x0    <= error_estimate_x;
+                    error_estimate_x0_en <= error_estimate_x_en;
+
+                    error_estimate_v0    <= error_estimate_v;
+                    error_estimate_v0_en <= error_estimate_v_en;
+
+                end
+            end
+
+            // 位相ずれ推定
+            error_predict_x    <= error_estimate_x0 + error_estimate_v0 - t_error'(adj_value);
+            error_predict_x_en <= error_estimate_x0_en & error_estimate_v0_en;
+
+            error_predict_x_gain    <= error_predict_x - (error_predict_x >>> LPF_GAIN_PHASE);
+            error_predict_x_gain_en <= error_predict_x_en;
+
+            if (error_observe_x_en) begin
+                if (error_predict_x_gain_en) begin
+                    error_estimate_x <= error_predict_x_gain + (error_observe_x >>> LPF_GAIN_PHASE);
+                end else begin
+                    error_estimate_x <= error_observe_x;
+                end
+                error_estimate_x_en <= 1'b1;
+            end
+
+            // 周期ずれ推定
+            error_observe_v    <= error_estimate_x - (error_estimate_x0 - t_error'(adj_value));
+            error_observe_v_en <= error_estimate_x_en && error_estimate_x0_en;
+
+            error_predict_v_gain    <= error_predict_v - (error_predict_v >>> LPF_GAIN_PERIOD);
+            error_predict_v_gain_en <= error_predict_v_en;
+
+            if (error_observe_x_en) begin
+                if (error_predict_v_gain_en) begin
+                    error_estimate_v <= error_predict_v_gain + (error_observe_v >>> LPF_GAIN_PHASE);
+                end else begin
+                    error_estimate_v <= error_observe_v;
+                end
+                error_estimate_v_en <= 1'b1;
+            end
+        end
+    end
+
+    assign adj_value = '0;
+
     /*
-
-
-    var observe_x      : t_error;   // 位相誤差の観測値
-    var predict_x      : t_error;   // 位相誤差の予測値
-    var predict_x_gain : t_error;   // 位相誤差の予測値にゲインを掛けたもの
-    var estimate_x     : t_error;   // 位相誤差の推定値
-    var estimate_x0    : t_error;   // １つ前の位相誤差の推定値
-    var observe_v      : t_error;   // 周期誤差の観測値
-    var predict_v      : t_error;   // 位相誤差の予測値
-    var predict_v_gain : t_error;   // 周期誤差の予測値にゲインを掛けたもの
-    var estimate_v     : t_error;   // 周期誤差の推定値
-    var estimate_v0    : t_error;   // １つ前の周期誤差の推定値
-
-
-
-
-    assign predict_v = estimate_v0; // 周期予測はひとつ前の推定値と同じ
-
-    always_ff (clk, reset) {
-        if_reset {
-
-        } else {
-            cycle_count = cycle_count + t_cycle;
-            if correct_valid {
-                cycle_count = 1 as t_cycle;
-            }
-
-            if correct_valid {
-                observe_t = cycle_count;
-            }
-            predict_t_gain = predict_t <<< LPF_GAIN_PHASE - predict_t;
-            if cycle_enable {
-                estimate_x = predict_t_gain + (observe_t >>> ERROR_Q);
-            }else {
-                estimate_x = observe_t;
-            }
-
-
-            if correct_valid {
-                if override {
-                    estimate_x0 = '0;
-                    estimate_v0 = 'x;
-                    observe_x   = '0;
-                    phase_enable  = 1'b1;
-                    period_enable = 1'b0;
-                }
-                else {
-                    estimate_x0 = estimate_x;
-                    estimate_v0 = estimate_v;
-                    observe_x   = (current_time_correct - current_time_local) as t_error <<< ERROR_Q;
-                    period_enable = phase_enable;
-                }
-            }
-
-            // 位相ずれ予測
-            predict_x      = estimate_x + estimate_v - adj_value
-            predict_x_gain = predict_x <<< LPF_GAIN_PHASE - predict_x;
-            estimate_x     = predict_x_gain + (observe_x >>> ERROR_Q);
-
-            // 周期ずれ予測
-            observe_v      = estimate_x - (estimate_x0 - adj_value)
-            predict_v_gain = predict_v <<< LPF_GAIN_PERIOD - predict_v;
-            estimate_v     = predict_v_gain + (observe_v >>> ERROR_Q);
-        }
-    }
 
 
     // stage 1
@@ -608,8 +667,12 @@ module jellyvl_synctimer_adjust #(
 
     if (SIMULATION) begin :sim_monitor
         real sim_monitor_cycle_estimate_t;
+        real sim_monitor_error_estimate_x;
+        real sim_monitor_error_estimate_v;
 
         assign sim_monitor_cycle_estimate_t = $itor(cycle_estimate_t) / $itor(2 ** CYCLE_Q);
+        assign sim_monitor_error_estimate_x = $itor(error_estimate_x) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_error_estimate_v = $itor(error_estimate_v) / $itor(2 ** ERROR_Q);
     end
 
 endmodule

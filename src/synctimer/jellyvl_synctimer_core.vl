@@ -39,40 +39,41 @@ module synctimer_core #(
 
     // 補正ユニット
     var override_request: logic;
+    assign override_request = 1'b0;
 
     var adjust_sign : logic;
     var adjust_valid: logic;
     var adjust_ready: logic;
 
     inst u_synctimer_adjust: synctimer_adjust #(
-        TIMER_WIDTH    : TIMER_WIDTH        ,
-//        LIMIT_WIDTH    : ADJ_LIMIT_WIDTH    ,
-//        COUNTER_WIDTH  : ADJ_COUNTER_WIDTH  ,
-//        CALC_WIDTH     : ADJ_CALC_WIDTH     ,
-//        ERROR_WIDTH    : ADJ_ERROR_WIDTH    ,
-//        ERROR_Q        : ADJ_ERROR_Q        ,
-//        ADJUST_WIDTH   : ADJ_ADJUST_WIDTH   ,
-//        ADJUST_Q       : ADJ_ADJUST_Q       ,
-//        PERIOD_WIDTH   : ADJ_PERIOD_WIDTH   ,
-//        PHASE_WIDTH    : ADJ_PHASE_WIDTH    ,
-//        PERIOD_LPF_GAIN: ADJ_PERIOD_LPF_GAIN,
-//        PHASE_LPF_GAIN : ADJ_PHASE_LPF_GAIN ,
-        DEBUG          : DEBUG              ,
-        SIMULATION     : SIMULATION         ,
+        TIMER_WIDTH: TIMER_WIDTH,
+        //        LIMIT_WIDTH    : ADJ_LIMIT_WIDTH    ,
+        //        COUNTER_WIDTH  : ADJ_COUNTER_WIDTH  ,
+        //        CALC_WIDTH     : ADJ_CALC_WIDTH     ,
+        //        ERROR_WIDTH    : ADJ_ERROR_WIDTH    ,
+        //        ERROR_Q        : ADJ_ERROR_Q        ,
+        //        ADJUST_WIDTH   : ADJ_ADJUST_WIDTH   ,
+        //        ADJUST_Q       : ADJ_ADJUST_Q       ,
+        //        PERIOD_WIDTH   : ADJ_PERIOD_WIDTH   ,
+        //        PHASE_WIDTH    : ADJ_PHASE_WIDTH    ,
+        //        PERIOD_LPF_GAIN: ADJ_PERIOD_LPF_GAIN,
+        //        PHASE_LPF_GAIN : ADJ_PHASE_LPF_GAIN ,
+        DEBUG     : DEBUG     ,
+        SIMULATION: SIMULATION,
     ) (
         reset: reset,
         clk  : clk  ,
 
         current_time: current_time,
 
-//        param_limit_min : adj_param_limit_min ,
-//        param_limit_max : adj_param_limit_max ,
-//        param_phase_min : adj_param_phase_min ,
-//        param_phase_max : adj_param_phase_max ,
-//        param_period_min: adj_param_period_min,
-//        param_period_max: adj_param_period_max,
-//
-//        override_request: override_request,
+        //        param_limit_min : adj_param_limit_min ,
+        //        param_limit_max : adj_param_limit_max ,
+        //        param_phase_min : adj_param_phase_min ,
+        //        param_phase_max : adj_param_phase_max ,
+        //        param_period_min: adj_param_period_min,
+        //        param_period_max: adj_param_period_max,
+        //
+        //        override_request: override_request,
 
         correct_override: correct_override,
         correct_time    : correct_time    ,
