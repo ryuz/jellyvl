@@ -1,37 +1,27 @@
 
 // 調整機構
 module jellyvl_synctimer_adjust #(
-    parameter int unsigned TIMER_WIDTH = 32, // タイマのbit幅
-    //    parameter LIMIT_WIDTH    : u32 = TIMER_WIDTH            , // 補正限界のbit幅
-    parameter int unsigned CYCLE_WIDTH  = 32                   , // 自クロックサイクルカウンタのbit数
-    parameter int unsigned ERROR_WIDTH  = 32                   , // 誤差計算時のbit幅
-    parameter int unsigned ERROR_Q      = 8                    , // 誤差計算時に追加する固定小数点数bit数
-    parameter int unsigned ADJUST_WIDTH = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
-    parameter int unsigned ADJUST_Q     = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
-    //    parameter PERIOD_WIDTH   : u32 = ERROR_WIDTH            , // 周期補正に使うbit数
-    //    parameter PHASE_WIDTH    : u32 = ERROR_WIDTH            , // 位相補正に使うbit数
-    parameter int unsigned LPF_GAIN_CYCLE  = 2, // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter int unsigned LPF_GAIN_PERIOD = 2, // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter int unsigned LPF_GAIN_PHASE  = 2, // 位相補正のLPFの更新ゲイン(1/2^N)
-    //    parameter INIT_OVERRIDE  : bit = 1                      , // 初回の補正
-    parameter bit DEBUG      = 1'b0,
-    parameter bit SIMULATION = 1'b0
+    parameter int unsigned TIMER_WIDTH     = 32                   , // タイマのbit幅
+    parameter int unsigned CYCLE_WIDTH     = 32                   , // 自クロックサイクルカウンタのbit数
+    parameter int unsigned ERROR_WIDTH     = 32                   , // 誤差計算時のbit幅
+    parameter int unsigned ERROR_Q         = 8                    , // 誤差計算時に追加する固定小数点数bit数
+    parameter int unsigned ADJUST_WIDTH    = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
+    parameter int unsigned ADJUST_Q        = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
+    parameter int unsigned LPF_GAIN_CYCLE  = 2                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter int unsigned LPF_GAIN_PERIOD = 2                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned LPF_GAIN_PHASE  = 2                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter bit          DEBUG           = 1'b0                 ,
+    parameter bit          SIMULATION      = 1'b0             
 ) (
     input logic reset,
     input logic clk  ,
 
-    //    param_limit_min : input signed logic<LIMIT_WIDTH> ,
-    //    param_limit_max : input signed logic<LIMIT_WIDTH> ,
-    //    param_cycle_min : input signed logic<CYCLE_WIDTH> ,
-    //    param_cycle_max : input signed logic<CYCLE_WIDTH> ,
-    //    param_period_min: input signed logic<PERIOD_WIDTH>,
-    //    param_period_max: input signed logic<PERIOD_WIDTH>,
-    //    param_phase_min : input signed logic<PHASE_WIDTH> ,
-    //    param_phase_max : input signed logic<PHASE_WIDTH> ,
+    //    param_cycle_min : input signed logic<CYCLE_WIDTH>,
+    //    param_cycle_max : input signed logic<CYCLE_WIDTH>,
+    input logic signed [ERROR_WIDTH-1:0] param_adjust_min,
+    input logic signed [ERROR_WIDTH-1:0] param_adjust_max,
 
     input logic [TIMER_WIDTH-1:0] current_time,
-
-    //    override_request: output logic,
 
     input logic                   correct_override,
     input logic [TIMER_WIDTH-1:0] correct_time    ,
@@ -40,63 +30,17 @@ module jellyvl_synctimer_adjust #(
     output logic adjust_sign ,
     output logic adjust_valid,
     input  logic adjust_ready
-
 );
 
     localparam int unsigned CYCLE_Q = LPF_GAIN_CYCLE;
 
-    //    localparam ERROR_WIDTH = if PERIOD_WIDTH >= PHASE_WIDTH { PERIOD_WIDTH } else { PHASE_WIDTH };
-    //    localparam ERROR_Q     = if LPF_GAIN_PERIOD >= LPF_GAIN_PHASE { LPF_GAIN_PERIOD } else { LPF_GAIN_PHASE };
 
     // type
-    //    localparam t_time   : type = logic<TIMER_WIDTH>;
-    localparam type t_count = logic [CYCLE_WIDTH-1:0];
-    localparam type t_cycle = logic [CYCLE_WIDTH + CYCLE_Q-1:0];
-    //    localparam t_period : type = signed logic<PERIOD_WIDTH>;
-    //    localparam t_phase  : type = signed logic<PHASE_WIDTH>;
+    localparam type t_count   = logic [CYCLE_WIDTH-1:0];
+    localparam type t_cycle   = logic [CYCLE_WIDTH + CYCLE_Q-1:0];
     localparam type t_error   = logic signed [ERROR_WIDTH + ERROR_Q-1:0];
     localparam type t_error_u = logic [ERROR_WIDTH + ERROR_Q-1:0];
-    //    localparam t_adjust : type = logic<ADJUST_WIDTH + ADJUST_Q>;
-    //
-    //    localparam t_lpf_cycle  : type =        logic<CYCLE_WIDTH  + LPF_GAIN_CYCLE>;
-    //    localparam t_lpf_period : type = signed logic<PERIOD_WIDTH + LPF_GAIN_PERIOD>;
-    //    localparam t_lpf_phase  : type = signed logic<PHASE_WIDTH  + LPF_GAIN_PHASE>;
-    //
-    //    var param_lpf_cycle_min : t_lpf_cycle;
-    //    var param_lpf_cycle_max : t_lpf_cycle;
-    //    var param_lpf_period_min: t_lpf_period;
-    //    var param_lpf_period_max: t_lpf_period;
-    //    var param_lpf_phase_min : t_lpf_phase;
-    //    var param_lpf_phase_max : t_lpf_phase;
-    //
-    //    assign param_lpf_cycle_min  = param_cycle_min  as t_lpf_cycle  <<< LPF_GAIN_CYCLE;
-    //    assign param_lpf_cycle_max  = param_cycle_max  as t_lpf_cycle  <<< LPF_GAIN_CYCLE;
-    //    assign param_lpf_period_min = param_period_min as t_lpf_period <<< LPF_GAIN_PERIOD;
-    //    assign param_lpf_period_max = param_period_max as t_lpf_period <<< LPF_GAIN_PERIOD;
-    //    assign param_lpf_phase_min  = param_phase_min  as t_lpf_phase  <<< LPF_GAIN_PHASE;
-    //    assign param_lpf_phase_max  = param_phase_max  as t_lpf_phase  <<< LPF_GAIN_PHASE;
-
-
-
-    //    // 固定小数点変換
-    //    function TimeIntToFix (
-    //        phase: input t_calc,
-    //    ) -> t_error {
-    //        return phase as t_error <<< ERROR_Q;
-    //    }
-    //
-    //
-    //    // 範囲パラメータ固定小数点化
-    //    var error_phase_min : t_error;
-    //    var error_phase_max : t_error;
-    //    var error_period_min: t_error;
-    //    var error_period_max: t_error;
-    //    assign error_phase_min  = PhaseToAdjust(param_phase_min);
-    //    assign error_phase_max  = PhaseToAdjust(param_phase_max);
-    //    assign error_period_min = PeriodToAdjust(param_period_min);
-    //    assign error_period_max = PeriodToAdjust(param_period_max);
-
-    t_error adj_value;
+    localparam type t_adjust  = logic [ADJUST_WIDTH + ADJUST_Q-1:0];
 
 
     // -------------------------------------
@@ -200,6 +144,8 @@ module jellyvl_synctimer_adjust #(
     t_error error_estimate_v0      ; // １つ前の周期誤差の推定値
     logic   error_estimate_v0_en   ;
 
+    t_error error_adjust_value; // 制御量(一周期の補正量)
+
     assign error_predict_v    = error_estimate_v0; // 周期予測はひとつ前の推定値と同じ
     assign error_predict_v_en = error_estimate_v0_en;
 
@@ -261,7 +207,7 @@ module jellyvl_synctimer_adjust #(
             end
 
             // 位相ずれ推定
-            error_predict_x    <= error_estimate_x0 + error_estimate_v0 - t_error'(adj_value);
+            error_predict_x    <= error_estimate_x0 + error_estimate_v0 - error_adjust_value;
             error_predict_x_en <= error_estimate_x0_en & error_estimate_v0_en;
 
             error_predict_x_gain    <= error_predict_x - (error_predict_x >>> LPF_GAIN_PHASE);
@@ -277,7 +223,7 @@ module jellyvl_synctimer_adjust #(
             end
 
             // 周期ずれ推定
-            error_observe_v    <= error_estimate_x - (error_estimate_x0 - t_error'(adj_value));
+            error_observe_v    <= error_estimate_x - (error_estimate_x0 - error_adjust_value);
             error_observe_v_en <= error_estimate_x_en && error_estimate_x0_en;
 
             error_predict_v_gain    <= error_predict_v - (error_predict_v >>> LPF_GAIN_PERIOD);
@@ -294,19 +240,43 @@ module jellyvl_synctimer_adjust #(
         end
     end
 
-    logic [6-1:0] error_calc_delay;
-    logic         error_valid     ;
+
+    // limitter
+    t_error limit_adjust_min;
+    t_error limit_adjust_max;
+    assign limit_adjust_min = t_error'(param_adjust_min) <<< ERROR_Q;
+    assign limit_adjust_max = t_error'(param_adjust_max) <<< ERROR_Q;
+
+    logic   [6-1:0] error_calc_delay  ;
+    t_error         error_adjust_total;
+    logic           error_valid       ;
     always_ff @ (posedge clk) begin
         if (reset) begin
-            error_calc_delay <= '0;
+            error_adjust_total <= 'x;
+            error_adjust_value <= '0;
+            error_calc_delay   <= '0;
+            error_valid        <= 1'b0;
         end else begin
+            error_adjust_total <= error_estimate_x + error_estimate_v;
+
             error_calc_delay <= error_calc_delay << (1);
             if (correct_valid) begin
                 error_calc_delay[0] <= 1;
             end
+
+            error_valid <= 1'b0;
+            if (error_calc_delay[5]) begin
+                error_adjust_value <= error_adjust_total;
+                if (error_adjust_total < limit_adjust_min) begin
+                    error_adjust_value <= limit_adjust_min;
+                end
+                if (error_adjust_total > limit_adjust_max) begin
+                    error_adjust_value <= limit_adjust_max;
+                end
+                error_valid <= error_estimate_v_en;
+            end
         end
     end
-    assign error_valid = error_calc_delay[5] & error_estimate_v_en;
 
 
 
@@ -332,12 +302,12 @@ module jellyvl_synctimer_adjust #(
             div_calc_valid  <= 1'b0;
         end else begin
             if (error_valid) begin
-                div_calc_sign  <= error_estimate_x < 0;
-                div_calc_zero  <= error_estimate_x == 0;
-                div_calc_error <= ((error_estimate_x < 0) ? (
-                    t_error_u'((-error_estimate_x))
+                div_calc_sign  <= error_adjust_value < 0;
+                div_calc_zero  <= error_adjust_value == 0;
+                div_calc_error <= ((error_adjust_value < 0) ? (
+                    t_error_u'((-error_adjust_value))
                 ) : (
-                    t_error_u'(error_estimate_x)
+                    t_error_u'(error_adjust_value)
                 ));
                 div_calc_cycle  <= cycle_estimate_t;
                 div_calc_enable <= 1'b1;
@@ -348,36 +318,36 @@ module jellyvl_synctimer_adjust #(
 
 
     // divider
-    localparam type t_cycle_q = logic [CYCLE_WIDTH + ERROR_Q-1:0];
+    localparam type t_cycle_q = logic [CYCLE_WIDTH + ERROR_Q + ADJUST_Q-1:0];
 
     function automatic t_cycle_q CycleToError(
         input t_cycle cycle
     ) ;
-        if (ERROR_Q > CYCLE_Q) begin
-            return t_cycle_q'(cycle) << (ERROR_Q - CYCLE_Q);
+        if (ERROR_Q + ADJUST_Q > CYCLE_Q) begin
+            return t_cycle_q'(cycle) << (ERROR_Q + ADJUST_Q - CYCLE_Q);
         end else begin
-            return t_cycle_q'(cycle) >> (CYCLE_Q - ERROR_Q);
+            return t_cycle_q'(cycle) >> (CYCLE_Q - ERROR_Q - ADJUST_Q);
         end
     endfunction
 
     t_adjust div_quotient ;
-    t_cycle  div_remainder;
+    t_error  div_remainder;
     logic    div_valid    ;
 
     logic tmp_ready;
     jellyvl_divider_unsigned_multicycle #(
-        .DIVIDEND_WIDTH (CYCLE_WIDTH + ERROR_Q  ),
-        .DIVISOR_WIDTH  (ERROR_WIDTH + ERROR_Q  ),
-        .QUOTIENT_WIDTH (ADJUST_WIDTH + ADJUST_Q)
+        .DIVIDEND_WIDTH (CYCLE_WIDTH + ERROR_Q + ADJUST_Q),
+        .DIVISOR_WIDTH  (ERROR_WIDTH + ERROR_Q           ),
+        .QUOTIENT_WIDTH (ADJUST_WIDTH + ADJUST_Q         )
     ) i_divider_unsigned_multicycle (
         .reset (reset),
         .clk   (clk  ),
         .cke   (1'b1 ),
         .
-        s_dividend (CycleToError(div_calc_cycle) << ADJUST_Q),
-        .s_divisor  (div_calc_error                          ),
-        .s_valid    (div_calc_valid                          ),
-        .s_ready    (tmp_ready                               ),
+        s_dividend (CycleToError(div_calc_cycle)),
+        .s_divisor  (div_calc_error              ),
+        .s_valid    (div_calc_valid              ),
+        .s_ready    (tmp_ready                   ),
         .
         m_quotient  (div_quotient ),
         .m_remainder (div_remainder),
@@ -454,6 +424,7 @@ module jellyvl_synctimer_adjust #(
                 end else begin
                     adj_calc_count <= adj_calc_next;
                 end
+                adj_calc_valid <= 1'b0;
             end
         end
     end
@@ -478,47 +449,8 @@ module jellyvl_synctimer_adjust #(
         end
     end
 
-    /*
-
-    if SIMULATION :sim_monitor {
-        var sim_monitor_time_local            : t_calc  ;
-        var sim_monitor_time_correct          : t_calc  ;
-        var sim_monitor_period_local          : t_calc  ;
-        var sim_monitor_period_correct        : t_calc  ;
-        var sim_monitor_error_phase           : t_phase ;
-        var sim_monitor_error_period          : t_period;
-        var sim_monitor_corrected_error_phase : real    ;
-        var sim_monitor_corrected_error_period: real    ;
-        var sim_monitor_adjust_phase          : real    ;
-        var sim_monitor_adjust_period         : real    ;
-        var sim_monitor_adjust_total          : real    ;
-
-        always_ff (clk) {
-            if correct_valid {
-                sim_monitor_time_local   = current_time_local;
-                sim_monitor_time_correct = current_time_correct;
-            }
-            if st3_valid {
-                sim_monitor_corrected_error_phase  = $itor(st3_error_phase) / $itor(2 ** ERROR_Q);
-                sim_monitor_corrected_error_period = $itor(st3_corrected_error_period) / $itor(2 ** ERROR_Q);
-            }
-        }
-
-        assign sim_monitor_period_correct = st0_period_correct;
-        assign sim_monitor_period_local   = st0_period_local;
-        assign sim_monitor_error_phase    = st1_error_phase;
-        assign sim_monitor_error_period   = st1_error_period;
-        assign sim_monitor_adjust_phase   = $itor(st4_adjust_phase) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_adjust_period  = $itor(st4_adjust_period) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_adjust_total   = $itor(st5_adjust_total) / $itor(2 ** ERROR_Q);
-    }
-    */
-
     if (SIMULATION) begin :sim_monitor
-        real sim_monitor_cycle_estimate_t;
-        //        var sim_monitor_error_estimate_x: real;
-        //        var sim_monitor_error_estimate_v: real;
-
+        real sim_monitor_cycle_estimate_t    ;
         real sim_monitor_error_observe_x     ; // 位相誤差の観測値
         real sim_monitor_error_predict_x     ; // 位相誤差の予測値
         real sim_monitor_error_predict_x_gain; // 位相誤差の予測値にゲインを掛けたもの
@@ -529,11 +461,11 @@ module jellyvl_synctimer_adjust #(
         real sim_monitor_error_predict_v_gain; // 周期誤差の予測値にゲインを掛けたもの
         real sim_monitor_error_estimate_v    ; // 周期誤差の推定値
         real sim_monitor_error_estimate_v0   ; // １つ前の周期誤差の推定値
+        real sim_monitor_error_adjust_value  ;
+        real sim_monitor_adj_param_period    ;
+        real sim_monitor_debug_count         ;
 
-        assign sim_monitor_cycle_estimate_t = $itor(cycle_estimate_t) / $itor(2 ** CYCLE_Q);
-        //        assign sim_monitor_error_estimate_x = $itor(error_estimate_x) / $itor(2 ** ERROR_Q);
-        //        assign sim_monitor_error_estimate_v = $itor(error_estimate_v) / $itor(2 ** ERROR_Q);
-
+        assign sim_monitor_cycle_estimate_t     = $itor(cycle_estimate_t) / $itor(2 ** CYCLE_Q);
         assign sim_monitor_error_observe_x      = $itor(error_observe_x) / $itor(2 ** ERROR_Q);
         assign sim_monitor_error_predict_x      = $itor(error_predict_x) / $itor(2 ** ERROR_Q);
         assign sim_monitor_error_predict_x_gain = $itor(error_predict_x_gain) / $itor(2 ** ERROR_Q);
@@ -544,7 +476,9 @@ module jellyvl_synctimer_adjust #(
         assign sim_monitor_error_predict_v_gain = $itor(error_predict_v_gain) / $itor(2 ** ERROR_Q);
         assign sim_monitor_error_estimate_v     = $itor(error_estimate_v) / $itor(2 ** ERROR_Q);
         assign sim_monitor_error_estimate_v0    = $itor(error_estimate_v0) / $itor(2 ** ERROR_Q);
-
+        assign sim_monitor_error_adjust_value   = $itor(error_adjust_value) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_adj_param_period     = $itor(adj_param_period) / $itor(2 ** ADJUST_Q);
+        assign sim_monitor_debug_count          = sim_monitor_cycle_estimate_t / sim_monitor_adj_param_period;
     end
 
 endmodule

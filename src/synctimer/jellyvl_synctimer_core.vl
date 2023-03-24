@@ -66,14 +66,10 @@ module synctimer_core #(
 
         current_time: current_time,
 
-        //        param_limit_min : adj_param_limit_min ,
-        //        param_limit_max : adj_param_limit_max ,
-        //        param_phase_min : adj_param_phase_min ,
-        //        param_phase_max : adj_param_phase_max ,
-        //        param_period_min: adj_param_period_min,
-        //        param_period_max: adj_param_period_max,
-        //
-        //        override_request: override_request,
+        //        param_cycle_min :  -32'd100,
+        //       param_cycle_max :  +32'd100,
+        param_adjust_min: -32'd100,
+        param_adjust_max: +32'd100,
 
         correct_override: correct_override,
         correct_time    : correct_time    ,
