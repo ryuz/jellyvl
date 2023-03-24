@@ -54,8 +54,8 @@ module jellyvl_synctimer_adjust #(
     localparam type t_cycle = logic [CYCLE_WIDTH + CYCLE_Q-1:0];
     //    localparam t_period : type = signed logic<PERIOD_WIDTH>;
     //    localparam t_phase  : type = signed logic<PHASE_WIDTH>;
-    localparam type t_error = logic signed [ERROR_WIDTH + ERROR_Q-1:0];
-    //    localparam t_error_u: type = logic<ERROR_WIDTH + ERROR_Q>;
+    localparam type t_error   = logic signed [ERROR_WIDTH + ERROR_Q-1:0];
+    localparam type t_error_u = logic [ERROR_WIDTH + ERROR_Q-1:0];
     //    localparam t_adjust : type = logic<ADJUST_WIDTH + ADJUST_Q>;
     //
     //    localparam t_lpf_cycle  : type =        logic<CYCLE_WIDTH  + LPF_GAIN_CYCLE>;
@@ -173,6 +173,11 @@ module jellyvl_synctimer_adjust #(
     end
 
 
+
+    // -------------------------------------
+    //  時計の誤差修正
+    // -------------------------------------
+
     // 誤差推定
     t_error error_observe_x        ; // 位相誤差の観測値
     logic   error_observe_x_en     ;
@@ -278,7 +283,7 @@ module jellyvl_synctimer_adjust #(
             error_predict_v_gain    <= error_predict_v - (error_predict_v >>> LPF_GAIN_PERIOD);
             error_predict_v_gain_en <= error_predict_v_en;
 
-            if (error_observe_x_en) begin
+            if (error_observe_v_en) begin
                 if (error_predict_v_gain_en) begin
                     error_estimate_v <= error_predict_v_gain + (error_observe_v >>> LPF_GAIN_PHASE);
                 end else begin
@@ -288,6 +293,109 @@ module jellyvl_synctimer_adjust #(
             end
         end
     end
+
+    logic [6-1:0] error_calc_delay;
+    logic         error_valid     ;
+    always_ff @ (posedge clk) begin
+        if (reset) begin
+            error_calc_delay <= '0;
+        end else begin
+            error_calc_delay <= error_calc_delay << (1);
+            if (correct_valid) begin
+                error_calc_delay[0] <= 1;
+            end
+        end
+    end
+    assign error_valid = error_calc_delay[5] & error_estimate_v_en;
+
+
+
+
+    // -------------------------------------
+    //  調整信号の間隔計算
+    // -------------------------------------
+
+    logic     calc_prev_sign  ;
+    logic     calc_prev_zero  ;
+    t_error_u calc_prev_error ;
+    t_cycle   calc_prev_cycle ;
+    logic     calc_prev_enable;
+    logic     calc_sign       ;
+    logic     calc_zero       ;
+    t_error_u calc_error      ;
+    t_cycle   calc_cycle      ;
+    logic     calc_enable     ;
+    logic     calc_valid      ;
+
+    always_ff @ (posedge clk) begin
+        if (reset) begin
+            calc_prev_sign   <= 'x;
+            calc_prev_zero   <= 'x;
+            calc_prev_error  <= 'x;
+            calc_prev_cycle  <= 'x;
+            calc_prev_enable <= 1'b0;
+            calc_sign        <= 'x;
+            calc_zero        <= 'x;
+            calc_error       <= 'x;
+            calc_cycle       <= 'x;
+            calc_enable      <= 1'b0;
+            calc_valid       <= 1'b0;
+        end else begin
+            calc_enable <= 1'b0;
+            calc_valid  <= 1'b0;
+            if (error_valid) begin
+                calc_prev_sign   <= calc_sign;
+                calc_prev_zero   <= calc_zero;
+                calc_error       <= calc_error;
+                calc_prev_cycle  <= calc_error;
+                calc_prev_enable <= calc_enable;
+
+                calc_sign  <= error_estimate_x < 0;
+                calc_zero  <= error_estimate_x == 0;
+                calc_error <= ((error_estimate_x < 0) ? (
+                    t_error_u'((-error_estimate_x))
+                ) : (
+                    t_error_u'(error_estimate_x)
+                ));
+                calc_cycle  <= cycle_estimate_t;
+                calc_enable <= 1'b1;
+            end
+
+            if (calc_prev_sign != calc_sign || calc_prev_zero != calc_zero || calc_prev_error != calc_error || calc_prev_cycle != calc_cycle || calc_prev_enable != calc_enable) begin
+                calc_valid <= 1'b1;
+            end
+
+        end
+    end
+
+    /*
+    // divider
+    var div_quotient : t_adjust ;
+    var div_remainder: t_error_u;
+    var div_valid    : logic    ;
+
+    var tmp_ready: logic;
+    inst i_divider_unsigned_multicycle: divider_unsigned_multicycle #(
+        DIVIDEND_WIDTH: COUNTER_WIDTH + ERROR_Q,
+        DIVISOR_WIDTH : ERROR_WIDTH + ERROR_Q  ,
+        QUOTIENT_WIDTH: ADJUST_WIDTH + ADJUST_Q,
+    ) (
+        reset: reset,
+        clk  : clk  ,
+        cke  : 1'b1 ,
+
+        s_dividend: st6_count as t_count_q << (ERROR_Q + ADJUST_Q),
+        s_divisor : st6_adjust                                  ,
+        s_valid   : st6_enable                                  ,
+        s_ready   : tmp_ready                                   ,
+
+        m_quotient : div_quotient ,
+        m_remainder: div_remainder,
+        m_valid    : div_valid    ,
+        m_ready    : 1'b1         ,
+    );
+
+*/
 
     assign adj_value = '0;
 
@@ -667,12 +775,35 @@ module jellyvl_synctimer_adjust #(
 
     if (SIMULATION) begin :sim_monitor
         real sim_monitor_cycle_estimate_t;
-        real sim_monitor_error_estimate_x;
-        real sim_monitor_error_estimate_v;
+        //        var sim_monitor_error_estimate_x: real;
+        //        var sim_monitor_error_estimate_v: real;
+
+        real sim_monitor_error_observe_x     ; // 位相誤差の観測値
+        real sim_monitor_error_predict_x     ; // 位相誤差の予測値
+        real sim_monitor_error_predict_x_gain; // 位相誤差の予測値にゲインを掛けたもの
+        real sim_monitor_error_estimate_x    ; // 位相誤差の推定値
+        real sim_monitor_error_estimate_x0   ; // １つ前の位相誤差の推定値
+        real sim_monitor_error_observe_v     ; // 周期誤差の観測値
+        real sim_monitor_error_predict_v     ; // 位相誤差の予測値
+        real sim_monitor_error_predict_v_gain; // 周期誤差の予測値にゲインを掛けたもの
+        real sim_monitor_error_estimate_v    ; // 周期誤差の推定値
+        real sim_monitor_error_estimate_v0   ; // １つ前の周期誤差の推定値
 
         assign sim_monitor_cycle_estimate_t = $itor(cycle_estimate_t) / $itor(2 ** CYCLE_Q);
-        assign sim_monitor_error_estimate_x = $itor(error_estimate_x) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_error_estimate_v = $itor(error_estimate_v) / $itor(2 ** ERROR_Q);
+        //        assign sim_monitor_error_estimate_x = $itor(error_estimate_x) / $itor(2 ** ERROR_Q);
+        //        assign sim_monitor_error_estimate_v = $itor(error_estimate_v) / $itor(2 ** ERROR_Q);
+
+        assign sim_monitor_error_observe_x      = $itor(error_observe_x) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_error_predict_x      = $itor(error_predict_x) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_error_predict_x_gain = $itor(error_predict_x_gain) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_error_estimate_x     = $itor(error_estimate_x) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_error_estimate_x0    = $itor(error_estimate_x0) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_error_observe_v      = $itor(error_observe_v) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_error_predict_v      = $itor(error_predict_v) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_error_predict_v_gain = $itor(error_predict_v_gain) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_error_estimate_v     = $itor(error_estimate_v) / $itor(2 ** ERROR_Q);
+        assign sim_monitor_error_estimate_v0    = $itor(error_estimate_v0) / $itor(2 ** ERROR_Q);
+
     end
 
 endmodule
