@@ -202,7 +202,13 @@ module jellyvl_etherneco_synctimer_master #(
     t_offset delay_time    [0:MAX_NODES-1];
     t_offset measured_time [0:MAX_NODES-1];
 
-    t_offset_pkt rx_offset [0:MAX_NODES-1];
+    t_offset_pkt rx_offset_pkt [0:MAX_NODES-1];
+    t_offset     rx_offset     [0:MAX_NODES-1];
+    always_comb begin
+        for (int i = 0; i < MAX_NODES; i++) begin
+            rx_offset[i] = t_offset'(rx_offset_pkt[i]);
+        end
+    end
 
     logic         offset_first;
     logic [3-1:0] calc_wait   ;
@@ -216,7 +222,7 @@ module jellyvl_etherneco_synctimer_master #(
                 offset_gain[i]   <= 'x;
                 delay_time[i]    <= 'x;
                 measured_time[i] <= 'x;
-                rx_offset[i]     <= 'x;
+                rx_offset_pkt[i] <= 'x;
             end
         end else begin
             for (int i = 0; i < MAX_NODES; i++) begin
@@ -227,7 +233,7 @@ module jellyvl_etherneco_synctimer_master #(
                 for (int i = 0; i < MAX_NODES; i++) begin
                     for (int j = 0; j < 4; j++) begin
                         if (int'(res_payload_pos) == 9 + i * 4 + j) begin
-                            rx_offset[i][j] <= res_payload_data;
+                            rx_offset_pkt[i][j] <= res_payload_data;
                         end
                     end
                 end
@@ -253,6 +259,59 @@ module jellyvl_etherneco_synctimer_master #(
         end
     end
 
+    if (DEBUG) begin :dbg_monitor
+        (* mark_debug="true" *)
+        logic dbg_cmd_tx_start;
+        (* mark_debug="true" *)
+        t_offset dbg_offset_time0;
+        (* mark_debug="true" *)
+        t_offset dbg_offset_time1;
+        (* mark_debug="true" *)
+        t_offset dbg_rx_offset0;
+        (* mark_debug="true" *)
+        t_offset dbg_rx_offset1;
+        (* mark_debug="true" *)
+        logic dbg_res_payload_first;
+        (* mark_debug="true" *)
+        logic dbg_res_payload_last;
+        (* mark_debug="true" *)
+        logic [16-1:0] dbg_res_payload_pos;
+        (* mark_debug="true" *)
+        logic [8-1:0] dbg_res_payload_data;
+        (* mark_debug="true" *)
+        logic dbg_res_payload_valid;
+        (* mark_debug="true" *)
+        t_offset dbg_delay_time0   ;
+        (* mark_debug="true" *)
+        t_offset dbg_delay_time1   ;
+        (* mark_debug="true" *)
+        t_offset dbg_measured_time0;
+        (* mark_debug="true" *)
+        t_offset dbg_measured_time1;
+        (* mark_debug="true" *)
+        t_offset dbg_response_time;
+
+        always_ff @ (posedge clk) begin
+            dbg_cmd_tx_start <= cmd_tx_start;
+            dbg_offset_time0 <= offset_time[0];
+            dbg_offset_time1 <= offset_time[1];
+            dbg_rx_offset0   <= rx_offset[0];
+            dbg_rx_offset1   <= rx_offset[1];
+
+            dbg_res_payload_first <= res_payload_first;
+            dbg_res_payload_last  <= res_payload_last;
+            dbg_res_payload_pos   <= res_payload_pos;
+            dbg_res_payload_data  <= res_payload_data;
+            dbg_res_payload_valid <= res_payload_valid;
+
+            dbg_delay_time0    <= delay_time[0];
+            dbg_delay_time1    <= delay_time[1];
+            dbg_measured_time0 <= measured_time[0];
+            dbg_measured_time1 <= measured_time[1];
+
+            dbg_response_time <= response_time;
+        end
+    end
 
 
     // monitor (debug)

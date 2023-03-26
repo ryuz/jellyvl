@@ -132,6 +132,8 @@ module synctimer_adjust #(
     var error_estimate_x_en    : logic     ;
     var error_estimate_x0      : t_error   ; // １つ前の位相誤差の推定値
     var error_estimate_x0_en   : logic     ;
+    var error_estimate_xx      : t_error   ;
+    var error_estimate_xx_en   : logic     ;
     var error_observe_v        : t_error   ; // 周期誤差の観測値
     var error_observe_v_en     : logic     ;
     var error_predict_v        : t_error   ; // 位相誤差の予測値
@@ -144,7 +146,8 @@ module synctimer_adjust #(
     var error_estimate_v0_en   : logic     ;
     var error_adjust_total     : t_error   ;
     var error_adjust_value     : t_error   ; // 制御量(一周期の補正量)
-    var error_stage            : logic  <7>;
+    var error_adjust_total_en  : logic     ;
+    var error_stage            : logic  <8>;
     var error_valid            : logic     ;
 
     var limit_adjust_min: t_error;
@@ -155,7 +158,7 @@ module synctimer_adjust #(
     assign error_predict_v    = error_estimate_v0; // 周期予測はひとつ前の推定値と同じ
     assign error_predict_v_en = error_estimate_v0_en;
 
-    var current_error : t_time;
+    var current_error: t_time;
     assign current_error = correct_time - current_time;
 
     always_ff (clk, reset) {
@@ -170,6 +173,8 @@ module synctimer_adjust #(
             error_estimate_x_en     = 1'b0;
             error_estimate_x0       = 'x;
             error_estimate_x0_en    = 1'b0;
+            error_estimate_xx       = 'x;
+            error_estimate_xx_en    = 1'b0;
             error_observe_v         = 'x;
             error_observe_v_en      = 1'b0;
             error_predict_v_gain    = 'x;
@@ -179,7 +184,8 @@ module synctimer_adjust #(
             error_estimate_v0       = 'x;
             error_estimate_v0_en    = 1'b0;
             error_adjust_total      = 'x;
-            error_adjust_value      = 'x;
+            error_adjust_total_en   = 1'b0;
+            error_adjust_value      = '0;
             error_stage             = '0;
             error_valid             = 1'b0;
         } else {
@@ -223,18 +229,24 @@ module synctimer_adjust #(
             }
 
             if error_stage[0] {
+                error_estimate_xx    = error_estimate_x0 - error_adjust_value;
+                error_estimate_xx_en = error_estimate_x0_en;
+            }
+            
+            if error_stage[1] {
                 // 位相ずれ予測
-                error_predict_x    = error_estimate_x0 + error_estimate_v0 - error_adjust_value;
-                error_predict_x_en = error_estimate_x0_en & error_estimate_v0_en;
+//              error_predict_x    = error_estimate_x0 + error_estimate_v0 - error_adjust_value;
+                error_predict_x    = error_estimate_xx + error_estimate_v0;
+                error_predict_x_en = error_estimate_xx_en & error_estimate_v0_en;
             }
 
-            if error_stage[1] {
+            if error_stage[2] {
                 // LPF用ゲイン計算
                 error_predict_x_gain    = error_predict_x - (error_predict_x >>> LPF_GAIN_PHASE);
                 error_predict_x_gain_en = error_predict_x_en;
             }
 
-            if error_stage[2] {
+            if error_stage[3] {
                 // 位相ずれ推定
                 if error_observe_x_en {
                     if error_predict_x_gain_en {
@@ -246,17 +258,17 @@ module synctimer_adjust #(
                 }
             }
 
-            if error_stage[3] {
+            if error_stage[4] {
                 // 周期ずれ予測
-                error_observe_v    = error_estimate_x - (error_estimate_x0 - error_adjust_value);
-                error_observe_v_en = error_estimate_x_en && error_estimate_x0_en;
+                error_observe_v    = error_estimate_x - error_estimate_xx; // (error_estimate_x0 - error_adjust_value);
+                error_observe_v_en = error_estimate_x_en && error_estimate_xx_en;
 
                 // LPF用ゲイン計算
                 error_predict_v_gain    = error_predict_v - (error_predict_v >>> LPF_GAIN_PERIOD);
                 error_predict_v_gain_en = error_predict_v_en;
             }
 
-            if error_stage[4] {
+            if error_stage[5] {
                 // 周期ずれ推定
                 if error_observe_v_en {
                     if error_predict_v_gain_en {
@@ -268,24 +280,25 @@ module synctimer_adjust #(
                 }
             }
 
-            if error_stage[5] {
+            if error_stage[6] {
                 // 制御量合計
-                error_adjust_total = error_estimate_x + error_estimate_v;
+                error_adjust_total    = error_estimate_x + error_estimate_v;
+                error_adjust_total_en = error_estimate_x_en && error_estimate_v_en;
             }
 
             error_valid = 1'b0;
-            if error_stage[6] {
+            if error_stage[7] {
                 // limitter
-                error_adjust_value = error_adjust_total;
-                if error_adjust_total <: limit_adjust_min {
-                    error_adjust_value = limit_adjust_min;
+                if error_adjust_total_en {
+                    error_adjust_value = error_adjust_total;
+                    if error_adjust_total <: limit_adjust_min {
+                        error_adjust_value = limit_adjust_min;
+                    }
+                    if error_adjust_total >: limit_adjust_max {
+                        error_adjust_value = limit_adjust_max;
+                    }
+                    error_valid = 1'b1;
                 }
-                if error_adjust_total >: limit_adjust_max {
-                    error_adjust_value = limit_adjust_max;
-                }
-
-                // データがなら発行
-                error_valid = error_estimate_v_en;
             }
         }
     }
@@ -424,7 +437,7 @@ module synctimer_adjust #(
             // adj_param_valid は連続で来ない、period は2以上の前提で事前計算
             adj_calc_count += (1 << ADJUST_Q) as t_adjust;
             adj_calc_next  =  adj_calc_count - adj_calc_period;
-            adj_calc_valid =  adj_calc_count >= adj_calc_period;
+            adj_calc_valid =  adj_calc_count >= adj_calc_period || adj_calc_zero;
 
             if adj_calc_valid {
                 if adj_param_valid {
@@ -457,6 +470,63 @@ module synctimer_adjust #(
                 adjust_sign  = adj_calc_sign;
                 adjust_valid = ~adj_calc_zero;
             }
+        }
+    }
+
+    if DEBUG :debug_monitor {
+        #[sv("mark_debug=\"true\"")]
+        var dbg_current_time: logic<TIMER_WIDTH>;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_correct_override: logic;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_correct_time: logic<TIMER_WIDTH>;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_correct_valid: logic;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_error_adjust_value: t_error;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_diff_time: signed logic<TIMER_WIDTH>;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_diff_time_abs: logic<TIMER_WIDTH>;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_error_estimate_x : t_error   ;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_error_estimate_v : t_error   ;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_error_estimate_x0 : t_error   ;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_error_estimate_v0 : t_error   ;
+
+        #[sv("mark_debug=\"true\"")]
+        var dbg_cycle_observe_t        : t_cycle;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_cycle_predict_t        : t_cycle;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_cycle_estimate_t       : t_cycle;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_cycle_estimate_t0      : t_cycle;
+
+
+        var dbg_diff_time_tmp: signed logic<TIMER_WIDTH>;
+        assign dbg_diff_time_tmp = correct_time - current_time;
+
+        always_ff (clk) {
+            dbg_current_time       = current_time;
+            dbg_correct_override   = correct_override;
+            dbg_correct_time       = correct_time;
+            dbg_correct_valid      = correct_valid;
+            dbg_error_adjust_value = error_adjust_value;
+            dbg_diff_time          = dbg_diff_time_tmp;
+            dbg_diff_time_abs      = if dbg_diff_time_tmp >= 0 { dbg_diff_time_tmp }  else { -dbg_diff_time_tmp };
+            dbg_error_estimate_x   = error_estimate_x;
+            dbg_error_estimate_v   = error_estimate_v;
+            dbg_error_estimate_x0  = error_estimate_x0;
+            dbg_error_estimate_v0  = error_estimate_v0;
+            dbg_cycle_observe_t    = cycle_observe_t  ;
+            dbg_cycle_predict_t    = cycle_predict_t  ;
+            dbg_cycle_estimate_t   = cycle_estimate_t ;
+            dbg_cycle_estimate_t0  = cycle_estimate_t0;
+
         }
     }
 

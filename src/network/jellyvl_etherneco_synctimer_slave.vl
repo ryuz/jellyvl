@@ -1,19 +1,19 @@
 module etherneco_synctimer_slave #(
-    parameter TIMER_WIDTH        : u32 = 64                             , // タイマのbit幅
-    parameter NUMERATOR          : u32 = 10                             , // クロック周期の分子
-    parameter DENOMINATOR        : u32 = 3                              , // クロック周期の分母
-    parameter ADJ_LIMIT_WIDTH    : u32 = TIMER_WIDTH                    , // 補正限界のbit幅
-    parameter ADJ_TIMER_WIDTH    : u32 = 32                             , // 補正に使う範囲のタイマ幅
-    parameter ADJ_CYCLE_WIDTH    : u32 = 32                             , // 自クロックサイクルカウンタのbit数
-    parameter ADJ_ERROR_WIDTH    : u32 = 32                             , // 誤差計算時のbit幅
-    parameter ADJ_ERROR_Q        : u32 = 8                              , // 誤差計算時に追加する固定小数点数bit数
+    parameter TIMER_WIDTH        : u32 = 64                           , // タイマのbit幅
+    parameter NUMERATOR          : u32 = 10                           , // クロック周期の分子
+    parameter DENOMINATOR        : u32 = 3                            , // クロック周期の分母
+    parameter ADJ_LIMIT_WIDTH    : u32 = TIMER_WIDTH                  , // 補正限界のbit幅
+    parameter ADJ_TIMER_WIDTH    : u32 = 32                           , // 補正に使う範囲のタイマ幅
+    parameter ADJ_CYCLE_WIDTH    : u32 = 32                           , // 自クロックサイクルカウンタのbit数
+    parameter ADJ_ERROR_WIDTH    : u32 = 32                           , // 誤差計算時のbit幅
+    parameter ADJ_ERROR_Q        : u32 = 8                            , // 誤差計算時に追加する固定小数点数bit数
     parameter ADJ_ADJUST_WIDTH   : u32 = ADJ_CYCLE_WIDTH + ADJ_ERROR_Q, // 補正周期のbit幅
-    parameter ADJ_ADJUST_Q       : u32 = ADJ_ERROR_Q                    , // 補正周期に追加する固定小数点数bit数
-    parameter ADJ_LPF_GAIN_CYCLE : u32 = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter ADJ_LPF_GAIN_PERIOD: u32 = 6                              , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter ADJ_LPF_GAIN_PHASE : u32 = 6                              , // 位相補正のLPFの更新ゲイン(1/2^N)
-    parameter DEBUG              : bit = 1'b0                           ,
-    parameter SIMULATION         : bit = 1'b0                           ,
+    parameter ADJ_ADJUST_Q       : u32 = ADJ_ERROR_Q                  , // 補正周期に追加する固定小数点数bit数
+    parameter ADJ_LPF_GAIN_CYCLE : u32 = 6                            , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter ADJ_LPF_GAIN_PERIOD: u32 = 6                            , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter ADJ_LPF_GAIN_PHASE : u32 = 6                            , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter DEBUG              : bit = 1'b0                         ,
+    parameter SIMULATION         : bit = 1'b0                         ,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -79,15 +79,15 @@ module etherneco_synctimer_slave #(
         NUMERATOR          : NUMERATOR          ,
         DENOMINATOR        : DENOMINATOR        ,
         ADJ_LIMIT_WIDTH    : ADJ_LIMIT_WIDTH    ,
-        ADJ_TIMER_WIDTH    : ADJ_TIMER_WIDTH ,
-        ADJ_CYCLE_WIDTH    : ADJ_CYCLE_WIDTH  ,
+        ADJ_TIMER_WIDTH    : ADJ_TIMER_WIDTH    ,
+        ADJ_CYCLE_WIDTH    : ADJ_CYCLE_WIDTH    ,
         ADJ_ERROR_WIDTH    : ADJ_ERROR_WIDTH    ,
         ADJ_ERROR_Q        : ADJ_ERROR_Q        ,
         ADJ_ADJUST_WIDTH   : ADJ_ADJUST_WIDTH   ,
         ADJ_ADJUST_Q       : ADJ_ADJUST_Q       ,
-        ADJ_LPF_GAIN_CYCLE : ADJ_LPF_GAIN_CYCLE     ,
-        ADJ_LPF_GAIN_PERIOD: ADJ_LPF_GAIN_PERIOD    ,
-        ADJ_LPF_GAIN_PHASE : ADJ_LPF_GAIN_PHASE     ,
+        ADJ_LPF_GAIN_CYCLE : ADJ_LPF_GAIN_CYCLE ,
+        ADJ_LPF_GAIN_PERIOD: ADJ_LPF_GAIN_PERIOD,
+        ADJ_LPF_GAIN_PHASE : ADJ_LPF_GAIN_PHASE ,
         DEBUG              : DEBUG              ,
         SIMULATION         : SIMULATION         ,
     ) (
@@ -96,8 +96,8 @@ module etherneco_synctimer_slave #(
 
         adj_param_limit_min : -100000 as t_adj_limit,
         adj_param_limit_max : +100000 as t_adj_limit,
-        adj_param_adjust_min : -1000 as t_adj_error  ,
-        adj_param_adjust_max : +1000 as t_adj_error ,
+        adj_param_adjust_min: -1000 as t_adj_error  ,
+        adj_param_adjust_max: +1000 as t_adj_error  ,
 
         set_time : '0  ,
         set_valid: 1'b0,
@@ -233,25 +233,41 @@ module etherneco_synctimer_slave #(
         }
     }
 
+    if DEBUG : dbg_monitor  {
+        #[sv("mark_debug=\"true\"")]    var dbg_cmd_rx_start: logic;
+        #[sv("mark_debug=\"true\"")]    var dbg_res_rx_start: logic;
+        #[sv("mark_debug=\"true\"")]    var dbg_start_time  : logic<32>;
+        #[sv("mark_debug=\"true\"")]    var dbg_elapsed_time: logic<32>;
+
+        always_ff(clk) {
+            dbg_cmd_rx_start = cmd_rx_start;
+            dbg_res_rx_start = res_rx_start    ;
+            dbg_start_time   = start_time  ;
+            dbg_elapsed_time = elapsed_time;
+        }
+    }
+
 
     // monitor (debug)
-    localparam t_monitor_time      : type           = logic<32>;
-    var monitor_cmd_rx_start: t_monitor_time;
-    var monitor_cmd_rx_end  : t_monitor_time;
-    var monitor_res_rx_start: t_monitor_time;
-    var monitor_res_rx_end  : t_monitor_time;
-    always_ff (clk) {
-        if cmd_rx_start {
-            monitor_cmd_rx_start = current_time as t_monitor_time;
-        }
-        if cmd_rx_end {
-            monitor_cmd_rx_end = current_time as t_monitor_time;
-        }
-        if res_rx_start {
-            monitor_res_rx_start = current_time as t_monitor_time;
-        }
-        if res_rx_end {
-            monitor_res_rx_end = current_time as t_monitor_time;
+    if SIMULATION :sim_monitor {
+        localparam t_monitor_time      : type           = logic<32>;
+        var monitor_cmd_rx_start: t_monitor_time;
+        var monitor_cmd_rx_end  : t_monitor_time;
+        var monitor_res_rx_start: t_monitor_time;
+        var monitor_res_rx_end  : t_monitor_time;
+        always_ff (clk) {
+            if cmd_rx_start {
+                monitor_cmd_rx_start = current_time as t_monitor_time;
+            }
+            if cmd_rx_end {
+                monitor_cmd_rx_end = current_time as t_monitor_time;
+            }
+            if res_rx_start {
+                monitor_res_rx_start = current_time as t_monitor_time;
+            }
+            if res_rx_end {
+                monitor_res_rx_end = current_time as t_monitor_time;
+            }
         }
     }
 }

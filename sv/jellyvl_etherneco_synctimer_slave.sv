@@ -231,25 +231,45 @@ module jellyvl_etherneco_synctimer_slave #(
         end
     end
 
+    if (DEBUG) begin :dbg_monitor
+        (* mark_debug="true" *)
+        logic          dbg_cmd_rx_start;
+        (* mark_debug="true" *)
+        logic          dbg_res_rx_start;
+        (* mark_debug="true" *)
+        logic [32-1:0] dbg_start_time  ;
+        (* mark_debug="true" *)
+        logic [32-1:0] dbg_elapsed_time;
+
+        always_ff @ (posedge clk) begin
+            dbg_cmd_rx_start <= cmd_rx_start;
+            dbg_res_rx_start <= res_rx_start;
+            dbg_start_time   <= start_time;
+            dbg_elapsed_time <= elapsed_time;
+        end
+    end
+
 
     // monitor (debug)
-    localparam type           t_monitor_time       = logic [32-1:0];
-    t_monitor_time monitor_cmd_rx_start;
-    t_monitor_time monitor_cmd_rx_end  ;
-    t_monitor_time monitor_res_rx_start;
-    t_monitor_time monitor_res_rx_end  ;
-    always_ff @ (posedge clk) begin
-        if (cmd_rx_start) begin
-            monitor_cmd_rx_start <= t_monitor_time'(current_time);
-        end
-        if (cmd_rx_end) begin
-            monitor_cmd_rx_end <= t_monitor_time'(current_time);
-        end
-        if (res_rx_start) begin
-            monitor_res_rx_start <= t_monitor_time'(current_time);
-        end
-        if (res_rx_end) begin
-            monitor_res_rx_end <= t_monitor_time'(current_time);
+    if (SIMULATION) begin :sim_monitor
+        localparam type           t_monitor_time       = logic [32-1:0];
+        t_monitor_time monitor_cmd_rx_start;
+        t_monitor_time monitor_cmd_rx_end  ;
+        t_monitor_time monitor_res_rx_start;
+        t_monitor_time monitor_res_rx_end  ;
+        always_ff @ (posedge clk) begin
+            if (cmd_rx_start) begin
+                monitor_cmd_rx_start <= t_monitor_time'(current_time);
+            end
+            if (cmd_rx_end) begin
+                monitor_cmd_rx_end <= t_monitor_time'(current_time);
+            end
+            if (res_rx_start) begin
+                monitor_res_rx_start <= t_monitor_time'(current_time);
+            end
+            if (res_rx_end) begin
+                monitor_res_rx_end <= t_monitor_time'(current_time);
+            end
         end
     end
 endmodule

@@ -1,19 +1,19 @@
 module etherneco_slave #(
-    parameter TIMER_WIDTH            : u32 = 64                                     , // タイマのbit幅
-    parameter NUMERATOR              : u32 = 8                                      , // クロック周期の分子
-    parameter DENOMINATOR            : u32 = 1                                      , // クロック周期の分母
-    parameter TIMSYNC_LIMIT_WIDTH    : u32 = TIMER_WIDTH                    , // 補正限界のbit幅
-    parameter TIMSYNC_TIMER_WIDTH    : u32 = 32                             , // 補正に使う範囲のタイマ幅
-    parameter TIMSYNC_CYCLE_WIDTH    : u32 = 32                             , // 自クロックサイクルカウンタのbit数
-    parameter TIMSYNC_ERROR_WIDTH    : u32 = 32                             , // 誤差計算時のbit幅
-    parameter TIMSYNC_ERROR_Q        : u32 = 8                              , // 誤差計算時に追加する固定小数点数bit数
+    parameter TIMER_WIDTH            : u32 = 64                                   , // タイマのbit幅
+    parameter NUMERATOR              : u32 = 8                                    , // クロック周期の分子
+    parameter DENOMINATOR            : u32 = 1                                    , // クロック周期の分母
+    parameter TIMSYNC_LIMIT_WIDTH    : u32 = TIMER_WIDTH                          , // 補正限界のbit幅
+    parameter TIMSYNC_TIMER_WIDTH    : u32 = 32                                   , // 補正に使う範囲のタイマ幅
+    parameter TIMSYNC_CYCLE_WIDTH    : u32 = 32                                   , // 自クロックサイクルカウンタのbit数
+    parameter TIMSYNC_ERROR_WIDTH    : u32 = 32                                   , // 誤差計算時のbit幅
+    parameter TIMSYNC_ERROR_Q        : u32 = 8                                    , // 誤差計算時に追加する固定小数点数bit数
     parameter TIMSYNC_ADJUST_WIDTH   : u32 = TIMSYNC_CYCLE_WIDTH + TIMSYNC_ERROR_Q, // 補正周期のbit幅
-    parameter TIMSYNC_ADJUST_Q       : u32 = TIMSYNC_ERROR_Q                    , // 補正周期に追加する固定小数点数bit数
-    parameter TIMSYNC_LPF_GAIN_CYCLE : u32 = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter TIMSYNC_LPF_GAIN_PERIOD: u32 = 6                              , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter TIMSYNC_LPF_GAIN_PHASE : u32 = 6                              , // 位相補正のLPFの更新ゲイン(1/2^N)
-    parameter DEBUG                  : bit = 1'b0                                   ,
-    parameter SIMULATION             : bit = 1'b0                                   ,
+    parameter TIMSYNC_ADJUST_Q       : u32 = TIMSYNC_ERROR_Q                      , // 補正周期に追加する固定小数点数bit数
+    parameter TIMSYNC_LPF_GAIN_CYCLE : u32 = 6                                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter TIMSYNC_LPF_GAIN_PERIOD: u32 = 6                                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter TIMSYNC_LPF_GAIN_PHASE : u32 = 6                                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter DEBUG                  : bit = 1'b0                                 ,
+    parameter SIMULATION             : bit = 1'b0                                 ,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -157,16 +157,16 @@ module etherneco_slave #(
         TIMER_WIDTH        : TIMER_WIDTH            ,
         NUMERATOR          : NUMERATOR              ,
         DENOMINATOR        : DENOMINATOR            ,
-        ADJ_LIMIT_WIDTH    : TIMSYNC_LIMIT_WIDTH     ,
-        ADJ_TIMER_WIDTH    : TIMSYNC_TIMER_WIDTH     ,
-        ADJ_CYCLE_WIDTH    : TIMSYNC_CYCLE_WIDTH     ,
-        ADJ_ERROR_WIDTH    : TIMSYNC_ERROR_WIDTH     ,
-        ADJ_ERROR_Q        : TIMSYNC_ERROR_Q         ,
-        ADJ_ADJUST_WIDTH   : TIMSYNC_ADJUST_WIDTH    ,
-        ADJ_ADJUST_Q       : TIMSYNC_ADJUST_Q        ,
-        ADJ_LPF_GAIN_CYCLE : TIMSYNC_LPF_GAIN_CYCLE  ,
-        ADJ_LPF_GAIN_PERIOD: TIMSYNC_LPF_GAIN_PERIOD ,
-        ADJ_LPF_GAIN_PHASE : TIMSYNC_LPF_GAIN_PHASE  ,
+        ADJ_LIMIT_WIDTH    : TIMSYNC_LIMIT_WIDTH    ,
+        ADJ_TIMER_WIDTH    : TIMSYNC_TIMER_WIDTH    ,
+        ADJ_CYCLE_WIDTH    : TIMSYNC_CYCLE_WIDTH    ,
+        ADJ_ERROR_WIDTH    : TIMSYNC_ERROR_WIDTH    ,
+        ADJ_ERROR_Q        : TIMSYNC_ERROR_Q        ,
+        ADJ_ADJUST_WIDTH   : TIMSYNC_ADJUST_WIDTH   ,
+        ADJ_ADJUST_Q       : TIMSYNC_ADJUST_Q       ,
+        ADJ_LPF_GAIN_CYCLE : TIMSYNC_LPF_GAIN_CYCLE ,
+        ADJ_LPF_GAIN_PERIOD: TIMSYNC_LPF_GAIN_PERIOD,
+        ADJ_LPF_GAIN_PHASE : TIMSYNC_LPF_GAIN_PHASE ,
         DEBUG              : DEBUG                  ,
         SIMULATION         : SIMULATION             ,
     ) (

@@ -202,7 +202,13 @@ module etherneco_synctimer_master #(
     var delay_time   : t_offset [MAX_NODES];
     var measured_time: t_offset [MAX_NODES];
 
-    var rx_offset: t_offset_pkt [MAX_NODES];
+    var rx_offset_pkt: t_offset_pkt [MAX_NODES];
+    var rx_offset    : t_offset     [MAX_NODES];
+    always_comb {
+        for i: int in 0..MAX_NODES {
+            rx_offset[i] = rx_offset_pkt[i] as t_offset;
+        }
+    }
 
     var offset_first: logic   ;
     var calc_wait   : logic<3>;
@@ -216,7 +222,7 @@ module etherneco_synctimer_master #(
                 offset_gain[i]   = 'x;
                 delay_time[i]    = 'x;
                 measured_time[i] = 'x;
-                rx_offset[i]     = 'x;
+                rx_offset_pkt[i] = 'x;
             }
         } else {
             for i: int in 0..MAX_NODES {
@@ -227,7 +233,7 @@ module etherneco_synctimer_master #(
                 for i: int in 0..MAX_NODES {
                     for j: int in 0..4 {
                         if res_payload_pos as int == 9 + i * 4 + j {
-                            rx_offset[i][j] = res_payload_data;
+                            rx_offset_pkt[i][j] = res_payload_data;
                         }
                     }
                 }
@@ -253,6 +259,58 @@ module etherneco_synctimer_master #(
         }
     }
 
+    if DEBUG : dbg_monitor {
+        #[sv("mark_debug=\"true\"")]
+        var dbg_cmd_tx_start : logic;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_offset_time0 : t_offset;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_offset_time1 : t_offset;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_rx_offset0 : t_offset;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_rx_offset1 : t_offset;
+
+        #[sv("mark_debug=\"true\"")]
+        var dbg_res_payload_first: logic    ;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_res_payload_last : logic    ;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_res_payload_pos  : logic<16>;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_res_payload_data : logic<8> ;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_res_payload_valid: logic    ;
+
+        #[sv("mark_debug=\"true\"")]    var dbg_delay_time0   : t_offset;
+        #[sv("mark_debug=\"true\"")]    var dbg_delay_time1   : t_offset;
+        #[sv("mark_debug=\"true\"")]    var dbg_measured_time0: t_offset;
+        #[sv("mark_debug=\"true\"")]    var dbg_measured_time1: t_offset;
+
+        #[sv("mark_debug=\"true\"")]    var dbg_response_time: t_offset;
+
+
+        always_ff(clk) {
+            dbg_cmd_tx_start = cmd_tx_start;
+            dbg_offset_time0 = offset_time[0];
+            dbg_offset_time1 = offset_time[1];
+            dbg_rx_offset0   = rx_offset[0];
+            dbg_rx_offset1   = rx_offset[1];
+
+            dbg_res_payload_first = res_payload_first;
+            dbg_res_payload_last  = res_payload_last ;
+            dbg_res_payload_pos   = res_payload_pos  ;
+            dbg_res_payload_data  = res_payload_data ;
+            dbg_res_payload_valid = res_payload_valid;
+
+            dbg_delay_time0    = delay_time  [0];
+            dbg_delay_time1    = delay_time  [1];
+            dbg_measured_time0 = measured_time[0];
+            dbg_measured_time1 = measured_time[1];
+
+            dbg_response_time = response_time;
+        }
+    }
 
 
     // monitor (debug)
