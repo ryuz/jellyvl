@@ -206,6 +206,8 @@ module synctimer_adjust #(
                     error_estimate_x_en     = 1'b0;
                     error_estimate_x0       = 'x;
                     error_estimate_x0_en    = 1'b0;
+                    error_estimate_xx       = 'x;
+                    error_estimate_xx_en    = 1'b0;
                     error_observe_v         = 'x;
                     error_observe_v_en      = 1'b0;
                     error_predict_v_gain    = 'x;
@@ -214,6 +216,9 @@ module synctimer_adjust #(
                     error_estimate_v_en     = 1'b0;
                     error_estimate_v0       = 'x;
                     error_estimate_v0_en    = 1'b0;
+                    error_adjust_total      = 'x;
+                    error_adjust_total_en   = 1'b0;
+                    error_adjust_value      = '0;
                 } else {
                     // 観測値ラッチ
                     error_observe_x    = current_error as t_error <<< ERROR_Q;

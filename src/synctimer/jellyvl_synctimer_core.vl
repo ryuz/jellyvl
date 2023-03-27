@@ -59,7 +59,6 @@ module synctimer_core #(
         current_time: current_time,
     );
 
-
     // リミッター
     var override_request: logic;
     inst u_synctimer_limitter: synctimer_limitter #(

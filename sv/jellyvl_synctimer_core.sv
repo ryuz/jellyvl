@@ -59,7 +59,6 @@ module jellyvl_synctimer_core #(
         current_time (current_time)
     );
 
-
     // リミッター
     logic override_request;
     jellyvl_synctimer_limitter #(

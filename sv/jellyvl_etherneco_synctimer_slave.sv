@@ -108,6 +108,28 @@ module jellyvl_etherneco_synctimer_slave #(
     );
 
 
+    // フリーランタイマ
+    logic [ADJ_TIMER_WIDTH-1:0] free_run_time   ;
+    logic                       tmp_adjust_ready;
+    jellyvl_synctimer_timer #(
+        .NUMERATOR   (NUMERATOR      ),
+        .DENOMINATOR (DENOMINATOR    ),
+        .TIMER_WIDTH (ADJ_TIMER_WIDTH)
+    ) u_synctimer_timer_free_run (
+        .reset (reset),
+        .clk   (clk  ),
+        .
+        set_time  ('0  ),
+        .set_valid (1'b0),
+        .
+        adjust_sign  ('0              ),
+        .adjust_valid ('0              ),
+        .adjust_ready (tmp_adjust_ready),
+        .
+        current_time (free_run_time)
+    );
+
+
     // 応答時間補正
     localparam type     t_offset     = logic [4-1:0][8-1:0];
     t_offset start_time  ;
@@ -115,11 +137,11 @@ module jellyvl_etherneco_synctimer_slave #(
 
     always_ff @ (posedge clk) begin
         if (cmd_rx_start) begin
-            start_time <= t_offset'(current_time);
+            start_time <= t_offset'(free_run_time);
         end
 
         if (res_rx_start) begin
-            elapsed_time <= t_offset'(current_time) - start_time;
+            elapsed_time <= t_offset'(free_run_time) - start_time;
         end
     end
 
