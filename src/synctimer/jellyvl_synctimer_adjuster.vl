@@ -1,0 +1,89 @@
+
+// 調整機構
+module synctimer_adjuster #(
+    parameter TIMER_WIDTH    : u32 = 32                   , // タイマのbit幅
+    parameter CYCLE_WIDTH    : u32 = 32                   , // 自クロックサイクルカウンタのbit数
+    parameter ERROR_WIDTH    : u32 = 32                   , // 誤差計算時のbit幅
+    parameter ERROR_Q        : u32 = 8                    , // 誤差計算時に追加する固定小数点数bit数
+    parameter ADJUST_WIDTH   : u32 = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
+    parameter ADJUST_Q       : u32 = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
+    parameter LPF_GAIN_CYCLE : u32 = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter LPF_GAIN_PERIOD: u32 = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter LPF_GAIN_PHASE : u32 = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter DEBUG          : bit = 1'b0                 ,
+    parameter SIMULATION     : bit = 1'b0                 ,
+) (
+    reset: input logic,
+    clk  : input logic,
+
+    param_adjust_min: input signed logic<ERROR_WIDTH>,
+    param_adjust_max: input signed logic<ERROR_WIDTH>,
+
+    current_time: input logic<TIMER_WIDTH>,
+
+    correct_renew: input logic             ,
+    correct_time : input logic<TIMER_WIDTH>,
+    correct_valid: input logic             ,
+
+    adjust_sign : output logic,
+    adjust_valid: output logic,
+    adjust_ready: input  logic,
+) {
+    localparam CYCLE_Q: u32 = LPF_GAIN_CYCLE;
+
+    // type
+    localparam t_error: type = signed logic<ERROR_WIDTH + ERROR_Q>;
+    localparam t_cycle: type = logic<CYCLE_WIDTH + CYCLE_Q>;
+
+    // 誤差計算
+    var request_value: t_error;
+    var request_cycle: t_cycle;
+    var request_valid: logic  ;
+    inst u_synctimer_adjuster_calc: synctimer_adjuster_calc #(
+        TIMER_WIDTH    : TIMER_WIDTH    ,
+        CYCLE_WIDTH    : CYCLE_WIDTH    ,
+        ERROR_WIDTH    : ERROR_WIDTH    ,
+        ERROR_Q        : ERROR_Q        ,
+        ADJUST_WIDTH   : ADJUST_WIDTH   ,
+        ADJUST_Q       : ADJUST_Q       ,
+        LPF_GAIN_CYCLE : LPF_GAIN_CYCLE ,
+        LPF_GAIN_PERIOD: LPF_GAIN_PERIOD,
+        LPF_GAIN_PHASE : LPF_GAIN_PHASE ,
+        DEBUG          : DEBUG          ,
+        SIMULATION     : SIMULATION     ,
+    ) (
+        reset           : reset           ,
+        clk             : clk             ,
+        param_adjust_min: param_adjust_min,
+        param_adjust_max: param_adjust_max,
+        current_time    : current_time    ,
+        correct_renew   : correct_renew   ,
+        correct_time    : correct_time    ,
+        correct_valid   : correct_valid   ,
+        request_value   : request_value   ,
+        request_cycle   : request_cycle   ,
+        request_valid   : request_valid   ,
+    );
+
+
+    // 調整パルスドライブ
+    inst u_synctimer_adjuster_driver: synctimer_adjuster_driver #(
+        CYCLE_WIDTH : CYCLE_WIDTH ,
+        CYCLE_Q     : CYCLE_Q     ,
+        ERROR_WIDTH : ERROR_WIDTH ,
+        ERROR_Q     : ERROR_Q     ,
+        ADJUST_WIDTH: ADJUST_WIDTH,
+        ADJUST_Q    : ADJUST_Q    ,
+        DEBUG       : DEBUG       ,
+        SIMULATION  : SIMULATION  ,
+    ) (
+        reset        : reset        ,
+        clk          : clk          ,
+        request_value: request_value,
+        request_cycle: request_cycle,
+        request_valid: request_valid,
+        adjust_sign  : adjust_sign  ,
+        adjust_valid : adjust_valid ,
+        adjust_ready : adjust_ready ,
+    );
+}

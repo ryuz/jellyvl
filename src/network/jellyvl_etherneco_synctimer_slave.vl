@@ -1,22 +1,46 @@
 module etherneco_synctimer_slave #(
-    parameter TIMER_WIDTH        : u32 = 64                           , // タイマのbit幅
-    parameter NUMERATOR          : u32 = 10                           , // クロック周期の分子
-    parameter DENOMINATOR        : u32 = 3                            , // クロック周期の分母
-    parameter ADJ_LIMIT_WIDTH    : u32 = TIMER_WIDTH                  , // 補正限界のbit幅
-    parameter ADJ_TIMER_WIDTH    : u32 = 32                           , // 補正に使う範囲のタイマ幅
-    parameter ADJ_CYCLE_WIDTH    : u32 = 32                           , // 自クロックサイクルカウンタのbit数
-    parameter ADJ_ERROR_WIDTH    : u32 = 32                           , // 誤差計算時のbit幅
-    parameter ADJ_ERROR_Q        : u32 = 8                            , // 誤差計算時に追加する固定小数点数bit数
-    parameter ADJ_ADJUST_WIDTH   : u32 = ADJ_CYCLE_WIDTH + ADJ_ERROR_Q, // 補正周期のbit幅
-    parameter ADJ_ADJUST_Q       : u32 = ADJ_ERROR_Q                  , // 補正周期に追加する固定小数点数bit数
-    parameter ADJ_LPF_GAIN_CYCLE : u32 = 6                            , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter ADJ_LPF_GAIN_PERIOD: u32 = 6                            , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter ADJ_LPF_GAIN_PHASE : u32 = 6                            , // 位相補正のLPFの更新ゲイン(1/2^N)
-    parameter DEBUG              : bit = 1'b0                         ,
-    parameter SIMULATION         : bit = 1'b0                         ,
+    parameter TIMER_WIDTH          : u32     = 64                                   , // タイマのbit幅
+    parameter NUMERATOR            : u32     = 10                                   , // クロック周期の分子
+    parameter DENOMINATOR          : u32     = 3                                    , // クロック周期の分母
+    parameter LIMIT_WIDTH          : u32     = TIMER_WIDTH                          , // 補正限界のbit幅
+    parameter CALC_WIDTH           : u32     = 32                                   , // 補正に使う範囲のタイマ幅
+    parameter CYCLE_WIDTH          : u32     = 32                                   , // 自クロックサイクルカウンタのbit数
+    parameter ERROR_WIDTH          : u32     = 32                                   , // 誤差計算時のbit幅
+    parameter ERROR_Q              : u32     = 8                                    , // 誤差計算時に追加する固定小数点数bit数
+    parameter ADJUST_WIDTH         : u32     = CYCLE_WIDTH + ERROR_Q                , // 補正周期のbit幅
+    parameter ADJUST_Q             : u32     = ERROR_Q                              , // 補正周期に追加する固定小数点数bit数
+    parameter LPF_GAIN_CYCLE       : u32     = 6                                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter LPF_GAIN_PERIOD      : u32     = 6                                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter LPF_GAIN_PHASE       : u32     = 6                                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter WB_ADR_WIDTH         : u32     = 16                                   ,
+    parameter WB_DAT_WIDTH         : u32     = 32                                   ,
+    parameter WB_SEL_WIDTH         : u32     = WB_DAT_WIDTH / 8                     ,
+    parameter t_adj_bit            : type    = logic<1>                             ,
+    parameter t_adj_time           : type    = logic<CALC_WIDTH>                    ,
+    parameter t_adj_value          : type    = signed logic<ADJUST_WIDTH + ADJUST_Q>,
+    parameter t_error              : type    = signed logic<ERROR_WIDTH>            ,
+    parameter t_limit              : type    = signed logic<LIMIT_WIDTH>            ,
+    parameter t_wb_adr             : type    = logic<WB_ADR_WIDTH>                  ,
+    parameter t_wb_dat             : type    = logic<WB_DAT_WIDTH>                  ,
+    parameter t_wb_sel             : type    = logic<WB_SEL_WIDTH>                  ,
+    parameter INIT_PARAM_LIMIT_MIN : t_limit = -100000 as t_limit                     ,
+    parameter INIT_PARAM_LIMIT_MAX : t_limit = +100000 as t_limit                     ,
+    parameter INIT_PARAM_ADJUST_MIN: t_error = -1000 as t_error                       ,
+    parameter INIT_PARAM_ADJUST_MAX: t_error = +1000 as t_error                       ,
+
+    parameter DEBUG     : bit = 1'b0,
+    parameter SIMULATION: bit = 1'b0,
 ) (
     reset: input logic,
     clk  : input logic,
+
+    s_wb_adr_i: input  logic<WB_ADR_WIDTH>,
+    s_wb_dat_o: output logic<WB_DAT_WIDTH>,
+    s_wb_dat_i: input  logic<WB_DAT_WIDTH>,
+    s_wb_sel_i: input  logic<WB_SEL_WIDTH>,
+    s_wb_we_i : input  logic              ,
+    s_wb_stb_i: input  logic              ,
+    s_wb_ack_o: output logic              ,
 
     adj_enable: input logic,
 
@@ -55,241 +79,142 @@ module etherneco_synctimer_slave #(
     m_res_valid: output logic    ,
 ) {
 
-    // ---------------------------------
-    //  Timer
-    // ---------------------------------
+    function WriteMask (
+        regs: input t_wb_dat,
+        dat : input t_wb_dat,
+        sel : input t_wb_sel,
+    ) -> t_wb_dat {
+        var result: t_wb_dat;
+        for i: u32      in 0..WB_DAT_WIDTH {
+            result[i] = if sel[i / 8] {
+                dat[i]
+            } else {
+                regs[i]
+            };
+        }
+        return result;
+    }
 
-    localparam t_time     : type = logic<8, 8>;
-    localparam t_adj_limit: type = logic<ADJ_LIMIT_WIDTH>;
-    localparam t_adj_error: type = logic<ADJ_ERROR_WIDTH>;
+    localparam ADR_CORE_ID         : t_wb_adr = 32'h00 as t_wb_adr;
+    localparam ADR_RECV_VALID      : t_wb_adr = 32'h20 as t_wb_adr;
+    localparam ADR_CORRECT_TIME    : t_wb_adr = 32'h21 as t_wb_adr;
+    localparam ADR_LOCAL_TIME      : t_wb_adr = 32'h22 as t_wb_adr;
+    localparam ADR_OVERRIDE_EN     : t_wb_adr = 32'h30 as t_wb_adr;
+    localparam ADR_OVERRIDE_VALUE  : t_wb_adr = 32'h31 as t_wb_adr;
+    localparam ADR_PARAM_LIMIT_MIN : t_wb_adr = 32'h40 as t_wb_adr;
+    localparam ADR_PARAM_LIMIT_MAX : t_wb_adr = 32'h41 as t_wb_adr;
+    localparam ADR_PARAM_ADJUST_MIN: t_wb_adr = 32'h42 as t_wb_adr;
+    localparam ADR_PARAM_ADJUST_MAX: t_wb_adr = 32'h43 as t_wb_adr;
 
-    #[sv("mark_debug=\"true\"")]
-    var correct_override: logic;
-    #[sv("mark_debug=\"true\"")]
-    var correct_time: logic<TIMER_WIDTH>;
-    #[sv("mark_debug=\"true\"")]
-    var correct_valid: logic;
+    var reg_recv_valid      : t_adj_bit  ;
+    var reg_override_en     : t_adj_bit  ;
+    var reg_override_value  : t_adj_value;
+    var reg_param_limit_min : t_limit    ;
+    var reg_param_limit_max : t_limit    ;
+    var reg_param_adjust_min: t_error    ;
+    var reg_param_adjust_max: t_error    ;
 
-    #[sv("mark_debug=\"true\"")]
-    var dbg_current_time: logic<TIMER_WIDTH>;
-    assign dbg_current_time = current_time;
+    var monitor_correct_time : t_time;
+    var monitor_correct_renew: logic ;
+    var monitor_correct_valid: logic ;
 
-    inst u_synctimer_core: synctimer_core #(
-        TIMER_WIDTH        : TIMER_WIDTH        ,
-        NUMERATOR          : NUMERATOR          ,
-        DENOMINATOR        : DENOMINATOR        ,
-        ADJ_LIMIT_WIDTH    : ADJ_LIMIT_WIDTH    ,
-        ADJ_TIMER_WIDTH    : ADJ_TIMER_WIDTH    ,
-        ADJ_CYCLE_WIDTH    : ADJ_CYCLE_WIDTH    ,
-        ADJ_ERROR_WIDTH    : ADJ_ERROR_WIDTH    ,
-        ADJ_ERROR_Q        : ADJ_ERROR_Q        ,
-        ADJ_ADJUST_WIDTH   : ADJ_ADJUST_WIDTH   ,
-        ADJ_ADJUST_Q       : ADJ_ADJUST_Q       ,
-        ADJ_LPF_GAIN_CYCLE : ADJ_LPF_GAIN_CYCLE ,
-        ADJ_LPF_GAIN_PERIOD: ADJ_LPF_GAIN_PERIOD,
-        ADJ_LPF_GAIN_PHASE : ADJ_LPF_GAIN_PHASE ,
-        DEBUG              : DEBUG              ,
-        SIMULATION         : SIMULATION         ,
+    always_ff (clk, reset) {
+        if_reset {
+            reg_recv_valid     = '0;
+            reg_override_en    = '0;
+            reg_override_value = '0;
+        } else {
+            if s_wb_stb_i && s_wb_we_i {
+                case s_wb_adr_i {
+                    ADR_RECV_VALID    : reg_recv_valid     = WriteMask(reg_recv_valid as t_wb_dat, s_wb_dat_i, s_wb_sel_i) as t_adj_bit;
+                    ADR_OVERRIDE_EN   : reg_override_en    = WriteMask(reg_override_en as t_wb_dat, s_wb_dat_i, s_wb_sel_i) as t_adj_bit;
+                    ADR_OVERRIDE_VALUE: reg_override_value = WriteMask(reg_override_value as t_wb_dat, s_wb_dat_i, s_wb_sel_i) as t_adj_value;
+                    default           : {}
+                }
+            }
+        }
+    }
+
+    always_comb {
+        s_wb_dat_o = '0;
+        case s_wb_adr_i {
+            ADR_CORE_ID       : s_wb_dat_o = 32'hffff1122 as t_wb_dat;
+            ADR_RECV_VALID    : s_wb_dat_o = reg_recv_valid as t_wb_dat;
+            ADR_CORRECT_TIME  : s_wb_dat_o = 0 as t_wb_dat;
+            ADR_LOCAL_TIME    : s_wb_dat_o = 0 as t_wb_dat;
+            ADR_OVERRIDE_EN   : s_wb_dat_o = reg_override_en as t_wb_dat;
+            ADR_OVERRIDE_VALUE: s_wb_dat_o = reg_override_value as t_wb_dat;
+            default           : {}
+        }
+    }
+
+    assign s_wb_ack_o = s_wb_stb_i;
+
+
+    // core
+    inst u_etherneco_synctimer_slave_core: etherneco_synctimer_slave_core #(
+        WB_ADR_WIDTH   : WB_ADR_WIDTH   ,
+        WB_DAT_WIDTH   : WB_DAT_WIDTH   ,
+        WB_SEL_WIDTH   : WB_SEL_WIDTH   ,
+        TIMER_WIDTH    : TIMER_WIDTH    ,
+        NUMERATOR      : NUMERATOR      ,
+        DENOMINATOR    : DENOMINATOR    ,
+        LIMIT_WIDTH    : LIMIT_WIDTH    ,
+        CALC_WIDTH     : CALC_WIDTH     ,
+        CYCLE_WIDTH    : CYCLE_WIDTH    ,
+        ERROR_WIDTH    : ERROR_WIDTH    ,
+        ERROR_Q        : ERROR_Q        ,
+        ADJUST_WIDTH   : ADJUST_WIDTH   ,
+        ADJUST_Q       : ADJUST_Q       ,
+        LPF_GAIN_CYCLE : LPF_GAIN_CYCLE ,
+        LPF_GAIN_PERIOD: LPF_GAIN_PERIOD,
+        LPF_GAIN_PHASE : LPF_GAIN_PHASE ,
+        DEBUG          : DEBUG          ,
+        SIMULATION     : SIMULATION     ,
     ) (
         reset: reset,
         clk  : clk  ,
 
-        adj_param_limit_min : -100000 as t_adj_limit,
-        adj_param_limit_max : +100000 as t_adj_limit,
-        adj_param_adjust_min: -1000 as t_adj_error  ,
-        adj_param_adjust_max: +1000 as t_adj_error  ,
-
-        set_time : '0  ,
-        set_valid: 1'b0,
-
+        adj_enable  : adj_enable  ,
         current_time: current_time,
 
-        correct_override: correct_override          ,
-        correct_time    : correct_time              ,
-        correct_valid   : correct_valid & adj_enable,
+        param_limit_min : reg_param_limit_min ,
+        param_limit_max : reg_param_limit_max ,
+        param_adjust_min: reg_param_adjust_min,
+        param_adjust_max: reg_param_adjust_max,
+
+        monitor_correct_time : monitor_correct_time ,
+        monitor_correct_renew: monitor_correct_renew,
+        monitor_correct_valid: monitor_correct_valid,
+
+        cmd_rx_start : cmd_rx_start ,
+        cmd_rx_end   : cmd_rx_end   ,
+        cmd_rx_error : cmd_rx_error ,
+        cmd_rx_length: cmd_rx_length,
+        cmd_rx_type  : cmd_rx_type  ,
+        cmd_rx_node  : cmd_rx_node  ,
+
+        s_cmd_first: s_cmd_first,
+        s_cmd_last : s_cmd_last ,
+        s_cmd_pos  : s_cmd_pos  ,
+        s_cmd_data : s_cmd_data ,
+        s_cmd_valid: s_cmd_valid,
+        m_cmd_data : m_cmd_data ,
+        m_cmd_valid: m_cmd_valid,
+
+        res_rx_start : res_rx_start ,
+        res_rx_end   : res_rx_end   ,
+        res_rx_error : res_rx_error ,
+        res_rx_length: res_rx_length,
+        res_rx_type  : res_rx_type  ,
+        res_rx_node  : res_rx_node  ,
+
+        s_res_first: s_res_first,
+        s_res_last : s_res_last ,
+        s_res_pos  : s_res_pos  ,
+        s_res_data : s_res_data ,
+        s_res_valid: s_res_valid,
+        m_res_data : m_res_data ,
+        m_res_valid: m_res_valid,
     );
-
-
-    // フリーランタイマ
-    var free_run_time : logic<ADJ_TIMER_WIDTH>;
-    var tmp_adjust_ready : logic;
-    inst u_synctimer_timer_free_run: synctimer_timer #(
-        NUMERATOR  : NUMERATOR  ,
-        DENOMINATOR: DENOMINATOR,
-        TIMER_WIDTH: ADJ_TIMER_WIDTH,
-    ) (
-        reset: reset,
-        clk  : clk  ,
-
-        set_time : '0,
-        set_valid: 1'b0,
-
-        adjust_sign : '0,
-        adjust_valid: '0,
-        adjust_ready: tmp_adjust_ready,
-
-        current_time: free_run_time,
-    );
-
-
-    // 応答時間補正
-    localparam t_offset    : type     = logic<4, 8>;
-    var start_time  : t_offset;
-    var elapsed_time: t_offset;
-
-    always_ff (clk) {
-        if cmd_rx_start {
-            start_time = free_run_time as t_offset;
-        }
-
-        if res_rx_start {
-            elapsed_time = free_run_time as t_offset - start_time;
-        }
-    }
-
-
-    // ---------------------------------
-    //  Upstream (receive request)
-    // ---------------------------------
-
-    localparam t_position: type = logic<16>;
-
-    var up_reset: logic;
-    assign up_reset = reset || cmd_rx_error;
-
-    var cmd_rx_cmd       : logic     <8>;
-    var cmd_rx_time      : t_time       ;
-    var cmd_rx_time_bit  : logic     <8>;
-    var cmd_rx_offset    : t_offset     ;
-    var cmd_rx_offset_pos: t_position   ;
-    var cmd_rx_offset_bit: logic     <4>;
-
-    always_ff (clk, up_reset) {
-        if_reset {
-            cmd_rx_cmd        = 'x;
-            cmd_rx_time       = 'x;
-            cmd_rx_time_bit   = 'x;
-            cmd_rx_offset     = 'x;
-            cmd_rx_offset_pos = 'x;
-            cmd_rx_offset_bit = 'x;
-        } else {
-            cmd_rx_offset_pos = (9 + 4 * (cmd_rx_node as int - 1) - 1) as t_position;
-
-            if s_cmd_valid {
-                cmd_rx_time_bit   <<= 1;
-                cmd_rx_offset_bit <<= 1;
-
-                // command
-                if s_cmd_first {
-                    cmd_rx_cmd      = s_cmd_data;
-                    cmd_rx_time_bit = 8'b00000001;
-                }
-
-                // time
-                for i: int in 0..8 {
-                    if cmd_rx_time_bit[i] {
-                        cmd_rx_time[i] = s_cmd_data;
-                    }
-                }
-
-                // offset
-                if s_cmd_pos == cmd_rx_offset_pos {
-                    cmd_rx_offset_bit = 4'b0001;
-                }
-                for i: int in 0..4 {
-                    if cmd_rx_offset_bit[i] {
-                        cmd_rx_offset[i] = s_cmd_data;
-                    }
-                }
-            }
-        }
-    }
-
-    assign m_cmd_data  = 'x;
-    assign m_cmd_valid = 1'b0;
-
-
-    // ---------------------------------
-    //  Downstream (send response)
-    // ---------------------------------
-
-    var down_reset: logic;
-    assign down_reset = reset || res_rx_error;
-
-    var res_pos: int;
-
-    always_ff (clk, up_reset) {
-        if_reset {
-            res_pos     = 'x;
-            m_res_data  = 'x;
-            m_res_valid = 1'b0;
-        } else {
-            res_pos     = 9 + (cmd_rx_node as int - 1) * 4;
-            m_res_data  = 'x;
-            m_res_valid = 1'b0;
-            if s_res_valid {
-                for i: int in 0..4 {
-                    if s_res_pos as int == res_pos + i {
-                        m_res_data  = elapsed_time[i];
-                        m_res_valid = 1'b1;
-                    }
-                }
-            }
-        }
-    }
-
-    always_ff (clk, up_reset) {
-        if_reset {
-            correct_override = 1'bx;
-            correct_time     = 'x;
-            correct_valid    = 1'b0;
-        } else {
-            correct_override = 1'bx;
-            correct_time     = cmd_rx_time + cmd_rx_offset as t_time;
-            correct_valid    = 1'b0;
-
-            if cmd_rx_end {
-                correct_override = cmd_rx_cmd[1];
-                correct_valid    = cmd_rx_cmd[0];
-            }
-        }
-    }
-
-    if DEBUG : dbg_monitor  {
-        #[sv("mark_debug=\"true\"")]    var dbg_cmd_rx_start: logic;
-        #[sv("mark_debug=\"true\"")]    var dbg_res_rx_start: logic;
-        #[sv("mark_debug=\"true\"")]    var dbg_start_time  : logic<32>;
-        #[sv("mark_debug=\"true\"")]    var dbg_elapsed_time: logic<32>;
-
-        always_ff(clk) {
-            dbg_cmd_rx_start = cmd_rx_start;
-            dbg_res_rx_start = res_rx_start    ;
-            dbg_start_time   = start_time  ;
-            dbg_elapsed_time = elapsed_time;
-        }
-    }
-
-
-    // monitor (debug)
-    if SIMULATION :sim_monitor {
-        localparam t_monitor_time      : type           = logic<32>;
-        var monitor_cmd_rx_start: t_monitor_time;
-        var monitor_cmd_rx_end  : t_monitor_time;
-        var monitor_res_rx_start: t_monitor_time;
-        var monitor_res_rx_end  : t_monitor_time;
-        always_ff (clk) {
-            if cmd_rx_start {
-                monitor_cmd_rx_start = current_time as t_monitor_time;
-            }
-            if cmd_rx_end {
-                monitor_cmd_rx_end = current_time as t_monitor_time;
-            }
-            if res_rx_start {
-                monitor_res_rx_start = current_time as t_monitor_time;
-            }
-            if res_rx_end {
-                monitor_res_rx_end = current_time as t_monitor_time;
-            }
-        }
-    }
 }

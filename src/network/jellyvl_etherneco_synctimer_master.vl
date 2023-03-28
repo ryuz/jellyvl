@@ -16,14 +16,14 @@ module etherneco_synctimer_master #(
     set_time : input logic<TIMER_WIDTH>,
     set_valid: input logic             ,
 
-    cmd_tx_start   : input  logic    ,
-    cmd_tx_override: input  logic    ,
-    cmd_tx_correct : input  logic    ,
-    cmt_tx_length  : output logic<16>,
-    m_cmd_tx_last  : output logic    ,
-    m_cmd_tx_data  : output logic<8> ,
-    m_cmd_tx_valid : output logic    ,
-    m_cmd_tx_ready : input  logic    ,
+    cmd_tx_start  : input  logic    ,
+    cmd_tx_renew  : input  logic    ,
+    cmd_tx_correct: input  logic    ,
+    cmt_tx_length : output logic<16>,
+    m_cmd_tx_last : output logic    ,
+    m_cmd_tx_data : output logic<8> ,
+    m_cmd_tx_valid: output logic    ,
+    m_cmd_tx_ready: input  logic    ,
 
     ret_rx_start     : input  logic    ,
     ret_rx_end       : input  logic    ,
@@ -150,7 +150,7 @@ module etherneco_synctimer_master #(
             if cmd_tx_start {
                 cmd_busy  = 1'b1;
                 cmd_count = '0;
-                cmd_cmd   = {6'd0, cmd_tx_override, cmd_tx_correct};
+                cmd_cmd   = {6'd0, cmd_tx_renew, cmd_tx_correct};
                 cmd_time  = current_time as t_time_pkt;
             } else if cmd_cke {
                 cmd_count = cmd_count_next;
@@ -259,38 +259,42 @@ module etherneco_synctimer_master #(
         }
     }
 
-    if DEBUG : dbg_monitor {
+    if DEBUG :dbg_monitor {
         #[sv("mark_debug=\"true\"")]
-        var dbg_cmd_tx_start : logic;
+        var dbg_cmd_tx_start: logic;
         #[sv("mark_debug=\"true\"")]
-        var dbg_offset_time0 : t_offset;
+        var dbg_offset_time0: t_offset;
         #[sv("mark_debug=\"true\"")]
-        var dbg_offset_time1 : t_offset;
+        var dbg_offset_time1: t_offset;
         #[sv("mark_debug=\"true\"")]
-        var dbg_rx_offset0 : t_offset;
+        var dbg_rx_offset0: t_offset;
         #[sv("mark_debug=\"true\"")]
-        var dbg_rx_offset1 : t_offset;
+        var dbg_rx_offset1: t_offset;
 
         #[sv("mark_debug=\"true\"")]
-        var dbg_res_payload_first: logic    ;
+        var dbg_res_payload_first: logic;
         #[sv("mark_debug=\"true\"")]
-        var dbg_res_payload_last : logic    ;
+        var dbg_res_payload_last: logic;
         #[sv("mark_debug=\"true\"")]
-        var dbg_res_payload_pos  : logic<16>;
+        var dbg_res_payload_pos: logic<16>;
         #[sv("mark_debug=\"true\"")]
-        var dbg_res_payload_data : logic<8> ;
+        var dbg_res_payload_data: logic<8>;
         #[sv("mark_debug=\"true\"")]
-        var dbg_res_payload_valid: logic    ;
+        var dbg_res_payload_valid: logic;
 
-        #[sv("mark_debug=\"true\"")]    var dbg_delay_time0   : t_offset;
-        #[sv("mark_debug=\"true\"")]    var dbg_delay_time1   : t_offset;
-        #[sv("mark_debug=\"true\"")]    var dbg_measured_time0: t_offset;
-        #[sv("mark_debug=\"true\"")]    var dbg_measured_time1: t_offset;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_delay_time0: t_offset;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_delay_time1: t_offset;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_measured_time0: t_offset;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_measured_time1: t_offset;
 
-        #[sv("mark_debug=\"true\"")]    var dbg_response_time: t_offset;
+        #[sv("mark_debug=\"true\"")]
+        var dbg_response_time: t_offset;
 
-
-        always_ff(clk) {
+        always_ff (clk) {
             dbg_cmd_tx_start = cmd_tx_start;
             dbg_offset_time0 = offset_time[0];
             dbg_offset_time1 = offset_time[1];
@@ -298,13 +302,13 @@ module etherneco_synctimer_master #(
             dbg_rx_offset1   = rx_offset[1];
 
             dbg_res_payload_first = res_payload_first;
-            dbg_res_payload_last  = res_payload_last ;
-            dbg_res_payload_pos   = res_payload_pos  ;
-            dbg_res_payload_data  = res_payload_data ;
+            dbg_res_payload_last  = res_payload_last;
+            dbg_res_payload_pos   = res_payload_pos;
+            dbg_res_payload_data  = res_payload_data;
             dbg_res_payload_valid = res_payload_valid;
 
-            dbg_delay_time0    = delay_time  [0];
-            dbg_delay_time1    = delay_time  [1];
+            dbg_delay_time0    = delay_time[0];
+            dbg_delay_time1    = delay_time[1];
             dbg_measured_time0 = measured_time[0];
             dbg_measured_time1 = measured_time[1];
 

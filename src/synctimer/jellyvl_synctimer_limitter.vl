@@ -15,11 +15,11 @@ module synctimer_limitter #(
 
     current_time: input logic<TIMER_WIDTH>,
 
-    override_request: output logic,
+    request_renew: output logic,
 
-    correct_override: input logic             ,
-    correct_time    : input logic<TIMER_WIDTH>,
-    correct_valid   : input logic             ,
+    correct_time : input logic<TIMER_WIDTH>,
+    correct_renew: input logic             ,
+    correct_valid: input logic             ,
 ) {
 
     localparam t_diff: type = signed logic<TIMER_WIDTH>;
@@ -28,20 +28,20 @@ module synctimer_limitter #(
     var diff_valid: logic ;
     always_ff (clk, reset) {
         if_reset {
-            diff_time        = 'x;
-            diff_valid       = 1'b0;
-            override_request = INIT_OVERRIDE;
+            diff_time     = 'x;
+            diff_valid    = 1'b0;
+            request_renew = INIT_OVERRIDE;
         } else {
             diff_time  = (correct_time - current_time) as t_diff;
-            diff_valid = correct_valid && !correct_override;
+            diff_valid = correct_valid && !correct_renew;
 
             if correct_valid {
-                override_request = 1'b0;
+                request_renew = 1'b0;
             }
 
             if diff_valid {
                 if diff_time <: param_limit_min as t_diff || diff_time >: param_limit_max as t_diff {
-                    override_request = 1'b1;
+                    request_renew = 1'b1;
                 }
             }
         }

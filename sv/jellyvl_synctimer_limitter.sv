@@ -15,11 +15,11 @@ module jellyvl_synctimer_limitter #(
 
     input logic [TIMER_WIDTH-1:0] current_time,
 
-    output logic override_request,
+    output logic request_renew,
 
-    input logic                   correct_override,
-    input logic [TIMER_WIDTH-1:0] correct_time    ,
-    input logic                   correct_valid   
+    input logic [TIMER_WIDTH-1:0] correct_time ,
+    input logic                   correct_renew,
+    input logic                   correct_valid
 );
 
     localparam type t_diff = logic signed [TIMER_WIDTH-1:0];
@@ -28,20 +28,20 @@ module jellyvl_synctimer_limitter #(
     logic  diff_valid;
     always_ff @ (posedge clk) begin
         if (reset) begin
-            diff_time        <= 'x;
-            diff_valid       <= 1'b0;
-            override_request <= INIT_OVERRIDE;
+            diff_time     <= 'x;
+            diff_valid    <= 1'b0;
+            request_renew <= INIT_OVERRIDE;
         end else begin
             diff_time  <= t_diff'((correct_time - current_time));
-            diff_valid <= correct_valid && !correct_override;
+            diff_valid <= correct_valid && !correct_renew;
 
             if (correct_valid) begin
-                override_request <= 1'b0;
+                request_renew <= 1'b0;
             end
 
             if (diff_valid) begin
                 if (diff_time < t_diff'(param_limit_min) || diff_time > t_diff'(param_limit_max)) begin
-                    override_request <= 1'b1;
+                    request_renew <= 1'b1;
                 end
             end
         end

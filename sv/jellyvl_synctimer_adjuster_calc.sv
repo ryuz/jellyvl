@@ -1,6 +1,6 @@
 
-// 調整機構
-module jellyvl_synctimer_adjust #(
+// 調整用時刻誤差計算
+module jellyvl_synctimer_adjuster_calc #(
     parameter int unsigned TIMER_WIDTH     = 32                   , // タイマのbit幅
     parameter int unsigned CYCLE_WIDTH     = 32                   , // 自クロックサイクルカウンタのbit数
     parameter int unsigned ERROR_WIDTH     = 32                   , // 誤差計算時のbit幅
@@ -25,9 +25,9 @@ module jellyvl_synctimer_adjust #(
     input logic [TIMER_WIDTH-1:0] correct_time ,
     input logic                   correct_valid,
 
-    output logic adjust_sign ,
-    output logic adjust_valid,
-    input  logic adjust_ready
+    output logic signed [ERROR_WIDTH + ERROR_Q-1:0] request_value,
+    output logic        [CYCLE_WIDTH + CYCLE_Q-1:0] request_cycle,
+    output logic                                    request_valid
 );
 
     localparam int unsigned CYCLE_Q = LPF_GAIN_CYCLE;
@@ -337,181 +337,13 @@ module jellyvl_synctimer_adjust #(
         end
     end
 
-
-
-    // -------------------------------------
-    //  調整信号の間隔計算
-    // -------------------------------------
-
-    logic     div_calc_sign  ;
-    logic     div_calc_zero  ;
-    t_error_u div_calc_error ;
-    t_cycle   div_calc_cycle ;
-    logic     div_calc_enable;
-    logic     div_calc_valid ;
-
-    always_ff @ (posedge clk) begin
-        if (reset) begin
-            div_calc_sign   <= 'x;
-            div_calc_zero   <= 'x;
-            div_calc_error  <= 'x;
-            div_calc_cycle  <= 'x;
-            div_calc_enable <= 1'b0;
-            div_calc_valid  <= 1'b0;
-        end else begin
-            if (error_valid) begin
-                div_calc_sign  <= error_adjust_value < 0;
-                div_calc_zero  <= error_adjust_value == 0;
-                div_calc_error <= ((error_adjust_value < 0) ? (
-                    t_error_u'((-error_adjust_value))
-                ) : (
-                    t_error_u'(error_adjust_value)
-                ));
-                div_calc_cycle  <= cycle_estimate_t;
-                div_calc_enable <= 1'b1;
-            end
-            div_calc_valid <= error_valid;
-        end
-    end
-
-
-    // divider
-    localparam type t_cycle_q = logic [CYCLE_WIDTH + ERROR_Q + ADJUST_Q-1:0];
-
-    function automatic t_cycle_q CycleToError(
-        input t_cycle cycle
-    ) ;
-        if (ERROR_Q + ADJUST_Q > CYCLE_Q) begin
-            return t_cycle_q'(cycle) << (ERROR_Q + ADJUST_Q - CYCLE_Q);
-        end else begin
-            return t_cycle_q'(cycle) >> (CYCLE_Q - ERROR_Q - ADJUST_Q);
-        end
-    endfunction
-
-    t_adjust div_quotient ;
-    t_error  div_remainder;
-    logic    div_valid    ;
-
-    logic tmp_ready;
-    jellyvl_divider_unsigned_multicycle #(
-        .DIVIDEND_WIDTH (CYCLE_WIDTH + ERROR_Q + ADJUST_Q),
-        .DIVISOR_WIDTH  (ERROR_WIDTH + ERROR_Q           ),
-        .QUOTIENT_WIDTH (ADJUST_WIDTH + ADJUST_Q         )
-    ) i_divider_unsigned_multicycle (
-        .reset (reset),
-        .clk   (clk  ),
-        .cke   (1'b1 ),
-        .
-        s_dividend (CycleToError(div_calc_cycle)),
-        .s_divisor  (div_calc_error              ),
-        .s_valid    (div_calc_valid              ),
-        .s_ready    (tmp_ready                   ),
-        .
-        m_quotient  (div_quotient ),
-        .m_remainder (div_remainder),
-        .m_valid     (div_valid    ),
-        .m_ready     (1'b1         )
-    );
-
-
-    // adjust parameter
-    localparam t_adjust ADJ_STEP = t_adjust'((1 << ADJUST_Q));
-
-    logic    adj_param_zero  ;
-    logic    adj_param_sign  ;
-    t_adjust adj_param_period;
-    logic    adj_param_valid ;
-    logic    adj_param_ready ;
-
-    always_ff @ (posedge clk) begin
-        if (reset) begin
-            adj_param_zero   <= 1'b1;
-            adj_param_sign   <= 1'bx;
-            adj_param_period <= 'x;
-            adj_param_valid  <= 1'b0;
-        end else begin
-            if (adj_param_ready) begin
-                adj_param_valid <= 1'b0;
-            end
-
-            if (div_valid) begin
-                if (div_calc_zero) begin
-                    adj_param_zero   <= 1'b1;
-                    adj_param_sign   <= 1'b0;
-                    adj_param_period <= '0;
-                    adj_param_valid  <= 1'b1; // !adj_param_zero; // 変化があれば発行
-                end else begin
-                    adj_param_zero   <= div_calc_zero;
-                    adj_param_sign   <= div_calc_sign;
-                    adj_param_period <= div_quotient - ADJ_STEP;
-                    adj_param_valid  <= 1'b1; // adj_param_zero || ((div_quotient - ADJ_STEP) != adj_param_period);
-                end
-            end
-        end
-    end
-
-    // adjuster
-    logic    adj_calc_zero  ;
-    logic    adj_calc_sign  ;
-    t_adjust adj_calc_period;
-    t_adjust adj_calc_count ;
-    t_adjust adj_calc_next  ;
-    logic    adj_calc_valid ;
-
-    always_ff @ (posedge clk) begin
-        if (reset) begin
-            adj_calc_zero   <= 1'b1;
-            adj_calc_sign   <= 'x;
-            adj_calc_period <= '0;
-            adj_calc_count  <= 'x;
-            adj_calc_next   <= 'x;
-            adj_calc_valid  <= 1'b0;
-        end else begin
-
-            // adj_param_valid は連続で来ない、period は2以上の前提で事前計算
-            adj_calc_count <= adj_calc_count + (t_adjust'((1 << ADJUST_Q)));
-            adj_calc_next  <=  adj_calc_count - adj_calc_period;
-            adj_calc_valid <=  adj_calc_count >= adj_calc_period || adj_calc_zero;
-
-            if (adj_calc_valid) begin
-                if (adj_param_valid) begin
-                    adj_calc_zero   <= adj_param_zero;
-                    adj_calc_sign   <= adj_param_sign;
-                    adj_calc_period <= adj_param_period;
-                    adj_calc_count  <= '0;
-                end else begin
-                    adj_calc_count <= adj_calc_next;
-                end
-                adj_calc_valid <= 1'b0;
-            end
-        end
-    end
-
-    assign adj_param_ready = adj_calc_valid;
-
-
-    // output
-    always_ff @ (posedge clk) begin
-        if (reset) begin
-            adjust_sign  <= 'x;
-            adjust_valid <= 1'b0;
-        end else begin
-            if (adjust_ready) begin
-                adjust_valid <= 1'b0;
-            end
-
-            if (adj_calc_valid) begin
-                adjust_sign  <= adj_calc_sign;
-                adjust_valid <= ~adj_calc_zero;
-            end
-        end
-    end
+    assign request_value = error_adjust_value;
+    assign request_cycle = cycle_estimate_t;
+    assign request_valid = error_valid;
 
     if (DEBUG) begin :debug_monitor
         (* mark_debug="true" *)
         logic [32-1:0] dbg_counter;
-        (* mark_debug="true" *)
-        logic signed [16-1:0] dbg_adj_sum;
         (* mark_debug="true" *)
         logic [TIMER_WIDTH-1:0] dbg_current_time;
         (* mark_debug="true" *)
@@ -542,30 +374,12 @@ module jellyvl_synctimer_adjust #(
         t_cycle dbg_cycle_estimate_t;
         (* mark_debug="true" *)
         t_cycle dbg_cycle_estimate_t0;
-        (* mark_debug="true" *)
-        logic dbg_adjust_sign;
-        (* mark_debug="true" *)
-        logic dbg_adjust_valid;
-        (* mark_debug="true" *)
-        logic dbg_adjust_ready;
 
         logic signed [TIMER_WIDTH-1:0] dbg_diff_time_tmp;
         assign dbg_diff_time_tmp = correct_time - current_time;
 
         always_ff @ (posedge clk) begin
             dbg_counter <= dbg_counter + 1;
-
-            if (dbg_correct_valid) begin
-                dbg_adj_sum <= '0;
-            end else begin
-                if (adjust_valid) begin
-                    if (adjust_sign) begin
-                        dbg_adj_sum <= dbg_adj_sum - (16'd1);
-                    end else begin
-                        dbg_adj_sum <= dbg_adj_sum + (16'd1);
-                    end
-                end
-            end
 
             dbg_current_time       <= current_time;
             dbg_correct_renew      <= correct_renew;
@@ -586,11 +400,6 @@ module jellyvl_synctimer_adjust #(
             dbg_cycle_predict_t   <= cycle_predict_t;
             dbg_cycle_estimate_t  <= cycle_estimate_t;
             dbg_cycle_estimate_t0 <= cycle_estimate_t0;
-
-            dbg_adjust_sign  <= adjust_sign;
-            dbg_adjust_valid <= adjust_valid;
-            dbg_adjust_ready <= adjust_ready;
-
         end
     end
 
@@ -607,8 +416,6 @@ module jellyvl_synctimer_adjust #(
         real sim_monitor_error_estimate_v    ; // 周期誤差の推定値
         real sim_monitor_error_estimate_v0   ; // １つ前の周期誤差の推定値
         real sim_monitor_error_adjust_value  ;
-        real sim_monitor_adj_param_period    ;
-        real sim_monitor_debug_count         ;
 
         assign sim_monitor_cycle_estimate_t     = $itor(cycle_estimate_t) / $itor(2 ** CYCLE_Q);
         assign sim_monitor_error_observe_x      = $itor(error_observe_x) / $itor(2 ** ERROR_Q);
@@ -622,8 +429,6 @@ module jellyvl_synctimer_adjust #(
         assign sim_monitor_error_estimate_v     = $itor(error_estimate_v) / $itor(2 ** ERROR_Q);
         assign sim_monitor_error_estimate_v0    = $itor(error_estimate_v0) / $itor(2 ** ERROR_Q);
         assign sim_monitor_error_adjust_value   = $itor(error_adjust_value) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_adj_param_period     = $itor(adj_param_period) / $itor(2 ** ADJUST_Q);
-        assign sim_monitor_debug_count          = sim_monitor_cycle_estimate_t / sim_monitor_adj_param_period;
     end
 
 endmodule

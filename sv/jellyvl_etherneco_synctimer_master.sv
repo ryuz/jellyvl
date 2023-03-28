@@ -16,14 +16,14 @@ module jellyvl_etherneco_synctimer_master #(
     input logic [TIMER_WIDTH-1:0] set_time ,
     input logic                   set_valid,
 
-    input  logic          cmd_tx_start   ,
-    input  logic          cmd_tx_override,
-    input  logic          cmd_tx_correct ,
-    output logic [16-1:0] cmt_tx_length  ,
-    output logic          m_cmd_tx_last  ,
-    output logic [8-1:0]  m_cmd_tx_data  ,
-    output logic          m_cmd_tx_valid ,
-    input  logic          m_cmd_tx_ready ,
+    input  logic          cmd_tx_start  ,
+    input  logic          cmd_tx_renew  ,
+    input  logic          cmd_tx_correct,
+    output logic [16-1:0] cmt_tx_length ,
+    output logic          m_cmd_tx_last ,
+    output logic [8-1:0]  m_cmd_tx_data ,
+    output logic          m_cmd_tx_valid,
+    input  logic          m_cmd_tx_ready,
 
     input  logic          ret_rx_start     ,
     input  logic          ret_rx_end       ,
@@ -150,7 +150,7 @@ module jellyvl_etherneco_synctimer_master #(
             if (cmd_tx_start) begin
                 cmd_busy  <= 1'b1;
                 cmd_count <= '0;
-                cmd_cmd   <= {6'd0, cmd_tx_override, cmd_tx_correct};
+                cmd_cmd   <= {6'd0, cmd_tx_renew, cmd_tx_correct};
                 cmd_time  <= t_time_pkt'(current_time);
             end else if (cmd_cke) begin
                 cmd_count <= cmd_count_next;
@@ -281,9 +281,9 @@ module jellyvl_etherneco_synctimer_master #(
         (* mark_debug="true" *)
         logic dbg_res_payload_valid;
         (* mark_debug="true" *)
-        t_offset dbg_delay_time0   ;
+        t_offset dbg_delay_time0;
         (* mark_debug="true" *)
-        t_offset dbg_delay_time1   ;
+        t_offset dbg_delay_time1;
         (* mark_debug="true" *)
         t_offset dbg_measured_time0;
         (* mark_debug="true" *)

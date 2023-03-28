@@ -2,15 +2,15 @@ module jellyvl_etherneco_master #(
     parameter int unsigned TIMER_WIDTH             = 64  , // タイマのbit幅
     parameter int unsigned NUMERATOR               = 8   , // クロック周期の分子
     parameter int unsigned DENOMINATOR             = 1   , // クロック周期の分母
-    parameter int unsigned TIMSYNC_OFFSET_WIDTH    = 24  , // オフセットbit幅
-    parameter int unsigned TIMSYNC_OFFSET_LPF_GAIN = 4   , // オフセット更新LPFのゲイン (1/2^N)
+    parameter int unsigned SYNCTIM_OFFSET_WIDTH    = 24  , // オフセットbit幅
+    parameter int unsigned SYNCTIM_OFFSET_LPF_GAIN = 4   , // オフセット更新LPFのゲイン (1/2^N)
     parameter bit          DEBUG                   = 1'b0,
     parameter bit          SIMULATION              = 1'b1
 ) (
     input logic reset,
     input logic clk  ,
 
-    input logic force_override,
+    input logic synctim_force_renew,
 
     output logic [TIMER_WIDTH-1:0] current_time,
 
@@ -60,18 +60,18 @@ module jellyvl_etherneco_master #(
         end
     end
 
-    localparam int unsigned PERIOD_WIDTH = 32;
+    localparam int unsigned PERIOD_WIDTH = 24;
 
-    logic          timsync_trigger ;
-    logic          timsync_override;
-    logic          timsync_correct ;
-    logic [8-1:0]  timsync_type    ;
-    logic [8-1:0]  timsync_node    ;
-    logic [16-1:0] timsync_length  ;
+    logic          synctim_trigger;
+    logic          synctim_renew  ;
+    logic          synctim_correct;
+    logic [8-1:0]  synctim_type   ;
+    logic [8-1:0]  synctim_node   ;
+    logic [16-1:0] synctim_length ;
 
     // とりあえず時間合わせパケットに固定
-    assign timsync_type = 8'h10;
-    assign timsync_node = 8'h01;
+    assign synctim_type = 8'h10;
+    assign synctim_node = 8'h01;
     //  assign request_length = 16'd13 - 16'd1;
 
 
@@ -85,21 +85,21 @@ module jellyvl_etherneco_master #(
         .
         enable (1'b1      ), //trig_enable ,
         .phase  ('0        ), //current_time as PERIOD_WIDTH,
-        .period (32'd100000),
+        .period (24'd100000),
         .
         current_time (current_time),
         .
-        trigger (timsync_trigger)
+        trigger (synctim_trigger)
     );
 
     always_ff @ (posedge clk) begin
         if (reset) begin
-            timsync_override <= 1'b0;
-            timsync_correct  <= 1'b0;
+            synctim_renew   <= 1'b0;
+            synctim_correct <= 1'b0;
         end else begin
-            if (timsync_trigger) begin
-                timsync_override <= ~timsync_correct || force_override;
-                timsync_correct  <= 1'b1;
+            if (synctim_trigger) begin
+                synctim_renew   <= ~synctim_correct || synctim_force_renew;
+                synctim_correct <= 1'b1;
             end
         end
     end
@@ -121,12 +121,12 @@ module jellyvl_etherneco_master #(
         .reset (reset),
         .clk   (clk  ),
         .
-        start  (timsync_trigger),
+        start  (synctim_trigger),
         .cancel (1'b0           ),
         .
-        param_length (timsync_length),
-        .param_type   (timsync_type  ),
-        .param_node   (timsync_node  ),
+        param_length (synctim_length),
+        .param_type   (synctim_type  ),
+        .param_node   (synctim_node  ),
         .
         tx_start (outer_tx_start),
         .
@@ -257,8 +257,8 @@ module jellyvl_etherneco_master #(
         .TIMER_WIDTH     (TIMER_WIDTH            ),
         .NUMERATOR       (NUMERATOR              ),
         .DENOMINATOR     (DENOMINATOR            ),
-        .OFFSET_WIDTH    (TIMSYNC_OFFSET_WIDTH   ),
-        .OFFSET_LPF_GAIN (TIMSYNC_OFFSET_LPF_GAIN),
+        .OFFSET_WIDTH    (SYNCTIM_OFFSET_WIDTH   ),
+        .OFFSET_LPF_GAIN (SYNCTIM_OFFSET_LPF_GAIN),
         .DEBUG           (DEBUG                  ),
         .SIMULATION      (SIMULATION             )
 
@@ -271,14 +271,14 @@ module jellyvl_etherneco_master #(
         set_time  (set_time ),
         .set_valid (set_valid),
         .
-        cmd_tx_start    (outer_tx_start        ),
-        .cmd_tx_correct  (timsync_correct       ),
-        .cmd_tx_override (timsync_override      ),
-        .cmt_tx_length   (timsync_length        ),
-        .m_cmd_tx_last   (outer_tx_payload_last ),
-        .m_cmd_tx_data   (outer_tx_payload_data ),
-        .m_cmd_tx_valid  (outer_tx_payload_valid),
-        .m_cmd_tx_ready  (outer_tx_payload_ready),
+        cmd_tx_start   (outer_tx_start        ),
+        .cmd_tx_correct (synctim_correct       ),
+        .cmd_tx_renew   (synctim_renew         ),
+        .cmt_tx_length  (synctim_length        ),
+        .m_cmd_tx_last  (outer_tx_payload_last ),
+        .m_cmd_tx_data  (outer_tx_payload_data ),
+        .m_cmd_tx_valid (outer_tx_payload_valid),
+        .m_cmd_tx_ready (outer_tx_payload_ready),
         .
         ret_rx_start      (outer_rx_start        ),
         .ret_rx_end        (outer_rx_end          ),

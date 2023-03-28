@@ -2,16 +2,16 @@ module jellyvl_etherneco_slave #(
     parameter int unsigned TIMER_WIDTH             = 64                                   , // タイマのbit幅
     parameter int unsigned NUMERATOR               = 8                                    , // クロック周期の分子
     parameter int unsigned DENOMINATOR             = 1                                    , // クロック周期の分母
-    parameter int unsigned TIMSYNC_LIMIT_WIDTH     = TIMER_WIDTH                          , // 補正限界のbit幅
-    parameter int unsigned TIMSYNC_TIMER_WIDTH     = 32                                   , // 補正に使う範囲のタイマ幅
-    parameter int unsigned TIMSYNC_CYCLE_WIDTH     = 32                                   , // 自クロックサイクルカウンタのbit数
-    parameter int unsigned TIMSYNC_ERROR_WIDTH     = 32                                   , // 誤差計算時のbit幅
-    parameter int unsigned TIMSYNC_ERROR_Q         = 8                                    , // 誤差計算時に追加する固定小数点数bit数
-    parameter int unsigned TIMSYNC_ADJUST_WIDTH    = TIMSYNC_CYCLE_WIDTH + TIMSYNC_ERROR_Q, // 補正周期のbit幅
-    parameter int unsigned TIMSYNC_ADJUST_Q        = TIMSYNC_ERROR_Q                      , // 補正周期に追加する固定小数点数bit数
-    parameter int unsigned TIMSYNC_LPF_GAIN_CYCLE  = 6                                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter int unsigned TIMSYNC_LPF_GAIN_PERIOD = 6                                    , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter int unsigned TIMSYNC_LPF_GAIN_PHASE  = 6                                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned SYNCTIM_LIMIT_WIDTH     = TIMER_WIDTH                          , // 補正限界のbit幅
+    parameter int unsigned SYNCTIM_TIMER_WIDTH     = 32                                   , // 補正に使う範囲のタイマ幅
+    parameter int unsigned SYNCTIM_CYCLE_WIDTH     = 32                                   , // 自クロックサイクルカウンタのbit数
+    parameter int unsigned SYNCTIM_ERROR_WIDTH     = 32                                   , // 誤差計算時のbit幅
+    parameter int unsigned SYNCTIM_ERROR_Q         = 8                                    , // 誤差計算時に追加する固定小数点数bit数
+    parameter int unsigned SYNCTIM_ADJUST_WIDTH    = SYNCTIM_CYCLE_WIDTH + SYNCTIM_ERROR_Q, // 補正周期のbit幅
+    parameter int unsigned SYNCTIM_ADJUST_Q        = SYNCTIM_ERROR_Q                      , // 補正周期に追加する固定小数点数bit数
+    parameter int unsigned SYNCTIM_LPF_GAIN_CYCLE  = 6                                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter int unsigned SYNCTIM_LPF_GAIN_PERIOD = 6                                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned SYNCTIM_LPF_GAIN_PHASE  = 6                                    , // 位相補正のLPFの更新ゲイン(1/2^N)
     parameter bit          DEBUG                   = 1'b0                                 ,
     parameter bit          SIMULATION              = 1'b0                             
 ) (
@@ -153,29 +153,41 @@ module jellyvl_etherneco_slave #(
     // Functions
     // -------------------------------------
 
-    jellyvl_etherneco_synctimer_slave #(
-        .TIMER_WIDTH         (TIMER_WIDTH            ),
-        .NUMERATOR           (NUMERATOR              ),
-        .DENOMINATOR         (DENOMINATOR            ),
-        .ADJ_LIMIT_WIDTH     (TIMSYNC_LIMIT_WIDTH    ),
-        .ADJ_TIMER_WIDTH     (TIMSYNC_TIMER_WIDTH    ),
-        .ADJ_CYCLE_WIDTH     (TIMSYNC_CYCLE_WIDTH    ),
-        .ADJ_ERROR_WIDTH     (TIMSYNC_ERROR_WIDTH    ),
-        .ADJ_ERROR_Q         (TIMSYNC_ERROR_Q        ),
-        .ADJ_ADJUST_WIDTH    (TIMSYNC_ADJUST_WIDTH   ),
-        .ADJ_ADJUST_Q        (TIMSYNC_ADJUST_Q       ),
-        .ADJ_LPF_GAIN_CYCLE  (TIMSYNC_LPF_GAIN_CYCLE ),
-        .ADJ_LPF_GAIN_PERIOD (TIMSYNC_LPF_GAIN_PERIOD),
-        .ADJ_LPF_GAIN_PHASE  (TIMSYNC_LPF_GAIN_PHASE ),
-        .DEBUG               (DEBUG                  ),
-        .SIMULATION          (SIMULATION             )
+    logic [TIMER_WIDTH-1:0] tmp_monitor_correct_time ;
+    logic                   tmp_monitor_correct_renew;
+    logic                   tmp_monitor_correct_valid;
+
+    jellyvl_etherneco_synctimer_slave_core #(
+        .TIMER_WIDTH     (TIMER_WIDTH            ),
+        .NUMERATOR       (NUMERATOR              ),
+        .DENOMINATOR     (DENOMINATOR            ),
+        .LIMIT_WIDTH     (SYNCTIM_LIMIT_WIDTH    ),
+        .CALC_WIDTH      (SYNCTIM_TIMER_WIDTH    ),
+        .CYCLE_WIDTH     (SYNCTIM_CYCLE_WIDTH    ),
+        .ERROR_WIDTH     (SYNCTIM_ERROR_WIDTH    ),
+        .ERROR_Q         (SYNCTIM_ERROR_Q        ),
+        .ADJUST_WIDTH    (SYNCTIM_ADJUST_WIDTH   ),
+        .ADJUST_Q        (SYNCTIM_ADJUST_Q       ),
+        .LPF_GAIN_CYCLE  (SYNCTIM_LPF_GAIN_CYCLE ),
+        .LPF_GAIN_PERIOD (SYNCTIM_LPF_GAIN_PERIOD),
+        .LPF_GAIN_PHASE  (SYNCTIM_LPF_GAIN_PHASE ),
+        .DEBUG           (DEBUG                  ),
+        .SIMULATION      (SIMULATION             )
     ) u_etherneco_synctimer_slave (
         .reset (reset),
         .clk   (clk  ),
         .
-        adj_enable (timsync_adj_enable),
+        adj_enable   (timsync_adj_enable),
+        .current_time (current_time      ),
         .
-        current_time (current_time),
+        param_limit_min  (-32'd100000),
+        .param_limit_max  (+32'd100000),
+        .param_adjust_min (-24'd10000 ),
+        .param_adjust_max (+24'd10000 ),
+        .
+        monitor_correct_time  (tmp_monitor_correct_time ),
+        .monitor_correct_renew (tmp_monitor_correct_renew),
+        .monitor_correct_valid (tmp_monitor_correct_valid),
         .
         cmd_rx_start  (outer_rx_start     ),
         .cmd_rx_end    (outer_rx_end       ),
