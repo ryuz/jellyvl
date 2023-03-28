@@ -1,0 +1,49 @@
+
+// リミッター
+module synctimer_limitter #(
+    parameter TIMER_WIDTH  : u32 = 64         , // タイマのbit幅
+    parameter LIMIT_WIDTH  : u32 = TIMER_WIDTH, // 補正限界のbit幅
+    parameter INIT_OVERRIDE: bit = 1          , // 初回の補正
+    parameter DEBUG        : bit = 1'b0       ,
+    parameter SIMULATION   : bit = 1'b0       ,
+) (
+    reset: input logic,
+    clk  : input logic,
+
+    param_limit_min: input signed logic<LIMIT_WIDTH>,
+    param_limit_max: input signed logic<LIMIT_WIDTH>,
+
+    current_time: input logic<TIMER_WIDTH>,
+
+    request_renew: output logic,
+
+    correct_time : input logic<TIMER_WIDTH>,
+    correct_renew: input logic             ,
+    correct_valid: input logic             ,
+) {
+
+    localparam t_diff: type = signed logic<TIMER_WIDTH>;
+
+    var diff_time : t_diff;
+    var diff_valid: logic ;
+    always_ff (clk, reset) {
+        if_reset {
+            diff_time     = 'x;
+            diff_valid    = 1'b0;
+            request_renew = INIT_OVERRIDE;
+        } else {
+            diff_time  = (correct_time - current_time) as t_diff;
+            diff_valid = correct_valid && !correct_renew;
+
+            if correct_valid {
+                request_renew = 1'b0;
+            }
+
+            if diff_valid {
+                if diff_time <: param_limit_min as t_diff || diff_time >: param_limit_max as t_diff {
+                    request_renew = 1'b1;
+                }
+            }
+        }
+    }
+}
