@@ -1,17 +1,18 @@
 
 // 調整用時刻誤差計算
 module jellyvl_synctimer_adjuster_calc #(
-    parameter int unsigned TIMER_WIDTH     = 32                   , // タイマのbit幅
-    parameter int unsigned CYCLE_WIDTH     = 32                   , // 自クロックサイクルカウンタのbit数
-    parameter int unsigned ERROR_WIDTH     = 32                   , // 誤差計算時のbit幅
-    parameter int unsigned ERROR_Q         = 8                    , // 誤差計算時に追加する固定小数点数bit数
-    parameter int unsigned ADJUST_WIDTH    = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
-    parameter int unsigned ADJUST_Q        = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
-    parameter int unsigned LPF_GAIN_CYCLE  = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter int unsigned LPF_GAIN_PERIOD = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter int unsigned LPF_GAIN_PHASE  = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
-    parameter bit          DEBUG           = 1'b0                 ,
-    parameter bit          SIMULATION      = 1'b0             
+    parameter  int unsigned TIMER_WIDTH     = 32                   , // タイマのbit幅
+    parameter  int unsigned CYCLE_WIDTH     = 32                   , // 自クロックサイクルカウンタのbit数
+    parameter  int unsigned ERROR_WIDTH     = 32                   , // 誤差計算時のbit幅
+    parameter  int unsigned ERROR_Q         = 8                    , // 誤差計算時に追加する固定小数点数bit数
+    parameter  int unsigned ADJUST_WIDTH    = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
+    parameter  int unsigned ADJUST_Q        = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
+    parameter  int unsigned LPF_GAIN_CYCLE  = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter  int unsigned LPF_GAIN_PERIOD = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter  int unsigned LPF_GAIN_PHASE  = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter  bit          DEBUG           = 1'b0                 ,
+    parameter  bit          SIMULATION      = 1'b0                 ,
+    localparam int unsigned CYCLE_Q         = LPF_GAIN_CYCLE   
 ) (
     input logic reset,
     input logic clk  ,
@@ -29,9 +30,6 @@ module jellyvl_synctimer_adjuster_calc #(
     output logic        [CYCLE_WIDTH + CYCLE_Q-1:0] request_cycle,
     output logic                                    request_valid
 );
-
-    localparam int unsigned CYCLE_Q = LPF_GAIN_CYCLE;
-
 
     // type
     localparam type t_time    = logic [TIMER_WIDTH-1:0];

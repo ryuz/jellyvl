@@ -1,17 +1,18 @@
 
 // 調整用時刻誤差計算
 module synctimer_adjuster_calc #(
-    parameter TIMER_WIDTH    : u32 = 32                   , // タイマのbit幅
-    parameter CYCLE_WIDTH    : u32 = 32                   , // 自クロックサイクルカウンタのbit数
-    parameter ERROR_WIDTH    : u32 = 32                   , // 誤差計算時のbit幅
-    parameter ERROR_Q        : u32 = 8                    , // 誤差計算時に追加する固定小数点数bit数
-    parameter ADJUST_WIDTH   : u32 = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
-    parameter ADJUST_Q       : u32 = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
-    parameter LPF_GAIN_CYCLE : u32 = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter LPF_GAIN_PERIOD: u32 = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter LPF_GAIN_PHASE : u32 = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
-    parameter DEBUG          : bit = 1'b0                 ,
-    parameter SIMULATION     : bit = 1'b0                 ,
+    parameter  TIMER_WIDTH    : u32 = 32                   , // タイマのbit幅
+    parameter  CYCLE_WIDTH    : u32 = 32                   , // 自クロックサイクルカウンタのbit数
+    parameter  ERROR_WIDTH    : u32 = 32                   , // 誤差計算時のbit幅
+    parameter  ERROR_Q        : u32 = 8                    , // 誤差計算時に追加する固定小数点数bit数
+    parameter  ADJUST_WIDTH   : u32 = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
+    parameter  ADJUST_Q       : u32 = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
+    parameter  LPF_GAIN_CYCLE : u32 = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter  LPF_GAIN_PERIOD: u32 = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter  LPF_GAIN_PHASE : u32 = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter  DEBUG          : bit = 1'b0                 ,
+    parameter  SIMULATION     : bit = 1'b0                 ,
+    localparam CYCLE_Q        : u32 = LPF_GAIN_CYCLE       ,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -29,9 +30,6 @@ module synctimer_adjuster_calc #(
     request_cycle: output logic       <CYCLE_WIDTH + CYCLE_Q>,
     request_valid: output logic                              ,
 ) {
-
-    localparam CYCLE_Q: u32 = LPF_GAIN_CYCLE;
-
 
     // type
     localparam t_time   : type = logic<TIMER_WIDTH>;
