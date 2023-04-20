@@ -84,7 +84,7 @@ module jellyvl_synctimer_timer #(
         end else begin
             current_time <= current_time + t_time'(add_value);
             if (set_valid) begin
-                current_time <= set_time;
+                current_time <= set_time + t_time'(add_value);
             end
         end
     end

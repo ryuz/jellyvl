@@ -84,7 +84,7 @@ module synctimer_timer #(
         } else {
             current_time = current_time + add_value as t_time;
             if set_valid {
-                current_time = set_time;
+                current_time = set_time + add_value as t_time;
             }
         }
     }
