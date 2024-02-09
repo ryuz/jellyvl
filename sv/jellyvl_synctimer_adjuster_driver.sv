@@ -71,7 +71,7 @@ module jellyvl_synctimer_adjuster_driver #(
     localparam type t_cycle_q = logic [CYCLE_WIDTH + ERROR_Q + ADJUST_Q-1:0];
 
     function automatic t_cycle_q CycleToError(
-        input t_cycle cycle
+        input t_cycle   cycle
     ) ;
         if (ERROR_Q + ADJUST_Q > CYCLE_Q) begin
             return t_cycle_q'(cycle) << (ERROR_Q + ADJUST_Q - CYCLE_Q);

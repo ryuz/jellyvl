@@ -179,7 +179,7 @@ module etherneco_synctimer_slave_core #(
             cmd_rx_offset_pos = 'x;
             cmd_rx_offset_bit = 'x;
         } else {
-            cmd_rx_offset_pos = (9 + 4 * (cmd_rx_node as int - 1) - 1) as t_position;
+            cmd_rx_offset_pos = (9 + 4 * (cmd_rx_node - 1) - 1) as t_position;
 
             if s_cmd_valid {
                 cmd_rx_time_bit   <<= 1;
@@ -192,7 +192,7 @@ module etherneco_synctimer_slave_core #(
                 }
 
                 // time
-                for i: int in 0..8 {
+                for i: i32 in 0..8 {
                     if cmd_rx_time_bit[i] {
                         cmd_rx_time[i] = s_cmd_data;
                     }
@@ -202,7 +202,7 @@ module etherneco_synctimer_slave_core #(
                 if s_cmd_pos == cmd_rx_offset_pos {
                     cmd_rx_offset_bit = 4'b0001;
                 }
-                for i: int in 0..4 {
+                for i: i32 in 0..4 {
                     if cmd_rx_offset_bit[i] {
                         cmd_rx_offset[i] = s_cmd_data;
                     }
@@ -222,7 +222,7 @@ module etherneco_synctimer_slave_core #(
     var down_reset: logic;
     assign down_reset = reset || res_rx_error;
 
-    var res_pos: int;
+    var res_pos: i32;
 
     always_ff (clk, up_reset) {
         if_reset {
@@ -230,12 +230,12 @@ module etherneco_synctimer_slave_core #(
             m_res_data  = 'x;
             m_res_valid = 1'b0;
         } else {
-            res_pos     = 9 + (cmd_rx_node as int - 1) * 4;
+            res_pos     = 9 + (cmd_rx_node - 1) * 4;
             m_res_data  = 'x;
             m_res_valid = 1'b0;
             if s_res_valid {
-                for i: int in 0..4 {
-                    if s_res_pos as int == res_pos + i {
+                for i: i32 in 0..4 {
+                    if s_res_pos == res_pos + i {
                         m_res_data  = elapsed_time[i];
                         m_res_valid = 1'b1;
                     }

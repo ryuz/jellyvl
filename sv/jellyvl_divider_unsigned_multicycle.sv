@@ -41,7 +41,7 @@ module jellyvl_divider_unsigned_multicycle #(
     localparam type t_shiftreg  = logic [DIVISOR_WIDTH + QUOTIENT_WIDTH-1:0];
 
     function automatic t_shiftreg MakeDivisor(
-        input t_divisor divisor
+        input t_divisor  divisor
     ) ;
         return t_shiftreg'(divisor) << (QUOTIENT_WIDTH - 1);
     endfunction

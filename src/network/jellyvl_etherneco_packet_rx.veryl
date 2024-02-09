@@ -261,7 +261,7 @@ module etherneco_packet_rx #(
     assign payload_data  = s_rx_data;
     assign payload_valid = s_rx_valid & state_bit[BIT_PAYLOAD];
 
-    inst u_cacl_crc_rx: jelly2_calc_crc #(
+    inst u_cacl_crc_rx: $sv::jelly2_calc_crc #(
         DATA_WIDTH: 8           ,
         CRC_WIDTH : 32          ,
         POLY_REPS : 32'h04C11DB7,
@@ -324,7 +324,7 @@ module etherneco_packet_rx #(
     };
 
     var tx_crc_value: logic<4, 8>;
-    inst u_cacl_crc_tx: jelly2_calc_crc #(
+    inst u_cacl_crc_tx: $sv::jelly2_calc_crc #(
         DATA_WIDTH: 8           ,
         CRC_WIDTH : 32          ,
         POLY_REPS : 32'h04C11DB7,

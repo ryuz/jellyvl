@@ -79,7 +79,7 @@ module jellyvl_etherneco_synctimer_master #(
     // 応答時間計測
     localparam type t_offset = logic [OFFSET_WIDTH-1:0];
 
-    function automatic t_offset CycleToOffset(
+    function automatic t_offset     CycleToOffset(
         input int unsigned cycle
     ) ;
         return t_offset'((NUMERATOR * cycle / DENOMINATOR));
@@ -113,7 +113,7 @@ module jellyvl_etherneco_synctimer_master #(
     t_offset     offset_time  [0:MAX_NODES-1];
     t_offset_pkt offset_pkt   [0:MAX_NODES-1];
     always_comb begin
-        for (int i = 0; i < MAX_NODES; i++) begin
+        for (int signed i = 0; i < MAX_NODES; i++) begin
             offset_pkt[i] = t_offset_pkt'(offset_time[i]);
         end
     end
@@ -177,14 +177,14 @@ module jellyvl_etherneco_synctimer_master #(
             if (cmd_count == 0) begin
                 m_cmd_tx_data <= cmd_cmd;
             end
-            for (int i = 0; i < 8; i++) begin
-                if (int'(cmd_count) == 1 + i) begin
+            for (int signed i = 0; i < 8; i++) begin
+                if (cmd_count == 1 + i) begin
                     m_cmd_tx_data <= cmd_time[i];
                 end
             end
-            for (int i = 0; i < MAX_NODES; i++) begin
-                for (int j = 0; j < 4; j++) begin
-                    if (int'(cmd_count) == 9 + i * 4 + j) begin
+            for (int signed i = 0; i < MAX_NODES; i++) begin
+                for (int signed j = 0; j < 4; j++) begin
+                    if (cmd_count == 9 + i * 4 + j) begin
                         m_cmd_tx_data <= offset_pkt[i][j];
                     end
                 end
@@ -205,7 +205,7 @@ module jellyvl_etherneco_synctimer_master #(
     t_offset_pkt rx_offset_pkt [0:MAX_NODES-1];
     t_offset     rx_offset     [0:MAX_NODES-1];
     always_comb begin
-        for (int i = 0; i < MAX_NODES; i++) begin
+        for (int signed i = 0; i < MAX_NODES; i++) begin
             rx_offset[i] = t_offset'(rx_offset_pkt[i]);
         end
     end
@@ -225,14 +225,14 @@ module jellyvl_etherneco_synctimer_master #(
                 rx_offset_pkt[i] <= 'x;
             end
         end else begin
-            for (int i = 0; i < MAX_NODES; i++) begin
+            for (int signed i = 0; i < MAX_NODES; i++) begin
                 offset_gain[i] <= (offset_time[i] << (OFFSET_LPF_GAIN + 1)) - (offset_time[i] << 1);
             end
 
             if (res_payload_valid) begin
-                for (int i = 0; i < MAX_NODES; i++) begin
-                    for (int j = 0; j < 4; j++) begin
-                        if (int'(res_payload_pos) == 9 + i * 4 + j) begin
+                for (int signed i = 0; i < MAX_NODES; i++) begin
+                    for (int signed j = 0; j < 4; j++) begin
+                        if (res_payload_pos == 9 + i * 4 + j) begin
                             rx_offset_pkt[i][j] <= res_payload_data;
                         end
                     end
