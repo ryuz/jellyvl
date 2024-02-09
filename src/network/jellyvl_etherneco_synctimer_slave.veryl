@@ -20,6 +20,7 @@ module etherneco_synctimer_slave #(
     parameter t_adj_value          : type    = signed logic<ADJUST_WIDTH + ADJUST_Q>,
     parameter t_error              : type    = signed logic<ERROR_WIDTH>            ,
     parameter t_limit              : type    = signed logic<LIMIT_WIDTH>            ,
+    parameter t_time               : type    = logic<TIMER_WIDTH>                   ,
     parameter t_wb_adr             : type    = logic<WB_ADR_WIDTH>                  ,
     parameter t_wb_dat             : type    = logic<WB_DAT_WIDTH>                  ,
     parameter t_wb_sel             : type    = logic<WB_SEL_WIDTH>                  ,

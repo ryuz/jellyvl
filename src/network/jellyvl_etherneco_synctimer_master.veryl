@@ -113,7 +113,7 @@ module etherneco_synctimer_master #(
     var offset_time : t_offset     [MAX_NODES];
     var offset_pkt  : t_offset_pkt [MAX_NODES];
     always_comb {
-        for i: int in 0..MAX_NODES {
+        for i: i32 in 0..MAX_NODES {
             offset_pkt[i] = offset_time[i] as t_offset_pkt;
         }
     }
@@ -177,14 +177,14 @@ module etherneco_synctimer_master #(
             if cmd_count == 0 {
                 m_cmd_tx_data = cmd_cmd;
             }
-            for i: int in 0..8 {
-                if cmd_count as int == 1 + i {
+            for i: i32 in 0..8 {
+                if cmd_count == 1 + i {
                     m_cmd_tx_data = cmd_time[i];
                 }
             }
-            for i: int in 0..MAX_NODES {
-                for j: int in 0..4 {
-                    if cmd_count as int == 9 + i * 4 + j {
+            for i: i32 in 0..MAX_NODES {
+                for j: i32 in 0..4 {
+                    if cmd_count == 9 + i * 4 + j {
                         m_cmd_tx_data = offset_pkt[i][j];
                     }
                 }
@@ -205,7 +205,7 @@ module etherneco_synctimer_master #(
     var rx_offset_pkt: t_offset_pkt [MAX_NODES];
     var rx_offset    : t_offset     [MAX_NODES];
     always_comb {
-        for i: int in 0..MAX_NODES {
+        for i: i32 in 0..MAX_NODES {
             rx_offset[i] = rx_offset_pkt[i] as t_offset;
         }
     }
@@ -225,14 +225,14 @@ module etherneco_synctimer_master #(
                 rx_offset_pkt[i] = 'x;
             }
         } else {
-            for i: int in 0..MAX_NODES {
+            for i: i32 in 0..MAX_NODES {
                 offset_gain[i] = (offset_time[i] << (OFFSET_LPF_GAIN + 1)) - (offset_time[i] << 1);
             }
 
             if res_payload_valid {
-                for i: int in 0..MAX_NODES {
-                    for j: int in 0..4 {
-                        if res_payload_pos as int == 9 + i * 4 + j {
+                for i: i32 in 0..MAX_NODES {
+                    for j: i32 in 0..4 {
+                        if res_payload_pos == 9 + i * 4 + j {
                             rx_offset_pkt[i][j] = res_payload_data;
                         }
                     }

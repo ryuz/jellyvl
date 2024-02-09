@@ -236,8 +236,8 @@ module synctimer_adjuster_driver #(
     }
 
     if SIMULATION :sim_monitor {
-        var sim_monitor_request_value: real;
-        var sim_monitor_request_cycle: real;
+        var sim_monitor_request_value: f64;
+        var sim_monitor_request_cycle: f64;
 
         assign sim_monitor_request_value = $itor(request_value) / $itor(2 ** ERROR_Q);
         assign sim_monitor_request_cycle = $itor(request_cycle) / $itor(2 ** CYCLE_Q);

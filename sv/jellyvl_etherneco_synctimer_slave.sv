@@ -20,6 +20,7 @@ module jellyvl_etherneco_synctimer_slave #(
     parameter type         t_adj_value           = logic signed [ADJUST_WIDTH + ADJUST_Q-1:0],
     parameter type         t_error               = logic signed [ERROR_WIDTH-1:0]            ,
     parameter type         t_limit               = logic signed [LIMIT_WIDTH-1:0]            ,
+    parameter type         t_time                = logic [TIMER_WIDTH-1:0]                   ,
     parameter type         t_wb_adr              = logic [WB_ADR_WIDTH-1:0]                  ,
     parameter type         t_wb_dat              = logic [WB_DAT_WIDTH-1:0]                  ,
     parameter type         t_wb_sel              = logic [WB_SEL_WIDTH-1:0]                  ,

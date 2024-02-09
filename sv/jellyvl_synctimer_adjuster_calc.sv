@@ -430,5 +430,4 @@ module jellyvl_synctimer_adjuster_calc #(
         assign sim_monitor_error_estimate_v0    = $itor(error_estimate_v0) / $itor(2 ** ERROR_Q);
         assign sim_monitor_error_adjust_value   = $itor(error_adjust_value) / $itor(2 ** ERROR_Q);
     end
-
 endmodule
