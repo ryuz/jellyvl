@@ -1,5 +1,5 @@
 module etherneco_packet_tx #(
-    parameter FIFO_PTR_WIDTH: u32 = 0,
+    param FIFO_PTR_WIDTH: u32 = 0,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -76,8 +76,8 @@ module etherneco_packet_tx #(
         ERROR = 8'b10000000,
     }
 
-    localparam t_length: type = logic<16>;
-    localparam t_count : type = logic<3>;
+    local t_length: type = logic<16>;
+    local t_count : type = logic<3>;
 
     var cke: logic;
     assign cke = !m_tx_valid || m_tx_ready;
@@ -112,101 +112,101 @@ module etherneco_packet_tx #(
             st0_count = st0_count_next;
             case st0_state {
                 STATE::IDLE: {
-                    st0_count  = 'x;
-                    st0_length = 'x;
-                    st0_first  = 1'bx;
-                    st0_last   = 1'bx;
-                    if tx_start {
-                        st0_state  = STATE::PREAMBLE;
-                        st0_count  = '0;
-                        st0_length = param_length;
-                        st0_first  = 1'b0;
-                        st0_last   = 1'b0;
-                    }
-                }
+                                 st0_count  = 'x;
+                                 st0_length = 'x;
+                                 st0_first  = 1'bx;
+                                 st0_last   = 1'bx;
+                                 if tx_start {
+                                     st0_state  = STATE::PREAMBLE;
+                                     st0_count  = '0;
+                                     st0_length = param_length;
+                                     st0_first  = 1'b0;
+                                     st0_last   = 1'b0;
+                                 }
+                             }
 
                 STATE::PREAMBLE: {
-                    st0_first = 1'b0;
-                    st0_last  = (st0_count == 3'd5);
-                    if st0_last {
-                        st0_state = STATE::LENGTH;
-                        st0_count = '0;
-                        st0_first = 1'b1;
-                        st0_last  = 1'b0;
-                    }
-                }
+                                     st0_first = 1'b0;
+                                     st0_last  = (st0_count == 3'd5);
+                                     if st0_last {
+                                         st0_state = STATE::LENGTH;
+                                         st0_count = '0;
+                                         st0_first = 1'b1;
+                                         st0_last  = 1'b0;
+                                     }
+                                 }
 
                 STATE::LENGTH: {
-                    st0_first = 1'b0;
-                    st0_last  = (st0_count[0] == 1'd0);
-                    if st0_last {
-                        st0_state = STATE::TYPE;
-                        st0_count = '0;
-                        st0_first = 1'b1;
-                        st0_last  = 1'b1;
-                    }
-                }
+                                   st0_first = 1'b0;
+                                   st0_last  = (st0_count[0] == 1'd0);
+                                   if st0_last {
+                                       st0_state = STATE::TYPE;
+                                       st0_count = '0;
+                                       st0_first = 1'b1;
+                                       st0_last  = 1'b1;
+                                   }
+                               }
 
                 STATE::TYPE: {
-                    st0_first = 1'b1;
-                    st0_last  = 1'b1;
-                    st0_state = STATE::NODE;
-                    st0_count = '0;
-                }
+                                 st0_first = 1'b1;
+                                 st0_last  = 1'b1;
+                                 st0_state = STATE::NODE;
+                                 st0_count = '0;
+                             }
 
                 STATE::NODE: {
-                    st0_state = STATE::PAYLOAD;
-                    st0_count = '0;
-                    st0_first = 1'b1;
-                    st0_last  = st0_length == 16'd0;
-                }
+                                 st0_state = STATE::PAYLOAD;
+                                 st0_count = '0;
+                                 st0_first = 1'b1;
+                                 st0_last  = st0_length == 16'd0;
+                             }
 
                 STATE::PAYLOAD: {
-                    st0_length = st0_length_next;
-                    st0_first  = 1'b0;
-                    st0_last   = (st0_length_next == 0);
-                    if fifo_last {
-                        st0_state = STATE::PADDING;
-                    }
-                    if st0_last {
-                        st0_state  = STATE::FCS;
-                        st0_count  = '0;
-                        st0_length = 'x;
-                        st0_first  = 1'b1;
-                        st0_last   = 1'b0;
-                    }
-                }
+                                    st0_length = st0_length_next;
+                                    st0_first  = 1'b0;
+                                    st0_last   = (st0_length_next == 0);
+                                    if fifo_last {
+                                        st0_state = STATE::PADDING;
+                                    }
+                                    if st0_last {
+                                        st0_state  = STATE::FCS;
+                                        st0_count  = '0;
+                                        st0_length = 'x;
+                                        st0_first  = 1'b1;
+                                        st0_last   = 1'b0;
+                                    }
+                                }
 
                 STATE::PADDING: {
-                    st0_length = st0_length_next;
-                    st0_first  = 1'b0;
-                    st0_last   = (st0_length_next == 0);
-                    if st0_last {
-                        st0_state  = STATE::FCS;
-                        st0_count  = '0;
-                        st0_length = 'x;
-                        st0_first  = 1'b1;
-                        st0_last   = 1'b0;
-                    }
-                }
+                                    st0_length = st0_length_next;
+                                    st0_first  = 1'b0;
+                                    st0_last   = (st0_length_next == 0);
+                                    if st0_last {
+                                        st0_state  = STATE::FCS;
+                                        st0_count  = '0;
+                                        st0_length = 'x;
+                                        st0_first  = 1'b1;
+                                        st0_last   = 1'b0;
+                                    }
+                                }
 
                 STATE::FCS: {
-                    st0_length = 'x;
-                    st0_first  = 1'b0;
-                    st0_last   = st0_count == 3'd2;
-                    if st0_last {
-                        st0_state = STATE::IDLE;
-                        st0_count = 'x;
-                    }
-                }
+                                st0_length = 'x;
+                                st0_first  = 1'b0;
+                                st0_last   = st0_count == 3'd2;
+                                if st0_last {
+                                    st0_state = STATE::IDLE;
+                                    st0_count = 'x;
+                                }
+                            }
 
                 default: {
-                    st0_state  = STATE::IDLE;
-                    st0_count  = 'x;
-                    st0_length = 'x;
-                    st0_first  = 1'bx;
-                    st0_last   = 1'bx;
-                }
+                             st0_state  = STATE::IDLE;
+                             st0_count  = 'x;
+                             st0_length = 'x;
+                             st0_first  = 1'bx;
+                             st0_last   = 1'bx;
+                         }
             }
 
             // エラーチェック
@@ -259,50 +259,50 @@ module etherneco_packet_tx #(
 
             case st0_state {
                 STATE::IDLE: {
-                    // ここだけ追い越しして1cycle稼ぐ
-                    if tx_start {
-                        st1_state = STATE::PREAMBLE;
-                        st1_first = 1'b1;
-                        st1_last  = 1'b0;
-                        st1_data  = 8'h55;
-                    }
-                }
+                                 // ここだけ追い越しして1cycle稼ぐ
+                                              if tx_start {
+                                     st1_state = STATE::PREAMBLE;
+                                     st1_first = 1'b1;
+                                     st1_last  = 1'b0;
+                                     st1_data  = 8'h55;
+                                 }
+                             }
 
                 STATE::PREAMBLE: {
-                    st1_data = if st0_last {
-                        8'hd5
-                    } else {
-                        8'h55
-                    };
-                }
+                                     st1_data = if st0_last {
+                                         8'hd5
+                                     } else {
+                                         8'h55
+                                     };
+                                 }
 
                 STATE::LENGTH: {
-                    st1_data = if st0_count[0] {
-                        st0_length[15:8]
-                    } else {
-                        st0_length[7:0]
-                    };
-                }
+                                   st1_data = if st0_count[0] {
+                                       st0_length[15:8]
+                                   } else {
+                                       st0_length[7:0]
+                                   };
+                               }
 
                 STATE::TYPE: {
-                    st1_data = param_type;
-                }
+                                 st1_data = param_type;
+                             }
 
                 STATE::NODE: {
-                    st1_data = param_node;
-                }
+                                 st1_data = param_node;
+                             }
 
                 STATE::PAYLOAD: {
-                    st1_data = fifo_data;
-                }
+                                    st1_data = fifo_data;
+                                }
 
                 STATE::PADDING: {
-                    st1_data = 8'h00;
-                }
+                                    st1_data = 8'h00;
+                                }
 
                 STATE::FCS: {
-                    st1_data = 'x;
-                }
+                                st1_data = 'x;
+                            }
 
                 default: {}
             }

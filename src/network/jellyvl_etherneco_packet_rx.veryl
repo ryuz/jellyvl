@@ -1,8 +1,8 @@
 module etherneco_packet_rx #(
-    parameter DOWN_STREAM  : bit = 1'b0,
-    parameter REPLACE_DELAY: u32 = 0   ,
-    parameter BUFFERING    : u32 = 1   ,
-    parameter M_REGS       : bit = 1'b1,
+    param DOWN_STREAM  : bit = 1'b0,
+    param REPLACE_DELAY: u32 = 0   ,
+    param BUFFERING    : u32 = 1   ,
+    param M_REGS       : bit = 1'b1,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -35,15 +35,15 @@ module etherneco_packet_rx #(
     replace_valid: input logic   ,
 ) {
 
-    localparam BIT_PREAMBLE: u32 = 0;
-    localparam BIT_LENGTH  : u32 = 1;
-    localparam BIT_TYPE    : u32 = 2;
-    localparam BIT_NODE    : u32 = 3;
-    localparam BIT_PAYLOAD : u32 = 4;
-    localparam BIT_FCS     : u32 = 5;
-    localparam BIT_ERROR   : u32 = 6;
+    local BIT_PREAMBLE: u32 = 0;
+    local BIT_LENGTH  : u32 = 1;
+    local BIT_TYPE    : u32 = 2;
+    local BIT_NODE    : u32 = 3;
+    local BIT_PAYLOAD : u32 = 4;
+    local BIT_FCS     : u32 = 5;
+    local BIT_ERROR   : u32 = 6;
 
-    localparam t_state_bit: type = logic<7>;
+    local t_state_bit: type = logic<7>;
 
     enum STATE: logic<7> {
         IDLE = 7'b0000000,
@@ -56,8 +56,8 @@ module etherneco_packet_rx #(
         ERROR = 7'b1000000,
     }
 
-    localparam t_count : type = logic<4>;
-    localparam t_length: type = logic<16>;
+    local t_count : type = logic<4>;
+    local t_length: type = logic<16>;
 
     var state    : STATE      ;
     var state_bit: t_state_bit;
@@ -140,87 +140,87 @@ module etherneco_packet_rx #(
 
                 case state {
                     STATE::IDLE: {
-                        if s_rx_first {
-                            if s_rx_data == 8'h55 && !s_rx_last {
-                                state    = STATE::PREAMBLE;
-                                rx_start = 1'b1;
-                                count    = '0;
-                            } else {
-                                // 送信開始前なので何も中継せずに止める
-                                state    = STATE::ERROR;
-                                rx_error = 1'b1;
-                                count    = 'x;
-                                fw_first = 'x;
-                                fw_last  = 'x;
-                                fw_data  = 'x;
-                                fw_valid = 1'b0;
-                            }
-                            crc_update = 'x;
-                        }
-                    }
+                                     if s_rx_first {
+                                         if s_rx_data == 8'h55 && !s_rx_last {
+                                             state    = STATE::PREAMBLE;
+                                             rx_start = 1'b1;
+                                             count    = '0;
+                                         } else {
+                                             // 送信開始前なので何も中継せずに止める
+                                                          state    = STATE::ERROR;
+                                             rx_error = 1'b1;
+                                             count    = 'x;
+                                             fw_first = 'x;
+                                             fw_last  = 'x;
+                                             fw_data  = 'x;
+                                             fw_valid = 1'b0;
+                                         }
+                                         crc_update = 'x;
+                                     }
+                                 }
 
                     STATE::PREAMBLE: {
-                        if count == 6 as t_count {
-                            state      = STATE::LENGTH;
-                            count      = '0;
-                            crc_update = 1'b0;
-                        }
-                    }
+                                         if count == 6 as t_count {
+                                             state      = STATE::LENGTH;
+                                             count      = '0;
+                                             crc_update = 1'b0;
+                                         }
+                                     }
 
                     STATE::LENGTH: {
-                        if count[0:0] == 1'b1 {
-                            rx_length[15:8] = s_rx_data;
-                            crc_update      = 1'b1;
-                            state           = STATE::TYPE;
-                            count           = 'x;
-                        } else {
-                            rx_length[7:0] = s_rx_data;
-                            crc_update     = 1'b1;
-                        }
-                    }
+                                       if count[0:0] == 1'b1 {
+                                           rx_length[15:8] = s_rx_data;
+                                           crc_update      = 1'b1;
+                                           state           = STATE::TYPE;
+                                           count           = 'x;
+                                       } else {
+                                           rx_length[7:0] = s_rx_data;
+                                           crc_update     = 1'b1;
+                                       }
+                                   }
 
                     STATE::TYPE: {
-                        rx_type = s_rx_data;
-                        state   = STATE::NODE;
-                        count   = 'x;
-                    }
+                                     rx_type = s_rx_data;
+                                     state   = STATE::NODE;
+                                     count   = 'x;
+                                 }
 
                     STATE::NODE: {
-                        rx_node       = s_rx_data;
-                        state         = STATE::PAYLOAD;
-                        payload_first = 1'b1;
-                        payload_last  = (rx_length == '0);
-                        payload_pos   = '0;
-                        if DOWN_STREAM {
-                            fw_data = s_rx_data - 8'd1;
-                        } else {
-                            fw_data = s_rx_data + 8'd1;
-                        }
-                    }
+                                     rx_node       = s_rx_data;
+                                     state         = STATE::PAYLOAD;
+                                     payload_first = 1'b1;
+                                     payload_last  = (rx_length == '0);
+                                     payload_pos   = '0;
+                                     if DOWN_STREAM {
+                                         fw_data = s_rx_data - 8'd1;
+                                     } else {
+                                         fw_data = s_rx_data + 8'd1;
+                                     }
+                                 }
 
                     STATE::PAYLOAD: {
-                        payload_first = 1'b0;
-                        payload_last  = (payload_pos_next == rx_length);
-                        payload_pos   = payload_pos_next;
-                        if payload_last {
-                            state       = STATE::FCS;
-                            fcs_rx_last = 1'b0;
-                            count       = '0;
-                            rx_length   = 'x;
-                        }
-                    }
+                                        payload_first = 1'b0;
+                                        payload_last  = (payload_pos_next == rx_length);
+                                        payload_pos   = payload_pos_next;
+                                        if payload_last {
+                                            state       = STATE::FCS;
+                                            fcs_rx_last = 1'b0;
+                                            count       = '0;
+                                            rx_length   = 'x;
+                                        }
+                                    }
 
                     STATE::FCS: {
-                        fcs_rx_last = (count[1:0] == 2'd2);
-                        if fcs_rx_last {
-                            state     = STATE::IDLE;
-                            crc_check = 1'b1;
-                        }
-                    }
+                                    fcs_rx_last = (count[1:0] == 2'd2);
+                                    if fcs_rx_last {
+                                        state     = STATE::IDLE;
+                                        crc_check = 1'b1;
+                                    }
+                                }
 
                     default: {
-                        state = STATE::IDLE;
-                    }
+                                 state = STATE::IDLE;
+                             }
                 }
 
                 // 不正状態検知
@@ -295,7 +295,7 @@ module etherneco_packet_rx #(
     var dly_data      : logic<8>;
     var dly_valid     : logic   ;
 
-    localparam t_delay: type = logic<2 + 4 + 8>;
+    local t_delay: type = logic<2 + 4 + 8>;
 
     inst u_data_delay: data_delay #(
         t_data   : t_delay      ,
@@ -380,7 +380,7 @@ module etherneco_packet_rx #(
 
 
     // 1サイクル分貯める
-    localparam t_buf: type = logic<2 + 8>;
+    local t_buf: type = logic<2 + 8>;
 
     var buf_first: logic   ;
     var buf_last : logic   ;

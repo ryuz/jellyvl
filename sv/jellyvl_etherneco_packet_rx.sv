@@ -44,8 +44,8 @@ module jellyvl_etherneco_packet_rx #(
     localparam int unsigned BIT_ERROR    = 6;
 
     localparam type t_state_bit = logic [7-1:0];
-    typedef 
-    enum logic [7-1:0] {
+
+    typedef enum logic [7-1:0] {
         STATE_IDLE = 7'b0000000,
         STATE_PREAMBLE = 7'b0000001,
         STATE_LENGTH = 7'b0000010,
@@ -61,7 +61,7 @@ module jellyvl_etherneco_packet_rx #(
 
     STATE       state    ;
     t_state_bit state_bit;
-    assign state_bit = t_state_bit'(state);
+    always_comb state_bit = t_state_bit'(state);
 
     t_count          count      ;
     logic            preamble   ;
@@ -79,7 +79,7 @@ module jellyvl_etherneco_packet_rx #(
     logic         fw_valid     ;
 
     t_length payload_pos_next;
-    assign payload_pos_next = payload_pos + t_length'(1);
+    always_comb payload_pos_next = payload_pos + t_length'(1);
 
     always_ff @ (posedge clk) begin
         if (reset) begin
@@ -140,87 +140,87 @@ module jellyvl_etherneco_packet_rx #(
 
                 case (state)
                     STATE_IDLE: begin
-                        if (s_rx_first) begin
-                            if (s_rx_data == 8'h55 && !s_rx_last) begin
-                                state    <= STATE_PREAMBLE;
-                                rx_start <= 1'b1;
-                                count    <= '0;
-                            end else begin
-                                // 送信開始前なので何も中継せずに止める
-                                state    <= STATE_ERROR;
-                                rx_error <= 1'b1;
-                                count    <= 'x;
-                                fw_first <= 'x;
-                                fw_last  <= 'x;
-                                fw_data  <= 'x;
-                                fw_valid <= 1'b0;
-                            end
-                            crc_update <= 'x;
-                        end
-                    end
+                                    if (s_rx_first) begin
+                                        if (s_rx_data == 8'h55 && !s_rx_last) begin
+                                            state    <= STATE_PREAMBLE;
+                                            rx_start <= 1'b1;
+                                            count    <= '0;
+                                        end else begin
+                                            // 送信開始前なので何も中継せずに止める
+                                                        state    <= STATE_ERROR;
+                                            rx_error <= 1'b1;
+                                            count    <= 'x;
+                                            fw_first <= 'x;
+                                            fw_last  <= 'x;
+                                            fw_data  <= 'x;
+                                            fw_valid <= 1'b0;
+                                        end
+                                        crc_update <= 'x;
+                                    end
+                                end
 
                     STATE_PREAMBLE: begin
-                        if (count == t_count'(6)) begin
-                            state      <= STATE_LENGTH;
-                            count      <= '0;
-                            crc_update <= 1'b0;
-                        end
-                    end
+                                        if (count == t_count'(6)) begin
+                                            state      <= STATE_LENGTH;
+                                            count      <= '0;
+                                            crc_update <= 1'b0;
+                                        end
+                                    end
 
                     STATE_LENGTH: begin
-                        if (count[0:0] == 1'b1) begin
-                            rx_length[15:8] <= s_rx_data;
-                            crc_update      <= 1'b1;
-                            state           <= STATE_TYPE;
-                            count           <= 'x;
-                        end else begin
-                            rx_length[7:0] <= s_rx_data;
-                            crc_update     <= 1'b1;
-                        end
-                    end
+                                      if (count[0:0] == 1'b1) begin
+                                          rx_length[15:8] <= s_rx_data;
+                                          crc_update      <= 1'b1;
+                                          state           <= STATE_TYPE;
+                                          count           <= 'x;
+                                      end else begin
+                                          rx_length[7:0] <= s_rx_data;
+                                          crc_update     <= 1'b1;
+                                      end
+                                  end
 
                     STATE_TYPE: begin
-                        rx_type <= s_rx_data;
-                        state   <= STATE_NODE;
-                        count   <= 'x;
-                    end
+                                    rx_type <= s_rx_data;
+                                    state   <= STATE_NODE;
+                                    count   <= 'x;
+                                end
 
                     STATE_NODE: begin
-                        rx_node       <= s_rx_data;
-                        state         <= STATE_PAYLOAD;
-                        payload_first <= 1'b1;
-                        payload_last  <= (rx_length == '0);
-                        payload_pos   <= '0;
-                        if (DOWN_STREAM) begin
-                            fw_data <= s_rx_data - 8'd1;
-                        end else begin
-                            fw_data <= s_rx_data + 8'd1;
-                        end
-                    end
+                                    rx_node       <= s_rx_data;
+                                    state         <= STATE_PAYLOAD;
+                                    payload_first <= 1'b1;
+                                    payload_last  <= (rx_length == '0);
+                                    payload_pos   <= '0;
+                                    if (DOWN_STREAM) begin
+                                        fw_data <= s_rx_data - 8'd1;
+                                    end else begin
+                                        fw_data <= s_rx_data + 8'd1;
+                                    end
+                                end
 
                     STATE_PAYLOAD: begin
-                        payload_first <= 1'b0;
-                        payload_last  <= (payload_pos_next == rx_length);
-                        payload_pos   <= payload_pos_next;
-                        if (payload_last) begin
-                            state       <= STATE_FCS;
-                            fcs_rx_last <= 1'b0;
-                            count       <= '0;
-                            rx_length   <= 'x;
-                        end
-                    end
+                                       payload_first <= 1'b0;
+                                       payload_last  <= (payload_pos_next == rx_length);
+                                       payload_pos   <= payload_pos_next;
+                                       if (payload_last) begin
+                                           state       <= STATE_FCS;
+                                           fcs_rx_last <= 1'b0;
+                                           count       <= '0;
+                                           rx_length   <= 'x;
+                                       end
+                                   end
 
                     STATE_FCS: begin
-                        fcs_rx_last <= (count[1:0] == 2'd2);
-                        if (fcs_rx_last) begin
-                            state     <= STATE_IDLE;
-                            crc_check <= 1'b1;
-                        end
-                    end
+                                   fcs_rx_last <= (count[1:0] == 2'd2);
+                                   if (fcs_rx_last) begin
+                                       state     <= STATE_IDLE;
+                                       crc_check <= 1'b1;
+                                   end
+                               end
 
                     default: begin
-                        state <= STATE_IDLE;
-                    end
+                                 state <= STATE_IDLE;
+                             end
                 endcase
 
                 // 不正状態検知
@@ -258,8 +258,8 @@ module jellyvl_etherneco_packet_rx #(
         end
     end
 
-    assign payload_data  = s_rx_data;
-    assign payload_valid = s_rx_valid & state_bit[BIT_PAYLOAD];
+    always_comb payload_data  = s_rx_data;
+    always_comb payload_valid = s_rx_valid & state_bit[BIT_PAYLOAD];
 
     jelly2_calc_crc #(
         .DATA_WIDTH (8           ),
@@ -317,7 +317,7 @@ module jellyvl_etherneco_packet_rx #(
 
 
     // replace & CRC
-    assign dly_data = ((replace_valid) ? (
+    always_comb dly_data = ((replace_valid) ? (
         replace_data
     ) : (
         dly_data_tmp
@@ -422,11 +422,11 @@ module jellyvl_etherneco_packet_rx #(
         end
     end
 
-    assign buf_ready = buf_enable;
+    always_comb buf_ready = buf_enable;
 
-    assign m_tx_first = buf_first;
-    assign m_tx_last  = buf_last;
-    assign m_tx_data  = buf_data;
-    assign m_tx_valid = buf_valid & buf_enable;
+    always_comb m_tx_first = buf_first;
+    always_comb m_tx_last  = buf_last;
+    always_comb m_tx_data  = buf_data;
+    always_comb m_tx_valid = buf_valid & buf_enable;
 
 endmodule

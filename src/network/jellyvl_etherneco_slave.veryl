@@ -1,19 +1,19 @@
 module etherneco_slave #(
-    parameter TIMER_WIDTH            : u32 = 64                                   , // タイマのbit幅
-    parameter NUMERATOR              : u32 = 8                                    , // クロック周期の分子
-    parameter DENOMINATOR            : u32 = 1                                    , // クロック周期の分母
-    parameter SYNCTIM_LIMIT_WIDTH    : u32 = TIMER_WIDTH                          , // 補正限界のbit幅
-    parameter SYNCTIM_TIMER_WIDTH    : u32 = 32                                   , // 補正に使う範囲のタイマ幅
-    parameter SYNCTIM_CYCLE_WIDTH    : u32 = 32                                   , // 自クロックサイクルカウンタのbit数
-    parameter SYNCTIM_ERROR_WIDTH    : u32 = 32                                   , // 誤差計算時のbit幅
-    parameter SYNCTIM_ERROR_Q        : u32 = 8                                    , // 誤差計算時に追加する固定小数点数bit数
-    parameter SYNCTIM_ADJUST_WIDTH   : u32 = SYNCTIM_CYCLE_WIDTH + SYNCTIM_ERROR_Q, // 補正周期のbit幅
-    parameter SYNCTIM_ADJUST_Q       : u32 = SYNCTIM_ERROR_Q                      , // 補正周期に追加する固定小数点数bit数
-    parameter SYNCTIM_LPF_GAIN_CYCLE : u32 = 6                                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter SYNCTIM_LPF_GAIN_PERIOD: u32 = 6                                    , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter SYNCTIM_LPF_GAIN_PHASE : u32 = 6                                    , // 位相補正のLPFの更新ゲイン(1/2^N)
-    parameter DEBUG                  : bit = 1'b0                                 ,
-    parameter SIMULATION             : bit = 1'b0                                 ,
+    param TIMER_WIDTH            : u32 = 64                                   , // タイマのbit幅
+    param NUMERATOR              : u32 = 8                                    , // クロック周期の分子
+    param DENOMINATOR            : u32 = 1                                    , // クロック周期の分母
+    param SYNCTIM_LIMIT_WIDTH    : u32 = TIMER_WIDTH                          , // 補正限界のbit幅
+    param SYNCTIM_TIMER_WIDTH    : u32 = 32                                   , // 補正に使う範囲のタイマ幅
+    param SYNCTIM_CYCLE_WIDTH    : u32 = 32                                   , // 自クロックサイクルカウンタのbit数
+    param SYNCTIM_ERROR_WIDTH    : u32 = 32                                   , // 誤差計算時のbit幅
+    param SYNCTIM_ERROR_Q        : u32 = 8                                    , // 誤差計算時に追加する固定小数点数bit数
+    param SYNCTIM_ADJUST_WIDTH   : u32 = SYNCTIM_CYCLE_WIDTH + SYNCTIM_ERROR_Q, // 補正周期のbit幅
+    param SYNCTIM_ADJUST_Q       : u32 = SYNCTIM_ERROR_Q                      , // 補正周期に追加する固定小数点数bit数
+    param SYNCTIM_LPF_GAIN_CYCLE : u32 = 6                                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    param SYNCTIM_LPF_GAIN_PERIOD: u32 = 6                                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    param SYNCTIM_LPF_GAIN_PHASE : u32 = 6                                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    param DEBUG                  : bit = 1'b0                                 ,
+    param SIMULATION             : bit = 1'b0                                 ,
 ) (
     reset: input logic,
     clk  : input logic,

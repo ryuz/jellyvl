@@ -1,12 +1,12 @@
 module etherneco_synctimer_master #(
-    parameter TIMER_WIDTH    : u32 = 64  , // タイマのbit幅
-    parameter NUMERATOR      : u32 = 10  , // クロック周期の分子
-    parameter DENOMINATOR    : u32 = 3   , // クロック周期の分母
-    parameter MAX_NODES      : u32 = 2   , // 最大ノード数
-    parameter OFFSET_WIDTH   : u32 = 24  , // オフセットbit幅
-    parameter OFFSET_LPF_GAIN: u32 = 4   , // オフセット更新LPFのゲイン (1/2^N)
-    parameter DEBUG          : bit = 1'b0,
-    parameter SIMULATION     : bit = 1'b0,
+    param TIMER_WIDTH    : u32 = 64  , // タイマのbit幅
+    param NUMERATOR      : u32 = 10  , // クロック周期の分子
+    param DENOMINATOR    : u32 = 3   , // クロック周期の分母
+    param MAX_NODES      : u32 = 2   , // 最大ノード数
+    param OFFSET_WIDTH   : u32 = 24  , // オフセットbit幅
+    param OFFSET_LPF_GAIN: u32 = 4   , // オフセット更新LPFのゲイン (1/2^N)
+    param DEBUG          : bit = 1'b0,
+    param SIMULATION     : bit = 1'b0,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -54,7 +54,7 @@ module etherneco_synctimer_master #(
 
 
     // タイマ
-    localparam t_time_pkt: type = logic<8, 8>;
+    local t_time_pkt: type = logic<8, 8>;
 
     var adjust_ready: logic;
     inst u_synctimer_timer: synctimer_timer #(
@@ -77,10 +77,10 @@ module etherneco_synctimer_master #(
 
 
     // 応答時間計測
-    localparam t_offset: type = logic<OFFSET_WIDTH>;
+    local t_offset: type = logic<OFFSET_WIDTH>;
 
     function CycleToOffset (
-        cycle: input u32,
+        cycle: input u32     ,
     ) -> t_offset {
         return (NUMERATOR * cycle / DENOMINATOR) as t_offset;
     }
@@ -108,7 +108,7 @@ module etherneco_synctimer_master #(
     }
 
     // オフセット時間
-    localparam t_offset_pkt: type         = logic<4, 8>;
+    local t_offset_pkt: type         = logic<4, 8>;
     var offset_gain : t_offset     [MAX_NODES];
     var offset_time : t_offset     [MAX_NODES];
     var offset_pkt  : t_offset_pkt [MAX_NODES];
@@ -119,9 +119,9 @@ module etherneco_synctimer_master #(
     }
 
     // send command
-    localparam t_length   : type     = logic<16>;
-    localparam CMD_LENGTH : t_length = (1 + 8 + 4 * MAX_NODES - 1) as t_length;
-    localparam t_cmd_count: type     = logic<$clog2(CMD_LENGTH + 1)>;
+    local t_length   : type     = logic<16>;
+    local CMD_LENGTH : t_length = (1 + 8 + 4 * MAX_NODES - 1) as t_length;
+    local t_cmd_count: type     = logic<$clog2(CMD_LENGTH + 1)>;
 
     assign cmt_tx_length = CMD_LENGTH;
 
@@ -319,7 +319,7 @@ module etherneco_synctimer_master #(
 
     // monitor (debug)
     if SIMULATION :sim_monitor {
-        localparam t_monitor_time          : type           = logic<32>;
+        local t_monitor_time          : type           = logic<32>;
         var sim_monitor_cmd_tx_start: t_monitor_time;
         var sim_monitor_ret_rx_start: t_monitor_time;
         var sim_monitor_ret_rx_end  : t_monitor_time;

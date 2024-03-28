@@ -1,7 +1,7 @@
 module synctimer_timer #(
-    parameter NUMERATOR  : u32 = 10,
-    parameter DENOMINATOR: u32 = 3 ,
-    parameter TIMER_WIDTH: u32 = 64,
+    param NUMERATOR  : u32 = 10,
+    param DENOMINATOR: u32 = 3 ,
+    param TIMER_WIDTH: u32 = 64,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -16,16 +16,16 @@ module synctimer_timer #(
     current_time: output logic<TIMER_WIDTH>,
 ) {
 
-    localparam COUNT_NUM    : u32 = NUMERATOR / DENOMINATOR;
-    localparam COUNT_ERR    : u32 = NUMERATOR % DENOMINATOR;
-    localparam COUNTER_WIDTH: u32 = if $clog2(COUNT_NUM + 2) >: 0 {
+    local COUNT_NUM    : u32 = NUMERATOR / DENOMINATOR;
+    local COUNT_ERR    : u32 = NUMERATOR % DENOMINATOR;
+    local COUNTER_WIDTH: u32 = if $clog2(COUNT_NUM + 2) >: 0 {
         $clog2(COUNT_NUM + 2)
     } else {
         1
     };
 
-    localparam t_count: type = logic<COUNTER_WIDTH>;
-    localparam t_time : type = logic<TIMER_WIDTH>;
+    local t_count: type = logic<COUNTER_WIDTH>;
+    local t_time : type = logic<TIMER_WIDTH>;
 
     var add_value: t_count;
 

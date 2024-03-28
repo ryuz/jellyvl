@@ -1,7 +1,7 @@
 module periodic_trigger #(
-    parameter TIMER_WIDTH   : u32 = 64  ,
-    parameter PERIOD_WIDTH  : u32 = 32  ,
-    parameter THRASHING_MASK: bit = 1'b1,
+    param TIMER_WIDTH   : u32 = 64  ,
+    param PERIOD_WIDTH  : u32 = 32  ,
+    param THRASHING_MASK: bit = 1'b1,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -15,7 +15,7 @@ module periodic_trigger #(
     trigger: output logic,
 ) {
 
-    localparam t_period: type = logic<PERIOD_WIDTH>;
+    local t_period: type = logic<PERIOD_WIDTH>;
 
     var trigger_valid: logic   ;
     var base_time    : t_period;

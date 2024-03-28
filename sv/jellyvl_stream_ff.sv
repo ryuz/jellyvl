@@ -65,21 +65,21 @@ module jellyvl_stream_ff #(
                 reg_buf_valid <= next_buf_valid;
             end
         end
-        assign internal_data = ((reg_buf_valid) ? (
+        always_comb internal_data = ((reg_buf_valid) ? (
             reg_buf_data
         ) : (
             s_data
         ));
-        assign internal_valid = ((reg_buf_valid) ? (
+        always_comb internal_valid = ((reg_buf_valid) ? (
             1'b1
         ) : (
             s_valid & reg_s_ready
         ));
-        assign s_ready = reg_s_ready;
+        always_comb s_ready = reg_s_ready;
     end else begin :s_bypass
-        assign internal_data  = s_data;
-        assign internal_valid = s_valid;
-        assign s_ready        = internal_ready;
+        always_comb internal_data  = s_data;
+        always_comb internal_valid = s_valid;
+        always_comb s_ready        = internal_ready;
     end
 
 
@@ -100,12 +100,12 @@ module jellyvl_stream_ff #(
             end
         end
 
-        assign internal_ready = (!m_valid || m_ready);
-        assign m_data         = reg_m_data;
-        assign m_valid        = reg_m_valid;
+        always_comb internal_ready = (!m_valid || m_ready);
+        always_comb m_data         = reg_m_data;
+        always_comb m_valid        = reg_m_valid;
     end else begin :m_bypass
-        assign internal_ready = m_ready;
-        assign m_data         = internal_data;
-        assign m_valid        = internal_valid;
+        always_comb internal_ready = m_ready;
+        always_comb m_data         = internal_data;
+        always_comb m_valid        = internal_valid;
     end
 endmodule

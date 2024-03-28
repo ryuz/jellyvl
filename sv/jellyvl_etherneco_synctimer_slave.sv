@@ -86,6 +86,7 @@ module jellyvl_etherneco_synctimer_slave #(
         input t_wb_sel sel 
     ) ;
         t_wb_dat     result;
+
         for (int unsigned i = 0; i < WB_DAT_WIDTH; i++) begin
             result[i] = ((sel[i / 8]) ? (
                 dat[i]
@@ -131,7 +132,7 @@ module jellyvl_etherneco_synctimer_slave #(
                     ADR_OVERRIDE_EN   : reg_override_en    <= t_adj_bit'(WriteMask(t_wb_dat'(reg_override_en), s_wb_dat_i, s_wb_sel_i));
                     ADR_OVERRIDE_VALUE: reg_override_value <= t_adj_value'(WriteMask(t_wb_dat'(reg_override_value), s_wb_dat_i, s_wb_sel_i));
                     default           : begin
-                    end
+                                        end
                 endcase
             end
         end
@@ -147,11 +148,11 @@ module jellyvl_etherneco_synctimer_slave #(
             ADR_OVERRIDE_EN   : s_wb_dat_o = t_wb_dat'(reg_override_en);
             ADR_OVERRIDE_VALUE: s_wb_dat_o = t_wb_dat'(reg_override_value);
             default           : begin
-            end
+                                end
         endcase
     end
 
-    assign s_wb_ack_o = s_wb_stb_i;
+    always_comb s_wb_ack_o = s_wb_stb_i;
 
 
     // core
