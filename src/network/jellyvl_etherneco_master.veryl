@@ -1,11 +1,11 @@
 module etherneco_master #(
-    parameter TIMER_WIDTH            : u32 = 64  , // タイマのbit幅
-    parameter NUMERATOR              : u32 = 8   , // クロック周期の分子
-    parameter DENOMINATOR            : u32 = 1   , // クロック周期の分母
-    parameter SYNCTIM_OFFSET_WIDTH   : u32 = 24  , // オフセットbit幅
-    parameter SYNCTIM_OFFSET_LPF_GAIN: u32 = 4   , // オフセット更新LPFのゲイン (1/2^N)
-    parameter DEBUG                  : bit = 1'b0,
-    parameter SIMULATION             : bit = 1'b1,
+    param TIMER_WIDTH            : u32 = 64  , // タイマのbit幅
+    param NUMERATOR              : u32 = 8   , // クロック周期の分子
+    param DENOMINATOR            : u32 = 1   , // クロック周期の分母
+    param SYNCTIM_OFFSET_WIDTH   : u32 = 24  , // オフセットbit幅
+    param SYNCTIM_OFFSET_LPF_GAIN: u32 = 4   , // オフセット更新LPFのゲイン (1/2^N)
+    param DEBUG                  : bit = 1'b0,
+    param SIMULATION             : bit = 1'b1,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -60,7 +60,7 @@ module etherneco_master #(
         }
     }
 
-    localparam PERIOD_WIDTH: u32 = 24;
+    local PERIOD_WIDTH: u32 = 24;
 
     var synctim_trigger: logic    ;
     var synctim_renew  : logic    ;

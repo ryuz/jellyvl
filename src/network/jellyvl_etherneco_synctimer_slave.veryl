@@ -1,36 +1,36 @@
 module etherneco_synctimer_slave #(
-    parameter TIMER_WIDTH          : u32     = 64                                   , // タイマのbit幅
-    parameter NUMERATOR            : u32     = 10                                   , // クロック周期の分子
-    parameter DENOMINATOR          : u32     = 3                                    , // クロック周期の分母
-    parameter LIMIT_WIDTH          : u32     = TIMER_WIDTH                          , // 補正限界のbit幅
-    parameter CALC_WIDTH           : u32     = 32                                   , // 補正に使う範囲のタイマ幅
-    parameter CYCLE_WIDTH          : u32     = 32                                   , // 自クロックサイクルカウンタのbit数
-    parameter ERROR_WIDTH          : u32     = 32                                   , // 誤差計算時のbit幅
-    parameter ERROR_Q              : u32     = 8                                    , // 誤差計算時に追加する固定小数点数bit数
-    parameter ADJUST_WIDTH         : u32     = CYCLE_WIDTH + ERROR_Q                , // 補正周期のbit幅
-    parameter ADJUST_Q             : u32     = ERROR_Q                              , // 補正周期に追加する固定小数点数bit数
-    parameter LPF_GAIN_CYCLE       : u32     = 6                                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter LPF_GAIN_PERIOD      : u32     = 6                                    , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter LPF_GAIN_PHASE       : u32     = 6                                    , // 位相補正のLPFの更新ゲイン(1/2^N)
-    parameter WB_ADR_WIDTH         : u32     = 16                                   ,
-    parameter WB_DAT_WIDTH         : u32     = 32                                   ,
-    parameter WB_SEL_WIDTH         : u32     = WB_DAT_WIDTH / 8                     ,
-    parameter t_adj_bit            : type    = logic<1>                             ,
-    parameter t_adj_time           : type    = logic<CALC_WIDTH>                    ,
-    parameter t_adj_value          : type    = signed logic<ADJUST_WIDTH + ADJUST_Q>,
-    parameter t_error              : type    = signed logic<ERROR_WIDTH>            ,
-    parameter t_limit              : type    = signed logic<LIMIT_WIDTH>            ,
-    parameter t_time               : type    = logic<TIMER_WIDTH>                   ,
-    parameter t_wb_adr             : type    = logic<WB_ADR_WIDTH>                  ,
-    parameter t_wb_dat             : type    = logic<WB_DAT_WIDTH>                  ,
-    parameter t_wb_sel             : type    = logic<WB_SEL_WIDTH>                  ,
-    parameter INIT_PARAM_LIMIT_MIN : t_limit = -100000 as t_limit                     ,
-    parameter INIT_PARAM_LIMIT_MAX : t_limit = +100000 as t_limit                     ,
-    parameter INIT_PARAM_ADJUST_MIN: t_error = -1000 as t_error                       ,
-    parameter INIT_PARAM_ADJUST_MAX: t_error = +1000 as t_error                       ,
+    param TIMER_WIDTH          : u32     = 64                                   , // タイマのbit幅
+    param NUMERATOR            : u32     = 10                                   , // クロック周期の分子
+    param DENOMINATOR          : u32     = 3                                    , // クロック周期の分母
+    param LIMIT_WIDTH          : u32     = TIMER_WIDTH                          , // 補正限界のbit幅
+    param CALC_WIDTH           : u32     = 32                                   , // 補正に使う範囲のタイマ幅
+    param CYCLE_WIDTH          : u32     = 32                                   , // 自クロックサイクルカウンタのbit数
+    param ERROR_WIDTH          : u32     = 32                                   , // 誤差計算時のbit幅
+    param ERROR_Q              : u32     = 8                                    , // 誤差計算時に追加する固定小数点数bit数
+    param ADJUST_WIDTH         : u32     = CYCLE_WIDTH + ERROR_Q                , // 補正周期のbit幅
+    param ADJUST_Q             : u32     = ERROR_Q                              , // 補正周期に追加する固定小数点数bit数
+    param LPF_GAIN_CYCLE       : u32     = 6                                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    param LPF_GAIN_PERIOD      : u32     = 6                                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    param LPF_GAIN_PHASE       : u32     = 6                                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    param WB_ADR_WIDTH         : u32     = 16                                   ,
+    param WB_DAT_WIDTH         : u32     = 32                                   ,
+    param WB_SEL_WIDTH         : u32     = WB_DAT_WIDTH / 8                     ,
+    param t_adj_bit            : type    = logic<1>                             ,
+    param t_adj_time           : type    = logic<CALC_WIDTH>                    ,
+    param t_adj_value          : type    = signed logic<ADJUST_WIDTH + ADJUST_Q>,
+    param t_error              : type    = signed logic<ERROR_WIDTH>            ,
+    param t_limit              : type    = signed logic<LIMIT_WIDTH>            ,
+    param t_time               : type    = logic<TIMER_WIDTH>                   ,
+    param t_wb_adr             : type    = logic<WB_ADR_WIDTH>                  ,
+    param t_wb_dat             : type    = logic<WB_DAT_WIDTH>                  ,
+    param t_wb_sel             : type    = logic<WB_SEL_WIDTH>                  ,
+    param INIT_PARAM_LIMIT_MIN : t_limit = -100000 as t_limit                   ,
+    param INIT_PARAM_LIMIT_MAX : t_limit = +100000 as t_limit                   ,
+    param INIT_PARAM_ADJUST_MIN: t_error = -1000 as t_error                     ,
+    param INIT_PARAM_ADJUST_MAX: t_error = +1000 as t_error                     ,
 
-    parameter DEBUG     : bit = 1'b0,
-    parameter SIMULATION: bit = 1'b0,
+    param DEBUG     : bit = 1'b0,
+    param SIMULATION: bit = 1'b0,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -96,16 +96,16 @@ module etherneco_synctimer_slave #(
         return result;
     }
 
-    localparam ADR_CORE_ID         : t_wb_adr = 32'h00 as t_wb_adr;
-    localparam ADR_RECV_VALID      : t_wb_adr = 32'h20 as t_wb_adr;
-    localparam ADR_CORRECT_TIME    : t_wb_adr = 32'h21 as t_wb_adr;
-    localparam ADR_LOCAL_TIME      : t_wb_adr = 32'h22 as t_wb_adr;
-    localparam ADR_OVERRIDE_EN     : t_wb_adr = 32'h30 as t_wb_adr;
-    localparam ADR_OVERRIDE_VALUE  : t_wb_adr = 32'h31 as t_wb_adr;
-    localparam ADR_PARAM_LIMIT_MIN : t_wb_adr = 32'h40 as t_wb_adr;
-    localparam ADR_PARAM_LIMIT_MAX : t_wb_adr = 32'h41 as t_wb_adr;
-    localparam ADR_PARAM_ADJUST_MIN: t_wb_adr = 32'h42 as t_wb_adr;
-    localparam ADR_PARAM_ADJUST_MAX: t_wb_adr = 32'h43 as t_wb_adr;
+    local ADR_CORE_ID         : t_wb_adr = 32'h00 as t_wb_adr;
+    local ADR_RECV_VALID      : t_wb_adr = 32'h20 as t_wb_adr;
+    local ADR_CORRECT_TIME    : t_wb_adr = 32'h21 as t_wb_adr;
+    local ADR_LOCAL_TIME      : t_wb_adr = 32'h22 as t_wb_adr;
+    local ADR_OVERRIDE_EN     : t_wb_adr = 32'h30 as t_wb_adr;
+    local ADR_OVERRIDE_VALUE  : t_wb_adr = 32'h31 as t_wb_adr;
+    local ADR_PARAM_LIMIT_MIN : t_wb_adr = 32'h40 as t_wb_adr;
+    local ADR_PARAM_LIMIT_MAX : t_wb_adr = 32'h41 as t_wb_adr;
+    local ADR_PARAM_ADJUST_MIN: t_wb_adr = 32'h42 as t_wb_adr;
+    local ADR_PARAM_ADJUST_MAX: t_wb_adr = 32'h43 as t_wb_adr;
 
     var reg_recv_valid      : t_adj_bit  ;
     var reg_override_en     : t_adj_bit  ;

@@ -1,7 +1,7 @@
 module data_delay #(
-    parameter t_data   : type   = logic<8>,
-    parameter LATENCY  : u32    = 1       ,
-    parameter INIT_DATA: t_data = 'x      ,
+    param t_data   : type   = logic<8>,
+    param LATENCY  : u32    = 1       ,
+    param INIT_DATA: t_data = 'x      ,
 ) (
     reset: input logic,
     clk  : input logic,

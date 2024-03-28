@@ -76,9 +76,9 @@ module jellyvl_etherneco_synctimer_slave_core #(
     logic                   correct_renew;
     logic                   correct_valid;
 
-    assign monitor_correct_time  = correct_time;
-    assign monitor_correct_renew = correct_renew;
-    assign monitor_correct_valid = correct_valid;
+    always_comb monitor_correct_time  = correct_time;
+    always_comb monitor_correct_renew = correct_renew;
+    always_comb monitor_correct_valid = correct_valid;
 
     jellyvl_synctimer_core #(
         .TIMER_WIDTH     (TIMER_WIDTH    ),
@@ -161,7 +161,7 @@ module jellyvl_etherneco_synctimer_slave_core #(
     localparam type t_position = logic [16-1:0];
 
     logic up_reset;
-    assign up_reset = reset || cmd_rx_error;
+    always_comb up_reset = reset || cmd_rx_error;
 
     logic      [8-1:0] cmd_rx_cmd       ;
     t_time             cmd_rx_time      ;
@@ -211,8 +211,8 @@ module jellyvl_etherneco_synctimer_slave_core #(
         end
     end
 
-    assign m_cmd_data  = 'x;
-    assign m_cmd_valid = 1'b0;
+    always_comb m_cmd_data  = 'x;
+    always_comb m_cmd_valid = 1'b0;
 
 
     // ---------------------------------
@@ -220,7 +220,7 @@ module jellyvl_etherneco_synctimer_slave_core #(
     // ---------------------------------
 
     logic down_reset;
-    assign down_reset = reset || res_rx_error;
+    always_comb down_reset = reset || res_rx_error;
 
     int signed res_pos;
 

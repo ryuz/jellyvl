@@ -21,7 +21,7 @@ module jellyvl_periodic_trigger #(
     t_period base_time    ;
 
     t_period elapsed_time;
-    assign elapsed_time = current_time[PERIOD_WIDTH - 1:0] - base_time;
+    always_comb elapsed_time = current_time[PERIOD_WIDTH - 1:0] - base_time;
 
     always_ff @ (posedge clk) begin
         if (reset) begin

@@ -70,8 +70,8 @@ module jellyvl_etherneco_master #(
     logic [16-1:0] synctim_length ;
 
     // とりあえず時間合わせパケットに固定
-    assign synctim_type = 8'h10;
-    assign synctim_node = 8'h01;
+    always_comb synctim_type = 8'h10;
+    always_comb synctim_node = 8'h01;
     //  assign request_length = 16'd13 - 16'd1;
 
 

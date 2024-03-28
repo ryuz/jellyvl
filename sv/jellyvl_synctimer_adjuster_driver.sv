@@ -180,7 +180,7 @@ module jellyvl_synctimer_adjuster_driver #(
         end
     end
 
-    assign adj_param_ready = 1'b1; // adj_calc_valid;
+    always_comb adj_param_ready = 1'b1; // adj_calc_valid;
 
 
     // output
@@ -237,7 +237,7 @@ module jellyvl_synctimer_adjuster_driver #(
         real sim_monitor_request_value;
         real sim_monitor_request_cycle;
 
-        assign sim_monitor_request_value = $itor(request_value) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_request_cycle = $itor(request_cycle) / $itor(2 ** CYCLE_Q);
+        always_comb sim_monitor_request_value = $itor(request_value) / $itor(2 ** ERROR_Q);
+        always_comb sim_monitor_request_cycle = $itor(request_cycle) / $itor(2 ** CYCLE_Q);
     end
 endmodule

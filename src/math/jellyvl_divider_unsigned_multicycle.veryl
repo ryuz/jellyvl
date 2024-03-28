@@ -2,10 +2,10 @@
 
 // 符号なし整数マルチサイクル除算器
 module divider_unsigned_multicycle #(
-    parameter DIVIDEND_WIDTH : u32 = 32            ,
-    parameter DIVISOR_WIDTH  : u32 = 32            ,
-    parameter QUOTIENT_WIDTH : u32 = DIVIDEND_WIDTH,
-    parameter REMAINDER_WIDTH: u32 = DIVISOR_WIDTH ,
+    param DIVIDEND_WIDTH : u32 = 32            ,
+    param DIVISOR_WIDTH  : u32 = 32            ,
+    param QUOTIENT_WIDTH : u32 = DIVIDEND_WIDTH,
+    param REMAINDER_WIDTH: u32 = DIVISOR_WIDTH ,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -25,23 +25,23 @@ module divider_unsigned_multicycle #(
 ) {
 
     // param
-    localparam CYCLE      : u32 = QUOTIENT_WIDTH;
-    localparam CYCLE_WIDTH: u32 = if $clog2(CYCLE + 1) >: 0 {
+    local CYCLE      : u32 = QUOTIENT_WIDTH;
+    local CYCLE_WIDTH: u32 = if $clog2(CYCLE + 1) >: 0 {
         $clog2(CYCLE + 1)
     } else {
         1
     };
 
     // type
-    localparam t_cycle    : type = logic<CYCLE_WIDTH>;
-    localparam t_dividend : type = logic<DIVIDEND_WIDTH>;
-    localparam t_divisor  : type = logic<DIVISOR_WIDTH>;
-    localparam t_quotient : type = logic<QUOTIENT_WIDTH>;
-    localparam t_remainder: type = logic<REMAINDER_WIDTH>;
-    localparam t_shiftreg : type = logic<DIVISOR_WIDTH + QUOTIENT_WIDTH>;
+    local t_cycle    : type = logic<CYCLE_WIDTH>;
+    local t_dividend : type = logic<DIVIDEND_WIDTH>;
+    local t_divisor  : type = logic<DIVISOR_WIDTH>;
+    local t_quotient : type = logic<QUOTIENT_WIDTH>;
+    local t_remainder: type = logic<REMAINDER_WIDTH>;
+    local t_shiftreg : type = logic<DIVISOR_WIDTH + QUOTIENT_WIDTH>;
 
     function MakeDivisor (
-        divisor: input t_divisor,
+        divisor: input t_divisor ,
     ) -> t_shiftreg {
         return divisor as t_shiftreg << (QUOTIENT_WIDTH - 1);
     }
