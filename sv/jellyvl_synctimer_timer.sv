@@ -45,12 +45,12 @@ module jellyvl_synctimer_timer #(
                 end
             end
         end
-        assign adjust_ready = 1'b1;
+        always_comb adjust_ready = 1'b1;
     end else begin :with_err
         // 分数の誤差あり
         t_count err_value;
         logic   carry    ;
-        assign carry     = err_value >= t_count'((DENOMINATOR - COUNT_ERR));
+        always_comb carry     = err_value >= t_count'((DENOMINATOR - COUNT_ERR));
 
         always_ff @ (posedge clk) begin
             if (reset) begin
@@ -74,7 +74,7 @@ module jellyvl_synctimer_timer #(
                 end
             end
         end
-        assign adjust_ready = adjust_valid && (carry == adjust_sign);
+        always_comb adjust_ready = adjust_valid && (carry == adjust_sign);
     end
 
     // timer counter

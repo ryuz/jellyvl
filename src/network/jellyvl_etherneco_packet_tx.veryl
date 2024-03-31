@@ -1,5 +1,5 @@
 module etherneco_packet_tx #(
-    parameter FIFO_PTR_WIDTH: u32 = 0,
+    param FIFO_PTR_WIDTH: u32 = 0,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -37,7 +37,7 @@ module etherneco_packet_tx #(
     var fifo_valid     : logic                    ;
     var fifo_ready     : logic                    ;
 
-    inst u_fifo_fwtf: jelly2_fifo_fwtf #(
+    inst u_fifo_fwtf: $sv::jelly2_fifo_fwtf #(
         DATA_WIDTH: 1 + 8         ,
         PTR_WIDTH : FIFO_PTR_WIDTH,
         DOUT_REGS : 0             ,
@@ -76,8 +76,8 @@ module etherneco_packet_tx #(
         ERROR = 8'b10000000,
     }
 
-    localparam t_length: type = logic<16>;
-    localparam t_count : type = logic<3>;
+    local t_length: type = logic<16>;
+    local t_count : type = logic<3>;
 
     var cke: logic;
     assign cke = !m_tx_valid || m_tx_ready;
@@ -355,7 +355,7 @@ module etherneco_packet_tx #(
     var crc_valid : logic    ;
     var crc_value : logic<32>;
 
-    inst u_cacl_crc: jelly2_calc_crc #(
+    inst u_cacl_crc: $sv::jelly2_calc_crc #(
         DATA_WIDTH: 8           ,
         CRC_WIDTH : 32          ,
         POLY_REPS : 32'h04C11DB7,

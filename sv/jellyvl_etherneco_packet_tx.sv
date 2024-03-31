@@ -80,7 +80,7 @@ module jellyvl_etherneco_packet_tx #(
     localparam type t_count  = logic [3-1:0];
 
     logic cke;
-    assign cke = !m_tx_valid || m_tx_ready;
+    always_comb cke = !m_tx_valid || m_tx_ready;
 
 
     // ----------------------------
@@ -94,10 +94,10 @@ module jellyvl_etherneco_packet_tx #(
     logic    st0_last  ;
 
     t_count st0_count_next;
-    assign st0_count_next = st0_count + 1'b1;
+    always_comb st0_count_next = st0_count + 1'b1;
 
     t_length st0_length_next;
-    assign st0_length_next = st0_length - 1'b1;
+    always_comb st0_length_next = st0_length - 1'b1;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
@@ -229,9 +229,9 @@ module jellyvl_etherneco_packet_tx #(
         end
     end
 
-    assign fifo_ready = cke && (st0_state == STATE_PAYLOAD);
+    always_comb fifo_ready = cke && (st0_state == STATE_PAYLOAD);
 
-    assign tx_start = start && (st0_state == STATE_IDLE);
+    always_comb tx_start = start && (st0_state == STATE_IDLE);
 
 
     // ----------------------------
@@ -373,10 +373,10 @@ module jellyvl_etherneco_packet_tx #(
         out_crc (crc_value)
     );
 
-    assign crc_update = !(st1_state == STATE_LENGTH && st1_first);
-    assign crc_data   = st1_data;
-    assign crc_valid  = (st1_state == STATE_LENGTH || st1_state == STATE_TYPE || st1_state == STATE_NODE || st1_state == STATE_PAYLOAD || st1_state == STATE_PADDING);
-    assign st2_crc    = crc_value;
+    always_comb crc_update = !(st1_state == STATE_LENGTH && st1_first);
+    always_comb crc_data   = st1_data;
+    always_comb crc_valid  = (st1_state == STATE_LENGTH || st1_state == STATE_TYPE || st1_state == STATE_NODE || st1_state == STATE_PAYLOAD || st1_state == STATE_PADDING);
+    always_comb st2_crc    = crc_value;
 
 
 
@@ -423,9 +423,9 @@ module jellyvl_etherneco_packet_tx #(
         end
     end
 
-    assign m_tx_first = st3_first;
-    assign m_tx_last  = st3_last;
-    assign m_tx_data  = st3_data[7:0];
-    assign m_tx_valid = st3_valid;
+    always_comb m_tx_first = st3_first;
+    always_comb m_tx_last  = st3_last;
+    always_comb m_tx_data  = st3_data[7:0];
+    always_comb m_tx_valid = st3_valid;
 
 endmodule

@@ -1,12 +1,12 @@
 module etherneco_synctimer_master #(
-    parameter TIMER_WIDTH    : u32 = 64  , // タイマのbit幅
-    parameter NUMERATOR      : u32 = 10  , // クロック周期の分子
-    parameter DENOMINATOR    : u32 = 3   , // クロック周期の分母
-    parameter MAX_NODES      : u32 = 2   , // 最大ノード数
-    parameter OFFSET_WIDTH   : u32 = 24  , // オフセットbit幅
-    parameter OFFSET_LPF_GAIN: u32 = 4   , // オフセット更新LPFのゲイン (1/2^N)
-    parameter DEBUG          : bit = 1'b0,
-    parameter SIMULATION     : bit = 1'b0,
+    param TIMER_WIDTH    : u32 = 64  , // タイマのbit幅
+    param NUMERATOR      : u32 = 10  , // クロック周期の分子
+    param DENOMINATOR    : u32 = 3   , // クロック周期の分母
+    param MAX_NODES      : u32 = 2   , // 最大ノード数
+    param OFFSET_WIDTH   : u32 = 24  , // オフセットbit幅
+    param OFFSET_LPF_GAIN: u32 = 4   , // オフセット更新LPFのゲイン (1/2^N)
+    param DEBUG          : bit = 1'b0,
+    param SIMULATION     : bit = 1'b0,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -54,7 +54,7 @@ module etherneco_synctimer_master #(
 
 
     // タイマ
-    localparam t_time_pkt: type = logic<8, 8>;
+    local t_time_pkt: type = logic<8, 8>;
 
     var adjust_ready: logic;
     inst u_synctimer_timer: synctimer_timer #(
@@ -77,10 +77,10 @@ module etherneco_synctimer_master #(
 
 
     // 応答時間計測
-    localparam t_offset: type = logic<OFFSET_WIDTH>;
+    local t_offset: type = logic<OFFSET_WIDTH>;
 
     function CycleToOffset (
-        cycle: input u32,
+        cycle: input u32     ,
     ) -> t_offset {
         return (NUMERATOR * cycle / DENOMINATOR) as t_offset;
     }
@@ -108,20 +108,20 @@ module etherneco_synctimer_master #(
     }
 
     // オフセット時間
-    localparam t_offset_pkt: type         = logic<4, 8>;
+    local t_offset_pkt: type         = logic<4, 8>;
     var offset_gain : t_offset     [MAX_NODES];
     var offset_time : t_offset     [MAX_NODES];
     var offset_pkt  : t_offset_pkt [MAX_NODES];
     always_comb {
-        for i: int in 0..MAX_NODES {
+        for i: i32 in 0..MAX_NODES {
             offset_pkt[i] = offset_time[i] as t_offset_pkt;
         }
     }
 
     // send command
-    localparam t_length   : type     = logic<16>;
-    localparam CMD_LENGTH : t_length = (1 + 8 + 4 * MAX_NODES - 1) as t_length;
-    localparam t_cmd_count: type     = logic<$clog2(CMD_LENGTH + 1)>;
+    local t_length   : type     = logic<16>;
+    local CMD_LENGTH : t_length = (1 + 8 + 4 * MAX_NODES - 1) as t_length;
+    local t_cmd_count: type     = logic<$clog2(CMD_LENGTH + 1)>;
 
     assign cmt_tx_length = CMD_LENGTH;
 
@@ -177,14 +177,14 @@ module etherneco_synctimer_master #(
             if cmd_count == 0 {
                 m_cmd_tx_data = cmd_cmd;
             }
-            for i: int in 0..8 {
-                if cmd_count as int == 1 + i {
+            for i: i32 in 0..8 {
+                if cmd_count == 1 + i {
                     m_cmd_tx_data = cmd_time[i];
                 }
             }
-            for i: int in 0..MAX_NODES {
-                for j: int in 0..4 {
-                    if cmd_count as int == 9 + i * 4 + j {
+            for i: i32 in 0..MAX_NODES {
+                for j: i32 in 0..4 {
+                    if cmd_count == 9 + i * 4 + j {
                         m_cmd_tx_data = offset_pkt[i][j];
                     }
                 }
@@ -205,7 +205,7 @@ module etherneco_synctimer_master #(
     var rx_offset_pkt: t_offset_pkt [MAX_NODES];
     var rx_offset    : t_offset     [MAX_NODES];
     always_comb {
-        for i: int in 0..MAX_NODES {
+        for i: i32 in 0..MAX_NODES {
             rx_offset[i] = rx_offset_pkt[i] as t_offset;
         }
     }
@@ -225,14 +225,14 @@ module etherneco_synctimer_master #(
                 rx_offset_pkt[i] = 'x;
             }
         } else {
-            for i: int in 0..MAX_NODES {
+            for i: i32 in 0..MAX_NODES {
                 offset_gain[i] = (offset_time[i] << (OFFSET_LPF_GAIN + 1)) - (offset_time[i] << 1);
             }
 
             if res_payload_valid {
-                for i: int in 0..MAX_NODES {
-                    for j: int in 0..4 {
-                        if res_payload_pos as int == 9 + i * 4 + j {
+                for i: i32 in 0..MAX_NODES {
+                    for j: i32 in 0..4 {
+                        if res_payload_pos == 9 + i * 4 + j {
                             rx_offset_pkt[i][j] = res_payload_data;
                         }
                     }
@@ -319,7 +319,7 @@ module etherneco_synctimer_master #(
 
     // monitor (debug)
     if SIMULATION :sim_monitor {
-        localparam t_monitor_time          : type           = logic<32>;
+        local t_monitor_time          : type           = logic<32>;
         var sim_monitor_cmd_tx_start: t_monitor_time;
         var sim_monitor_ret_rx_start: t_monitor_time;
         var sim_monitor_ret_rx_end  : t_monitor_time;

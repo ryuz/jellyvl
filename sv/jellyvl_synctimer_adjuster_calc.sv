@@ -1,18 +1,17 @@
 
 // 調整用時刻誤差計算
 module jellyvl_synctimer_adjuster_calc #(
-    parameter  int unsigned TIMER_WIDTH     = 32                   , // タイマのbit幅
-    parameter  int unsigned CYCLE_WIDTH     = 32                   , // 自クロックサイクルカウンタのbit数
-    parameter  int unsigned ERROR_WIDTH     = 32                   , // 誤差計算時のbit幅
-    parameter  int unsigned ERROR_Q         = 8                    , // 誤差計算時に追加する固定小数点数bit数
-    parameter  int unsigned ADJUST_WIDTH    = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
-    parameter  int unsigned ADJUST_Q        = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
-    parameter  int unsigned LPF_GAIN_CYCLE  = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter  int unsigned LPF_GAIN_PERIOD = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter  int unsigned LPF_GAIN_PHASE  = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
-    parameter  bit          DEBUG           = 1'b0                 ,
-    parameter  bit          SIMULATION      = 1'b0                 ,
-    localparam int unsigned CYCLE_Q         = LPF_GAIN_CYCLE   
+    parameter int unsigned TIMER_WIDTH     = 32                   , // タイマのbit幅
+    parameter int unsigned CYCLE_WIDTH     = 32                   , // 自クロックサイクルカウンタのbit数
+    parameter int unsigned ERROR_WIDTH     = 32                   , // 誤差計算時のbit幅
+    parameter int unsigned ERROR_Q         = 8                    , // 誤差計算時に追加する固定小数点数bit数
+    parameter int unsigned ADJUST_WIDTH    = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
+    parameter int unsigned ADJUST_Q        = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
+    parameter int unsigned LPF_GAIN_CYCLE  = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter int unsigned LPF_GAIN_PERIOD = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter int unsigned LPF_GAIN_PHASE  = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter bit          DEBUG           = 1'b0                 ,
+    parameter bit          SIMULATION      = 1'b0             
 ) (
     input logic reset,
     input logic clk  ,
@@ -30,6 +29,9 @@ module jellyvl_synctimer_adjuster_calc #(
     output logic        [CYCLE_WIDTH + CYCLE_Q-1:0] request_cycle,
     output logic                                    request_valid
 );
+
+    localparam int unsigned CYCLE_Q = LPF_GAIN_CYCLE;
+
 
     // type
     localparam type t_time    = logic [TIMER_WIDTH-1:0];
@@ -60,7 +62,7 @@ module jellyvl_synctimer_adjuster_calc #(
             end
         end
     end
-    assign count_valid = correct_valid & count_enable;
+    always_comb count_valid = correct_valid & count_enable;
 
 
     // １周期のサイクル数予測
@@ -75,8 +77,8 @@ module jellyvl_synctimer_adjuster_calc #(
     t_cycle cycle_estimate_t0      ; // １つ前の位相誤差の推定値
     logic   cycle_estimate_t0_en   ;
 
-    assign cycle_predict_t    = cycle_estimate_t0;
-    assign cycle_predict_t_en = cycle_estimate_t0_en;
+    always_comb cycle_predict_t    = cycle_estimate_t0;
+    always_comb cycle_predict_t_en = cycle_estimate_t0_en;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
@@ -156,14 +158,14 @@ module jellyvl_synctimer_adjuster_calc #(
 
     t_error limit_adjust_min;
     t_error limit_adjust_max;
-    assign limit_adjust_min = t_error'(param_adjust_min) <<< ERROR_Q;
-    assign limit_adjust_max = t_error'(param_adjust_max) <<< ERROR_Q;
+    always_comb limit_adjust_min = t_error'(param_adjust_min) <<< ERROR_Q;
+    always_comb limit_adjust_max = t_error'(param_adjust_max) <<< ERROR_Q;
 
-    assign error_predict_v    = error_estimate_v0; // 周期予測はひとつ前の推定値と同じ
-    assign error_predict_v_en = error_estimate_v0_en;
+    always_comb error_predict_v    = error_estimate_v0; // 周期予測はひとつ前の推定値と同じ
+    always_comb error_predict_v_en = error_estimate_v0_en;
 
     t_time current_error;
-    assign current_error = correct_time - current_time;
+    always_comb current_error = correct_time - current_time;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
@@ -335,9 +337,9 @@ module jellyvl_synctimer_adjuster_calc #(
         end
     end
 
-    assign request_value = error_adjust_value;
-    assign request_cycle = cycle_estimate_t;
-    assign request_valid = error_valid;
+    always_comb request_value = error_adjust_value;
+    always_comb request_cycle = cycle_estimate_t;
+    always_comb request_valid = error_valid;
 
     if (DEBUG) begin :debug_monitor
         (* mark_debug="true" *)
@@ -374,7 +376,7 @@ module jellyvl_synctimer_adjuster_calc #(
         t_cycle dbg_cycle_estimate_t0;
 
         logic signed [TIMER_WIDTH-1:0] dbg_diff_time_tmp;
-        assign dbg_diff_time_tmp = correct_time - current_time;
+        always_comb dbg_diff_time_tmp = correct_time - current_time;
 
         always_ff @ (posedge clk) begin
             dbg_counter <= dbg_counter + 1;
@@ -415,18 +417,17 @@ module jellyvl_synctimer_adjuster_calc #(
         real sim_monitor_error_estimate_v0   ; // １つ前の周期誤差の推定値
         real sim_monitor_error_adjust_value  ;
 
-        assign sim_monitor_cycle_estimate_t     = $itor(cycle_estimate_t) / $itor(2 ** CYCLE_Q);
-        assign sim_monitor_error_observe_x      = $itor(error_observe_x) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_error_predict_x      = $itor(error_predict_x) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_error_predict_x_gain = $itor(error_predict_x_gain) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_error_estimate_x     = $itor(error_estimate_x) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_error_estimate_x0    = $itor(error_estimate_x0) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_error_observe_v      = $itor(error_observe_v) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_error_predict_v      = $itor(error_predict_v) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_error_predict_v_gain = $itor(error_predict_v_gain) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_error_estimate_v     = $itor(error_estimate_v) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_error_estimate_v0    = $itor(error_estimate_v0) / $itor(2 ** ERROR_Q);
-        assign sim_monitor_error_adjust_value   = $itor(error_adjust_value) / $itor(2 ** ERROR_Q);
+        always_comb sim_monitor_cycle_estimate_t     = $itor(cycle_estimate_t) / $itor(2 ** CYCLE_Q);
+        always_comb sim_monitor_error_observe_x      = $itor(error_observe_x) / $itor(2 ** ERROR_Q);
+        always_comb sim_monitor_error_predict_x      = $itor(error_predict_x) / $itor(2 ** ERROR_Q);
+        always_comb sim_monitor_error_predict_x_gain = $itor(error_predict_x_gain) / $itor(2 ** ERROR_Q);
+        always_comb sim_monitor_error_estimate_x     = $itor(error_estimate_x) / $itor(2 ** ERROR_Q);
+        always_comb sim_monitor_error_estimate_x0    = $itor(error_estimate_x0) / $itor(2 ** ERROR_Q);
+        always_comb sim_monitor_error_observe_v      = $itor(error_observe_v) / $itor(2 ** ERROR_Q);
+        always_comb sim_monitor_error_predict_v      = $itor(error_predict_v) / $itor(2 ** ERROR_Q);
+        always_comb sim_monitor_error_predict_v_gain = $itor(error_predict_v_gain) / $itor(2 ** ERROR_Q);
+        always_comb sim_monitor_error_estimate_v     = $itor(error_estimate_v) / $itor(2 ** ERROR_Q);
+        always_comb sim_monitor_error_estimate_v0    = $itor(error_estimate_v0) / $itor(2 ** ERROR_Q);
+        always_comb sim_monitor_error_adjust_value   = $itor(error_adjust_value) / $itor(2 ** ERROR_Q);
     end
-
 endmodule

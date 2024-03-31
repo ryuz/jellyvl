@@ -1,19 +1,19 @@
 module etherneco_synctimer_slave_core #(
-    parameter TIMER_WIDTH    : u32 = 64                   , // タイマのbit幅
-    parameter NUMERATOR      : u32 = 10                   , // クロック周期の分子
-    parameter DENOMINATOR    : u32 = 3                    , // クロック周期の分母
-    parameter LIMIT_WIDTH    : u32 = TIMER_WIDTH          , // 補正限界のbit幅
-    parameter CALC_WIDTH     : u32 = 32                   , // 補正に使う範囲のタイマ幅
-    parameter CYCLE_WIDTH    : u32 = 32                   , // 自クロックサイクルカウンタのbit数
-    parameter ERROR_WIDTH    : u32 = 32                   , // 誤差計算時のbit幅
-    parameter ERROR_Q        : u32 = 8                    , // 誤差計算時に追加する固定小数点数bit数
-    parameter ADJUST_WIDTH   : u32 = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
-    parameter ADJUST_Q       : u32 = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
-    parameter LPF_GAIN_CYCLE : u32 = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter LPF_GAIN_PERIOD: u32 = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter LPF_GAIN_PHASE : u32 = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
-    parameter DEBUG          : bit = 1'b0                 ,
-    parameter SIMULATION     : bit = 1'b0                 ,
+    param TIMER_WIDTH    : u32 = 64                   , // タイマのbit幅
+    param NUMERATOR      : u32 = 10                   , // クロック周期の分子
+    param DENOMINATOR    : u32 = 3                    , // クロック周期の分母
+    param LIMIT_WIDTH    : u32 = TIMER_WIDTH          , // 補正限界のbit幅
+    param CALC_WIDTH     : u32 = 32                   , // 補正に使う範囲のタイマ幅
+    param CYCLE_WIDTH    : u32 = 32                   , // 自クロックサイクルカウンタのbit数
+    param ERROR_WIDTH    : u32 = 32                   , // 誤差計算時のbit幅
+    param ERROR_Q        : u32 = 8                    , // 誤差計算時に追加する固定小数点数bit数
+    param ADJUST_WIDTH   : u32 = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
+    param ADJUST_Q       : u32 = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
+    param LPF_GAIN_CYCLE : u32 = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    param LPF_GAIN_PERIOD: u32 = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    param LPF_GAIN_PHASE : u32 = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    param DEBUG          : bit = 1'b0                 ,
+    param SIMULATION     : bit = 1'b0                 ,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -68,9 +68,9 @@ module etherneco_synctimer_slave_core #(
     //  Timer
     // ---------------------------------
 
-    localparam t_time     : type = logic<8, 8>;
-    localparam t_adj_limit: type = logic<LIMIT_WIDTH>;
-    localparam t_adj_error: type = logic<ERROR_WIDTH>;
+    local t_time     : type = logic<8, 8>;
+    local t_adj_limit: type = logic<LIMIT_WIDTH>;
+    local t_adj_error: type = logic<ERROR_WIDTH>;
 
     var correct_time : logic<TIMER_WIDTH>;
     var correct_renew: logic             ;
@@ -139,7 +139,7 @@ module etherneco_synctimer_slave_core #(
 
 
     // 応答時間補正
-    localparam t_offset    : type     = logic<4, 8>;
+    local t_offset    : type     = logic<4, 8>;
     var start_time  : t_offset;
     var elapsed_time: t_offset;
 
@@ -158,7 +158,7 @@ module etherneco_synctimer_slave_core #(
     //  Upstream (receive request)
     // ---------------------------------
 
-    localparam t_position: type = logic<16>;
+    local t_position: type = logic<16>;
 
     var up_reset: logic;
     assign up_reset = reset || cmd_rx_error;
@@ -179,7 +179,7 @@ module etherneco_synctimer_slave_core #(
             cmd_rx_offset_pos = 'x;
             cmd_rx_offset_bit = 'x;
         } else {
-            cmd_rx_offset_pos = (9 + 4 * (cmd_rx_node as int - 1) - 1) as t_position;
+            cmd_rx_offset_pos = (9 + 4 * (cmd_rx_node - 1) - 1) as t_position;
 
             if s_cmd_valid {
                 cmd_rx_time_bit   <<= 1;
@@ -192,7 +192,7 @@ module etherneco_synctimer_slave_core #(
                 }
 
                 // time
-                for i: int in 0..8 {
+                for i: i32 in 0..8 {
                     if cmd_rx_time_bit[i] {
                         cmd_rx_time[i] = s_cmd_data;
                     }
@@ -202,7 +202,7 @@ module etherneco_synctimer_slave_core #(
                 if s_cmd_pos == cmd_rx_offset_pos {
                     cmd_rx_offset_bit = 4'b0001;
                 }
-                for i: int in 0..4 {
+                for i: i32 in 0..4 {
                     if cmd_rx_offset_bit[i] {
                         cmd_rx_offset[i] = s_cmd_data;
                     }
@@ -222,7 +222,7 @@ module etherneco_synctimer_slave_core #(
     var down_reset: logic;
     assign down_reset = reset || res_rx_error;
 
-    var res_pos: int;
+    var res_pos: i32;
 
     always_ff (clk, up_reset) {
         if_reset {
@@ -230,12 +230,12 @@ module etherneco_synctimer_slave_core #(
             m_res_data  = 'x;
             m_res_valid = 1'b0;
         } else {
-            res_pos     = 9 + (cmd_rx_node as int - 1) * 4;
+            res_pos     = 9 + (cmd_rx_node - 1) * 4;
             m_res_data  = 'x;
             m_res_valid = 1'b0;
             if s_res_valid {
-                for i: int in 0..4 {
-                    if s_res_pos as int == res_pos + i {
+                for i: i32 in 0..4 {
+                    if s_res_pos == res_pos + i {
                         m_res_data  = elapsed_time[i];
                         m_res_valid = 1'b1;
                     }
@@ -282,7 +282,7 @@ module etherneco_synctimer_slave_core #(
 
     // monitor (debug)
     if SIMULATION :sim_monitor {
-        localparam t_monitor_time      : type           = logic<32>;
+        local t_monitor_time      : type           = logic<32>;
         var monitor_cmd_rx_start: t_monitor_time;
         var monitor_cmd_rx_end  : t_monitor_time;
         var monitor_res_rx_start: t_monitor_time;

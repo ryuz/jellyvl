@@ -76,9 +76,9 @@ module jellyvl_etherneco_synctimer_slave_core #(
     logic                   correct_renew;
     logic                   correct_valid;
 
-    assign monitor_correct_time  = correct_time;
-    assign monitor_correct_renew = correct_renew;
-    assign monitor_correct_valid = correct_valid;
+    always_comb monitor_correct_time  = correct_time;
+    always_comb monitor_correct_renew = correct_renew;
+    always_comb monitor_correct_valid = correct_valid;
 
     jellyvl_synctimer_core #(
         .TIMER_WIDTH     (TIMER_WIDTH    ),
@@ -161,7 +161,7 @@ module jellyvl_etherneco_synctimer_slave_core #(
     localparam type t_position = logic [16-1:0];
 
     logic up_reset;
-    assign up_reset = reset || cmd_rx_error;
+    always_comb up_reset = reset || cmd_rx_error;
 
     logic      [8-1:0] cmd_rx_cmd       ;
     t_time             cmd_rx_time      ;
@@ -179,7 +179,7 @@ module jellyvl_etherneco_synctimer_slave_core #(
             cmd_rx_offset_pos <= 'x;
             cmd_rx_offset_bit <= 'x;
         end else begin
-            cmd_rx_offset_pos <= t_position'((9 + 4 * (int'(cmd_rx_node) - 1) - 1));
+            cmd_rx_offset_pos <= t_position'((9 + 4 * (cmd_rx_node - 1) - 1));
 
             if (s_cmd_valid) begin
                 cmd_rx_time_bit   <= cmd_rx_time_bit   << (1);
@@ -192,7 +192,7 @@ module jellyvl_etherneco_synctimer_slave_core #(
                 end
 
                 // time
-                for (int i = 0; i < 8; i++) begin
+                for (int signed i = 0; i < 8; i++) begin
                     if (cmd_rx_time_bit[i]) begin
                         cmd_rx_time[i] <= s_cmd_data;
                     end
@@ -202,7 +202,7 @@ module jellyvl_etherneco_synctimer_slave_core #(
                 if (s_cmd_pos == cmd_rx_offset_pos) begin
                     cmd_rx_offset_bit <= 4'b0001;
                 end
-                for (int i = 0; i < 4; i++) begin
+                for (int signed i = 0; i < 4; i++) begin
                     if (cmd_rx_offset_bit[i]) begin
                         cmd_rx_offset[i] <= s_cmd_data;
                     end
@@ -211,8 +211,8 @@ module jellyvl_etherneco_synctimer_slave_core #(
         end
     end
 
-    assign m_cmd_data  = 'x;
-    assign m_cmd_valid = 1'b0;
+    always_comb m_cmd_data  = 'x;
+    always_comb m_cmd_valid = 1'b0;
 
 
     // ---------------------------------
@@ -220,9 +220,9 @@ module jellyvl_etherneco_synctimer_slave_core #(
     // ---------------------------------
 
     logic down_reset;
-    assign down_reset = reset || res_rx_error;
+    always_comb down_reset = reset || res_rx_error;
 
-    int res_pos;
+    int signed res_pos;
 
     always_ff @ (posedge clk) begin
         if (up_reset) begin
@@ -230,12 +230,12 @@ module jellyvl_etherneco_synctimer_slave_core #(
             m_res_data  <= 'x;
             m_res_valid <= 1'b0;
         end else begin
-            res_pos     <= 9 + (int'(cmd_rx_node) - 1) * 4;
+            res_pos     <= 9 + (cmd_rx_node - 1) * 4;
             m_res_data  <= 'x;
             m_res_valid <= 1'b0;
             if (s_res_valid) begin
-                for (int i = 0; i < 4; i++) begin
-                    if (int'(s_res_pos) == res_pos + i) begin
+                for (int signed i = 0; i < 4; i++) begin
+                    if (s_res_pos == res_pos + i) begin
                         m_res_data  <= elapsed_time[i];
                         m_res_valid <= 1'b1;
                     end

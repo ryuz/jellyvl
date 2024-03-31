@@ -61,7 +61,7 @@ module jellyvl_etherneco_packet_rx #(
 
     STATE       state    ;
     t_state_bit state_bit;
-    assign state_bit = t_state_bit'(state);
+    always_comb state_bit = t_state_bit'(state);
 
     t_count          count      ;
     logic            preamble   ;
@@ -79,7 +79,7 @@ module jellyvl_etherneco_packet_rx #(
     logic         fw_valid     ;
 
     t_length payload_pos_next;
-    assign payload_pos_next = payload_pos + t_length'(1);
+    always_comb payload_pos_next = payload_pos + t_length'(1);
 
     always_ff @ (posedge clk) begin
         if (reset) begin
@@ -258,8 +258,8 @@ module jellyvl_etherneco_packet_rx #(
         end
     end
 
-    assign payload_data  = s_rx_data;
-    assign payload_valid = s_rx_valid & state_bit[BIT_PAYLOAD];
+    always_comb payload_data  = s_rx_data;
+    always_comb payload_valid = s_rx_valid & state_bit[BIT_PAYLOAD];
 
     jelly2_calc_crc #(
         .DATA_WIDTH (8           ),
@@ -317,7 +317,7 @@ module jellyvl_etherneco_packet_rx #(
 
 
     // replace & CRC
-    assign dly_data = ((replace_valid) ? (
+    always_comb dly_data = ((replace_valid) ? (
         replace_data
     ) : (
         dly_data_tmp
@@ -422,11 +422,11 @@ module jellyvl_etherneco_packet_rx #(
         end
     end
 
-    assign buf_ready = buf_enable;
+    always_comb buf_ready = buf_enable;
 
-    assign m_tx_first = buf_first;
-    assign m_tx_last  = buf_last;
-    assign m_tx_data  = buf_data;
-    assign m_tx_valid = buf_valid & buf_enable;
+    always_comb m_tx_first = buf_first;
+    always_comb m_tx_last  = buf_last;
+    always_comb m_tx_data  = buf_data;
+    always_comb m_tx_valid = buf_valid & buf_enable;
 
 endmodule

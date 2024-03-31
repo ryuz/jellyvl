@@ -1,8 +1,8 @@
 module etherneco_packet_rx #(
-    parameter DOWN_STREAM  : bit = 1'b0,
-    parameter REPLACE_DELAY: u32 = 0   ,
-    parameter BUFFERING    : u32 = 1   ,
-    parameter M_REGS       : bit = 1'b1,
+    param DOWN_STREAM  : bit = 1'b0,
+    param REPLACE_DELAY: u32 = 0   ,
+    param BUFFERING    : u32 = 1   ,
+    param M_REGS       : bit = 1'b1,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -35,15 +35,15 @@ module etherneco_packet_rx #(
     replace_valid: input logic   ,
 ) {
 
-    localparam BIT_PREAMBLE: u32 = 0;
-    localparam BIT_LENGTH  : u32 = 1;
-    localparam BIT_TYPE    : u32 = 2;
-    localparam BIT_NODE    : u32 = 3;
-    localparam BIT_PAYLOAD : u32 = 4;
-    localparam BIT_FCS     : u32 = 5;
-    localparam BIT_ERROR   : u32 = 6;
+    local BIT_PREAMBLE: u32 = 0;
+    local BIT_LENGTH  : u32 = 1;
+    local BIT_TYPE    : u32 = 2;
+    local BIT_NODE    : u32 = 3;
+    local BIT_PAYLOAD : u32 = 4;
+    local BIT_FCS     : u32 = 5;
+    local BIT_ERROR   : u32 = 6;
 
-    localparam t_state_bit: type = logic<7>;
+    local t_state_bit: type = logic<7>;
 
     enum STATE: logic<7> {
         IDLE = 7'b0000000,
@@ -56,8 +56,8 @@ module etherneco_packet_rx #(
         ERROR = 7'b1000000,
     }
 
-    localparam t_count : type = logic<4>;
-    localparam t_length: type = logic<16>;
+    local t_count : type = logic<4>;
+    local t_length: type = logic<16>;
 
     var state    : STATE      ;
     var state_bit: t_state_bit;
@@ -261,7 +261,7 @@ module etherneco_packet_rx #(
     assign payload_data  = s_rx_data;
     assign payload_valid = s_rx_valid & state_bit[BIT_PAYLOAD];
 
-    inst u_cacl_crc_rx: jelly2_calc_crc #(
+    inst u_cacl_crc_rx: $sv::jelly2_calc_crc #(
         DATA_WIDTH: 8           ,
         CRC_WIDTH : 32          ,
         POLY_REPS : 32'h04C11DB7,
@@ -295,7 +295,7 @@ module etherneco_packet_rx #(
     var dly_data      : logic<8>;
     var dly_valid     : logic   ;
 
-    localparam t_delay: type = logic<2 + 4 + 8>;
+    local t_delay: type = logic<2 + 4 + 8>;
 
     inst u_data_delay: data_delay #(
         t_data   : t_delay      ,
@@ -324,7 +324,7 @@ module etherneco_packet_rx #(
     };
 
     var tx_crc_value: logic<4, 8>;
-    inst u_cacl_crc_tx: jelly2_calc_crc #(
+    inst u_cacl_crc_tx: $sv::jelly2_calc_crc #(
         DATA_WIDTH: 8           ,
         CRC_WIDTH : 32          ,
         POLY_REPS : 32'h04C11DB7,
@@ -380,7 +380,7 @@ module etherneco_packet_rx #(
 
 
     // 1サイクル分貯める
-    localparam t_buf: type = logic<2 + 8>;
+    local t_buf: type = logic<2 + 8>;
 
     var buf_first: logic   ;
     var buf_last : logic   ;

@@ -1,18 +1,17 @@
 
 // 調整用時刻誤差計算
 module synctimer_adjuster_calc #(
-    parameter  TIMER_WIDTH    : u32 = 32                   , // タイマのbit幅
-    parameter  CYCLE_WIDTH    : u32 = 32                   , // 自クロックサイクルカウンタのbit数
-    parameter  ERROR_WIDTH    : u32 = 32                   , // 誤差計算時のbit幅
-    parameter  ERROR_Q        : u32 = 8                    , // 誤差計算時に追加する固定小数点数bit数
-    parameter  ADJUST_WIDTH   : u32 = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
-    parameter  ADJUST_Q       : u32 = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
-    parameter  LPF_GAIN_CYCLE : u32 = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter  LPF_GAIN_PERIOD: u32 = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter  LPF_GAIN_PHASE : u32 = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
-    parameter  DEBUG          : bit = 1'b0                 ,
-    parameter  SIMULATION     : bit = 1'b0                 ,
-    localparam CYCLE_Q        : u32 = LPF_GAIN_CYCLE       ,
+    param TIMER_WIDTH    : u32 = 32                   , // タイマのbit幅
+    param CYCLE_WIDTH    : u32 = 32                   , // 自クロックサイクルカウンタのbit数
+    param ERROR_WIDTH    : u32 = 32                   , // 誤差計算時のbit幅
+    param ERROR_Q        : u32 = 8                    , // 誤差計算時に追加する固定小数点数bit数
+    param ADJUST_WIDTH   : u32 = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
+    param ADJUST_Q       : u32 = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
+    param LPF_GAIN_CYCLE : u32 = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    param LPF_GAIN_PERIOD: u32 = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    param LPF_GAIN_PHASE : u32 = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    param DEBUG          : bit = 1'b0                 ,
+    param SIMULATION     : bit = 1'b0                 ,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -31,13 +30,16 @@ module synctimer_adjuster_calc #(
     request_valid: output logic                              ,
 ) {
 
+    local CYCLE_Q: u32 = LPF_GAIN_CYCLE;
+
+
     // type
-    localparam t_time   : type = logic<TIMER_WIDTH>;
-    localparam t_count  : type = logic<CYCLE_WIDTH>;
-    localparam t_cycle  : type = logic<CYCLE_WIDTH + CYCLE_Q>;
-    localparam t_error  : type = signed logic<ERROR_WIDTH + ERROR_Q>;
-    localparam t_error_u: type = logic<ERROR_WIDTH + ERROR_Q>;
-    localparam t_adjust : type = logic<ADJUST_WIDTH + ADJUST_Q>;
+    local t_time   : type = logic<TIMER_WIDTH>;
+    local t_count  : type = logic<CYCLE_WIDTH>;
+    local t_cycle  : type = logic<CYCLE_WIDTH + CYCLE_Q>;
+    local t_error  : type = signed logic<ERROR_WIDTH + ERROR_Q>;
+    local t_error_u: type = logic<ERROR_WIDTH + ERROR_Q>;
+    local t_adjust : type = logic<ADJUST_WIDTH + ADJUST_Q>;
 
 
     // -------------------------------------
@@ -404,18 +406,18 @@ module synctimer_adjuster_calc #(
     }
 
     if SIMULATION :sim_monitor {
-        var sim_monitor_cycle_estimate_t    : real;
-        var sim_monitor_error_observe_x     : real; // 位相誤差の観測値
-        var sim_monitor_error_predict_x     : real; // 位相誤差の予測値
-        var sim_monitor_error_predict_x_gain: real; // 位相誤差の予測値にゲインを掛けたもの
-        var sim_monitor_error_estimate_x    : real; // 位相誤差の推定値
-        var sim_monitor_error_estimate_x0   : real; // １つ前の位相誤差の推定値
-        var sim_monitor_error_observe_v     : real; // 周期誤差の観測値
-        var sim_monitor_error_predict_v     : real; // 位相誤差の予測値
-        var sim_monitor_error_predict_v_gain: real; // 周期誤差の予測値にゲインを掛けたもの
-        var sim_monitor_error_estimate_v    : real; // 周期誤差の推定値
-        var sim_monitor_error_estimate_v0   : real; // １つ前の周期誤差の推定値
-        var sim_monitor_error_adjust_value  : real;
+        var sim_monitor_cycle_estimate_t    : f64;
+        var sim_monitor_error_observe_x     : f64; // 位相誤差の観測値
+        var sim_monitor_error_predict_x     : f64; // 位相誤差の予測値
+        var sim_monitor_error_predict_x_gain: f64; // 位相誤差の予測値にゲインを掛けたもの
+        var sim_monitor_error_estimate_x    : f64; // 位相誤差の推定値
+        var sim_monitor_error_estimate_x0   : f64; // １つ前の位相誤差の推定値
+        var sim_monitor_error_observe_v     : f64; // 周期誤差の観測値
+        var sim_monitor_error_predict_v     : f64; // 位相誤差の予測値
+        var sim_monitor_error_predict_v_gain: f64; // 周期誤差の予測値にゲインを掛けたもの
+        var sim_monitor_error_estimate_v    : f64; // 周期誤差の推定値
+        var sim_monitor_error_estimate_v0   : f64; // １つ前の周期誤差の推定値
+        var sim_monitor_error_adjust_value  : f64;
 
         assign sim_monitor_cycle_estimate_t     = $itor(cycle_estimate_t) / $itor(2 ** CYCLE_Q);
         assign sim_monitor_error_observe_x      = $itor(error_observe_x) / $itor(2 ** ERROR_Q);
@@ -430,5 +432,4 @@ module synctimer_adjuster_calc #(
         assign sim_monitor_error_estimate_v0    = $itor(error_estimate_v0) / $itor(2 ** ERROR_Q);
         assign sim_monitor_error_adjust_value   = $itor(error_adjust_value) / $itor(2 ** ERROR_Q);
     }
-
 }

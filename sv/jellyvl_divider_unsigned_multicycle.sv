@@ -41,7 +41,7 @@ module jellyvl_divider_unsigned_multicycle #(
     localparam type t_shiftreg  = logic [DIVISOR_WIDTH + QUOTIENT_WIDTH-1:0];
 
     function automatic t_shiftreg MakeDivisor(
-        input t_divisor divisor
+        input t_divisor  divisor
     ) ;
         return t_shiftreg'(divisor) << (QUOTIENT_WIDTH - 1);
     endfunction
@@ -53,13 +53,13 @@ module jellyvl_divider_unsigned_multicycle #(
     t_shiftreg shiftreg_sub;
 
     logic sub_sign;
-    assign sub_sign = shiftreg_sub[DIVISOR_WIDTH + QUOTIENT_WIDTH - 1];
+    always_comb sub_sign = shiftreg_sub[DIVISOR_WIDTH + QUOTIENT_WIDTH - 1];
 
     t_shiftreg shiftreg_in  ;
     t_shiftreg shiftreg_cmp ;
     t_shiftreg shiftreg_next;
-    assign shiftreg_in   = t_shiftreg'(s_dividend);
-    assign shiftreg_cmp  = ((sub_sign) ? (
+    always_comb shiftreg_in   = t_shiftreg'(s_dividend);
+    always_comb shiftreg_cmp  = ((sub_sign) ? (
         shiftreg
     ) : (
         shiftreg_sub
@@ -100,7 +100,7 @@ module jellyvl_divider_unsigned_multicycle #(
         end
     end
 
-    assign s_ready     = ~busy;
-    assign m_quotient  = t_quotient'(shiftreg[0+:QUOTIENT_WIDTH]);
-    assign m_remainder = t_remainder'(shiftreg[QUOTIENT_WIDTH+:DIVISOR_WIDTH]);
+    always_comb s_ready     = ~busy;
+    always_comb m_quotient  = t_quotient'(shiftreg[0+:QUOTIENT_WIDTH]);
+    always_comb m_remainder = t_remainder'(shiftreg[QUOTIENT_WIDTH+:DIVISOR_WIDTH]);
 endmodule

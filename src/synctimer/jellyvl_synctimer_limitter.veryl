@@ -1,11 +1,11 @@
 
 // リミッター
 module synctimer_limitter #(
-    parameter TIMER_WIDTH  : u32 = 64         , // タイマのbit幅
-    parameter LIMIT_WIDTH  : u32 = TIMER_WIDTH, // 補正限界のbit幅
-    parameter INIT_OVERRIDE: bit = 1          , // 初回の補正
-    parameter DEBUG        : bit = 1'b0       ,
-    parameter SIMULATION   : bit = 1'b0       ,
+    param TIMER_WIDTH  : u32 = 64         , // タイマのbit幅
+    param LIMIT_WIDTH  : u32 = TIMER_WIDTH, // 補正限界のbit幅
+    param INIT_OVERRIDE: bit = 1          , // 初回の補正
+    param DEBUG        : bit = 1'b0       ,
+    param SIMULATION   : bit = 1'b0       ,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -22,7 +22,7 @@ module synctimer_limitter #(
     correct_valid: input logic             ,
 ) {
 
-    localparam t_diff: type = signed logic<TIMER_WIDTH>;
+    local t_diff: type = signed logic<TIMER_WIDTH>;
 
     var diff_time : t_diff;
     var diff_valid: logic ;

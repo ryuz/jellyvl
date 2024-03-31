@@ -1,14 +1,14 @@
 
 // 調整パルスドライブ
 module synctimer_adjuster_driver #(
-    parameter CYCLE_WIDTH : u32 = 32                   , // 自クロックサイクルカウンタのbit数
-    parameter CYCLE_Q     : u32 = 8                    , // 自クロックサイクルカウンタに追加する固定小数点数bit数
-    parameter ERROR_WIDTH : u32 = 32                   , // 誤差計算時のbit幅
-    parameter ERROR_Q     : u32 = 8                    , // 誤差計算時に追加する固定小数点数bit数
-    parameter ADJUST_WIDTH: u32 = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
-    parameter ADJUST_Q    : u32 = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
-    parameter DEBUG       : bit = 1'b0                 ,
-    parameter SIMULATION  : bit = 1'b0                 ,
+    param CYCLE_WIDTH : u32 = 32                   , // 自クロックサイクルカウンタのbit数
+    param CYCLE_Q     : u32 = 8                    , // 自クロックサイクルカウンタに追加する固定小数点数bit数
+    param ERROR_WIDTH : u32 = 32                   , // 誤差計算時のbit幅
+    param ERROR_Q     : u32 = 8                    , // 誤差計算時に追加する固定小数点数bit数
+    param ADJUST_WIDTH: u32 = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
+    param ADJUST_Q    : u32 = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
+    param DEBUG       : bit = 1'b0                 ,
+    param SIMULATION  : bit = 1'b0                 ,
 ) (
     reset: input logic,
     clk  : input logic,
@@ -24,11 +24,11 @@ module synctimer_adjuster_driver #(
 
 
     // type
-    localparam t_error  : type = signed logic<ERROR_WIDTH + ERROR_Q>;
-    localparam t_error_u: type = logic<ERROR_WIDTH + ERROR_Q>;
-    localparam t_count  : type = logic<CYCLE_WIDTH>;
-    localparam t_cycle  : type = logic<CYCLE_WIDTH + CYCLE_Q>;
-    localparam t_adjust : type = logic<ADJUST_WIDTH + ADJUST_Q>;
+    local t_error  : type = signed logic<ERROR_WIDTH + ERROR_Q>;
+    local t_error_u: type = logic<ERROR_WIDTH + ERROR_Q>;
+    local t_count  : type = logic<CYCLE_WIDTH>;
+    local t_cycle  : type = logic<CYCLE_WIDTH + CYCLE_Q>;
+    local t_adjust : type = logic<ADJUST_WIDTH + ADJUST_Q>;
 
 
     // -------------------------------------
@@ -68,10 +68,10 @@ module synctimer_adjuster_driver #(
 
 
     // divider
-    localparam t_cycle_q: type = logic<CYCLE_WIDTH + ERROR_Q + ADJUST_Q>;
+    local t_cycle_q: type = logic<CYCLE_WIDTH + ERROR_Q + ADJUST_Q>;
 
     function CycleToError (
-        cycle: input t_cycle,
+        cycle: input t_cycle  ,
     ) -> t_cycle_q {
         if ERROR_Q + ADJUST_Q >: CYCLE_Q {
             return cycle as t_cycle_q << (ERROR_Q + ADJUST_Q - CYCLE_Q);
@@ -107,7 +107,7 @@ module synctimer_adjuster_driver #(
 
 
     // adjust parameter
-    localparam ADJ_STEP: t_adjust = (1 << ADJUST_Q) as t_adjust;
+    local ADJ_STEP: t_adjust = (1 << ADJUST_Q) as t_adjust;
 
     var adj_param_zero  : logic   ;
     var adj_param_sign  : logic   ;
@@ -236,8 +236,8 @@ module synctimer_adjuster_driver #(
     }
 
     if SIMULATION :sim_monitor {
-        var sim_monitor_request_value: real;
-        var sim_monitor_request_cycle: real;
+        var sim_monitor_request_value: f64;
+        var sim_monitor_request_cycle: f64;
 
         assign sim_monitor_request_value = $itor(request_value) / $itor(2 ** ERROR_Q);
         assign sim_monitor_request_cycle = $itor(request_cycle) / $itor(2 ** CYCLE_Q);
