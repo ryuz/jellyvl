@@ -63,8 +63,8 @@ module jellyvl_etherneco_packet_tx #(
     // -------------------------
     //  core
     // -------------------------
-    typedef 
-    enum logic [8-1:0] {
+
+    typedef enum logic [8-1:0] {
         STATE_IDLE = 8'b00000000,
         STATE_PREAMBLE = 8'b00000001,
         STATE_LENGTH = 8'b00000010,
@@ -80,7 +80,7 @@ module jellyvl_etherneco_packet_tx #(
     localparam type t_count  = logic [3-1:0];
 
     logic cke;
-    assign cke = !m_tx_valid || m_tx_ready;
+    always_comb cke = !m_tx_valid || m_tx_ready;
 
 
     // ----------------------------
@@ -94,10 +94,10 @@ module jellyvl_etherneco_packet_tx #(
     logic    st0_last  ;
 
     t_count st0_count_next;
-    assign st0_count_next = st0_count + 1'b1;
+    always_comb st0_count_next = st0_count + 1'b1;
 
     t_length st0_length_next;
-    assign st0_length_next = st0_length - 1'b1;
+    always_comb st0_length_next = st0_length - 1'b1;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
@@ -112,101 +112,101 @@ module jellyvl_etherneco_packet_tx #(
             st0_count <= st0_count_next;
             case (st0_state)
                 STATE_IDLE: begin
-                    st0_count  <= 'x;
-                    st0_length <= 'x;
-                    st0_first  <= 1'bx;
-                    st0_last   <= 1'bx;
-                    if (tx_start) begin
-                        st0_state  <= STATE_PREAMBLE;
-                        st0_count  <= '0;
-                        st0_length <= param_length;
-                        st0_first  <= 1'b0;
-                        st0_last   <= 1'b0;
-                    end
-                end
+                                st0_count  <= 'x;
+                                st0_length <= 'x;
+                                st0_first  <= 1'bx;
+                                st0_last   <= 1'bx;
+                                if (tx_start) begin
+                                    st0_state  <= STATE_PREAMBLE;
+                                    st0_count  <= '0;
+                                    st0_length <= param_length;
+                                    st0_first  <= 1'b0;
+                                    st0_last   <= 1'b0;
+                                end
+                            end
 
                 STATE_PREAMBLE: begin
-                    st0_first <= 1'b0;
-                    st0_last  <= (st0_count == 3'd5);
-                    if (st0_last) begin
-                        st0_state <= STATE_LENGTH;
-                        st0_count <= '0;
-                        st0_first <= 1'b1;
-                        st0_last  <= 1'b0;
-                    end
-                end
+                                    st0_first <= 1'b0;
+                                    st0_last  <= (st0_count == 3'd5);
+                                    if (st0_last) begin
+                                        st0_state <= STATE_LENGTH;
+                                        st0_count <= '0;
+                                        st0_first <= 1'b1;
+                                        st0_last  <= 1'b0;
+                                    end
+                                end
 
                 STATE_LENGTH: begin
-                    st0_first <= 1'b0;
-                    st0_last  <= (st0_count[0] == 1'd0);
-                    if (st0_last) begin
-                        st0_state <= STATE_TYPE;
-                        st0_count <= '0;
-                        st0_first <= 1'b1;
-                        st0_last  <= 1'b1;
-                    end
-                end
+                                  st0_first <= 1'b0;
+                                  st0_last  <= (st0_count[0] == 1'd0);
+                                  if (st0_last) begin
+                                      st0_state <= STATE_TYPE;
+                                      st0_count <= '0;
+                                      st0_first <= 1'b1;
+                                      st0_last  <= 1'b1;
+                                  end
+                              end
 
                 STATE_TYPE: begin
-                    st0_first <= 1'b1;
-                    st0_last  <= 1'b1;
-                    st0_state <= STATE_NODE;
-                    st0_count <= '0;
-                end
+                                st0_first <= 1'b1;
+                                st0_last  <= 1'b1;
+                                st0_state <= STATE_NODE;
+                                st0_count <= '0;
+                            end
 
                 STATE_NODE: begin
-                    st0_state <= STATE_PAYLOAD;
-                    st0_count <= '0;
-                    st0_first <= 1'b1;
-                    st0_last  <= st0_length == 16'd0;
-                end
+                                st0_state <= STATE_PAYLOAD;
+                                st0_count <= '0;
+                                st0_first <= 1'b1;
+                                st0_last  <= st0_length == 16'd0;
+                            end
 
                 STATE_PAYLOAD: begin
-                    st0_length <= st0_length_next;
-                    st0_first  <= 1'b0;
-                    st0_last   <= (st0_length_next == 0);
-                    if (fifo_last) begin
-                        st0_state <= STATE_PADDING;
-                    end
-                    if (st0_last) begin
-                        st0_state  <= STATE_FCS;
-                        st0_count  <= '0;
-                        st0_length <= 'x;
-                        st0_first  <= 1'b1;
-                        st0_last   <= 1'b0;
-                    end
-                end
+                                   st0_length <= st0_length_next;
+                                   st0_first  <= 1'b0;
+                                   st0_last   <= (st0_length_next == 0);
+                                   if (fifo_last) begin
+                                       st0_state <= STATE_PADDING;
+                                   end
+                                   if (st0_last) begin
+                                       st0_state  <= STATE_FCS;
+                                       st0_count  <= '0;
+                                       st0_length <= 'x;
+                                       st0_first  <= 1'b1;
+                                       st0_last   <= 1'b0;
+                                   end
+                               end
 
                 STATE_PADDING: begin
-                    st0_length <= st0_length_next;
-                    st0_first  <= 1'b0;
-                    st0_last   <= (st0_length_next == 0);
-                    if (st0_last) begin
-                        st0_state  <= STATE_FCS;
-                        st0_count  <= '0;
-                        st0_length <= 'x;
-                        st0_first  <= 1'b1;
-                        st0_last   <= 1'b0;
-                    end
-                end
+                                   st0_length <= st0_length_next;
+                                   st0_first  <= 1'b0;
+                                   st0_last   <= (st0_length_next == 0);
+                                   if (st0_last) begin
+                                       st0_state  <= STATE_FCS;
+                                       st0_count  <= '0;
+                                       st0_length <= 'x;
+                                       st0_first  <= 1'b1;
+                                       st0_last   <= 1'b0;
+                                   end
+                               end
 
                 STATE_FCS: begin
-                    st0_length <= 'x;
-                    st0_first  <= 1'b0;
-                    st0_last   <= st0_count == 3'd2;
-                    if (st0_last) begin
-                        st0_state <= STATE_IDLE;
-                        st0_count <= 'x;
-                    end
-                end
+                               st0_length <= 'x;
+                               st0_first  <= 1'b0;
+                               st0_last   <= st0_count == 3'd2;
+                               if (st0_last) begin
+                                   st0_state <= STATE_IDLE;
+                                   st0_count <= 'x;
+                               end
+                           end
 
                 default: begin
-                    st0_state  <= STATE_IDLE;
-                    st0_count  <= 'x;
-                    st0_length <= 'x;
-                    st0_first  <= 1'bx;
-                    st0_last   <= 1'bx;
-                end
+                             st0_state  <= STATE_IDLE;
+                             st0_count  <= 'x;
+                             st0_length <= 'x;
+                             st0_first  <= 1'bx;
+                             st0_last   <= 1'bx;
+                         end
             endcase
 
             // エラーチェック
@@ -229,9 +229,9 @@ module jellyvl_etherneco_packet_tx #(
         end
     end
 
-    assign fifo_ready = cke && (st0_state == STATE_PAYLOAD);
+    always_comb fifo_ready = cke && (st0_state == STATE_PAYLOAD);
 
-    assign tx_start = start && (st0_state == STATE_IDLE);
+    always_comb tx_start = start && (st0_state == STATE_IDLE);
 
 
     // ----------------------------
@@ -259,53 +259,53 @@ module jellyvl_etherneco_packet_tx #(
 
             case (st0_state)
                 STATE_IDLE: begin
-                    // ここだけ追い越しして1cycle稼ぐ
-                    if (tx_start) begin
-                        st1_state <= STATE_PREAMBLE;
-                        st1_first <= 1'b1;
-                        st1_last  <= 1'b0;
-                        st1_data  <= 8'h55;
-                    end
-                end
+                                // ここだけ追い越しして1cycle稼ぐ
+                                            if (tx_start) begin
+                                    st1_state <= STATE_PREAMBLE;
+                                    st1_first <= 1'b1;
+                                    st1_last  <= 1'b0;
+                                    st1_data  <= 8'h55;
+                                end
+                            end
 
                 STATE_PREAMBLE: begin
-                    st1_data <= ((st0_last) ? (
-                        8'hd5
-                    ) : (
-                        8'h55
-                    ));
-                end
+                                    st1_data <= ((st0_last) ? (
+                                        8'hd5
+                                    ) : (
+                                        8'h55
+                                    ));
+                                end
 
                 STATE_LENGTH: begin
-                    st1_data <= ((st0_count[0]) ? (
-                        st0_length[15:8]
-                    ) : (
-                        st0_length[7:0]
-                    ));
-                end
+                                  st1_data <= ((st0_count[0]) ? (
+                                      st0_length[15:8]
+                                  ) : (
+                                      st0_length[7:0]
+                                  ));
+                              end
 
                 STATE_TYPE: begin
-                    st1_data <= param_type;
-                end
+                                st1_data <= param_type;
+                            end
 
                 STATE_NODE: begin
-                    st1_data <= param_node;
-                end
+                                st1_data <= param_node;
+                            end
 
                 STATE_PAYLOAD: begin
-                    st1_data <= fifo_data;
-                end
+                                   st1_data <= fifo_data;
+                               end
 
                 STATE_PADDING: begin
-                    st1_data <= 8'h00;
-                end
+                                   st1_data <= 8'h00;
+                               end
 
                 STATE_FCS: begin
-                    st1_data <= 'x;
-                end
+                               st1_data <= 'x;
+                           end
 
                 default: begin
-                end
+                         end
             endcase
 
             // キャンセル
@@ -373,10 +373,10 @@ module jellyvl_etherneco_packet_tx #(
         out_crc (crc_value)
     );
 
-    assign crc_update = !(st1_state == STATE_LENGTH && st1_first);
-    assign crc_data   = st1_data;
-    assign crc_valid  = (st1_state == STATE_LENGTH || st1_state == STATE_TYPE || st1_state == STATE_NODE || st1_state == STATE_PAYLOAD || st1_state == STATE_PADDING);
-    assign st2_crc    = crc_value;
+    always_comb crc_update = !(st1_state == STATE_LENGTH && st1_first);
+    always_comb crc_data   = st1_data;
+    always_comb crc_valid  = (st1_state == STATE_LENGTH || st1_state == STATE_TYPE || st1_state == STATE_NODE || st1_state == STATE_PAYLOAD || st1_state == STATE_PADDING);
+    always_comb st2_crc    = crc_value;
 
 
 
@@ -423,9 +423,9 @@ module jellyvl_etherneco_packet_tx #(
         end
     end
 
-    assign m_tx_first = st3_first;
-    assign m_tx_last  = st3_last;
-    assign m_tx_data  = st3_data[7:0];
-    assign m_tx_valid = st3_valid;
+    always_comb m_tx_first = st3_first;
+    always_comb m_tx_last  = st3_last;
+    always_comb m_tx_data  = st3_data[7:0];
+    always_comb m_tx_valid = st3_valid;
 
 endmodule

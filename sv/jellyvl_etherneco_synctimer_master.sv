@@ -123,7 +123,7 @@ module jellyvl_etherneco_synctimer_master #(
     localparam t_length CMD_LENGTH  = t_length'((1 + 8 + 4 * MAX_NODES - 1));
     localparam type     t_cmd_count = logic [$clog2(CMD_LENGTH + 1)-1:0];
 
-    assign cmt_tx_length = CMD_LENGTH;
+    always_comb cmt_tx_length = CMD_LENGTH;
 
     logic               cmd_busy ;
     t_cmd_count         cmd_count;
@@ -133,10 +133,10 @@ module jellyvl_etherneco_synctimer_master #(
     logic       [8-1:0] cmd_data ;
 
     t_cmd_count cmd_count_next;
-    assign cmd_count_next = cmd_count + t_cmd_count'(1);
+    always_comb cmd_count_next = cmd_count + t_cmd_count'(1);
 
     logic cmd_cke;
-    assign cmd_cke = !m_cmd_tx_valid || m_cmd_tx_ready;
+    always_comb cmd_cke = !m_cmd_tx_valid || m_cmd_tx_ready;
 
     always_ff @ (posedge clk) begin
         if (reset) begin
@@ -194,8 +194,8 @@ module jellyvl_etherneco_synctimer_master #(
 
 
     // return (bypass)
-    assign ret_replace_data  = 'x;
-    assign ret_replace_valid = 1'b0;
+    always_comb ret_replace_data  = 'x;
+    always_comb ret_replace_valid = 1'b0;
 
 
     // receive response

@@ -2,10 +2,10 @@
 
 // insert FF to stream pipelines
 module stream_ff #(
-    parameter t_data   : type   = logic<8>,
-    parameter S_REGS   : bit    = 1       ,
-    parameter M_REGS   : bit    = 1       ,
-    parameter INIT_DATA: t_data = 'x      ,
+    param t_data   : type   = logic<8>,
+    param S_REGS   : bit    = 1       ,
+    param M_REGS   : bit    = 1       ,
+    param INIT_DATA: t_data = 'x      ,
 ) (
     reset: input logic,
     clk  : input logic,
