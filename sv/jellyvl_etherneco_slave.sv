@@ -15,8 +15,8 @@ module jellyvl_etherneco_slave #(
     parameter bit          DEBUG                   = 1'b0                                 ,
     parameter bit          SIMULATION              = 1'b0                             
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     output logic [TIMER_WIDTH-1:0] current_time,
 
@@ -68,8 +68,8 @@ module jellyvl_etherneco_slave #(
         .DOWN_STREAM   (1'b0),
         .REPLACE_DELAY (0   )
     ) u_etherneco_packet_rx_outer (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         s_rx_first (s_up_rx_first),
         .s_rx_last  (s_up_rx_last ),
@@ -118,8 +118,8 @@ module jellyvl_etherneco_slave #(
         .DOWN_STREAM   (1'b1),
         .REPLACE_DELAY (0   )
     ) u_etherneco_packet_rx_inner (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         s_rx_first (s_down_rx_first),
         .s_rx_last  (s_down_rx_last ),
@@ -174,8 +174,8 @@ module jellyvl_etherneco_slave #(
         .DEBUG           (DEBUG                  ),
         .SIMULATION      (SIMULATION             )
     ) u_etherneco_synctimer_slave (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         adj_enable   (timsync_adj_enable),
         .current_time (current_time      ),

@@ -4,8 +4,8 @@ module jellyvl_etherneco_packet_rx #(
     parameter int unsigned BUFFERING     = 1   ,
     parameter bit          M_REGS        = 1'b1
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     input logic         s_rx_first,
     input logic         s_rx_last ,
@@ -82,7 +82,7 @@ module jellyvl_etherneco_packet_rx #(
     always_comb payload_pos_next = payload_pos + t_length'(1);
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             state         <= STATE_IDLE;
             count         <= 'x;
             preamble      <= 1'b0;
@@ -267,9 +267,9 @@ module jellyvl_etherneco_packet_rx #(
         .POLY_REPS  (32'h04C11DB7),
         .REVERSED   (0           )
     ) u_cacl_crc_rx (
-        .reset (reset),
-        .clk   (clk  ),
-        .cke   (1'b1 ),
+        .rst (rst ),
+        .clk (clk ),
+        .cke (1'b1),
         .
         in_update (crc_update),
         .in_data   (s_rx_data ),
@@ -302,9 +302,9 @@ module jellyvl_etherneco_packet_rx #(
         .LATENCY   (REPLACE_DELAY),
         .INIT_DATA ('x           )
     ) u_data_delay (
-        .reset (reset),
-        .clk   (clk  ),
-        .cke   (1'b1 ),
+        .rst (rst ),
+        .clk (clk ),
+        .cke (1'b1),
         .
         s_data  ({fw_count, fw_crc_update, fw_fcs, fw_first, fw_last, fw_data}),
         .s_valid (fw_valid                                                ),
@@ -330,9 +330,9 @@ module jellyvl_etherneco_packet_rx #(
         .POLY_REPS  (32'h04C11DB7),
         .REVERSED   (0           )
     ) u_cacl_crc_tx (
-        .reset (reset),
-        .clk   (clk  ),
-        .cke   (1'b1 ),
+        .rst (rst ),
+        .clk (clk ),
+        .cke (1'b1),
         .
         in_update (dly_crc_update      ),
         .in_data   (dly_data            ),
@@ -353,7 +353,7 @@ module jellyvl_etherneco_packet_rx #(
     logic         tx_ready;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             tx_count <= 'x;
             tx_fcs   <= 'x;
             tx_first <= 'x;
@@ -394,9 +394,9 @@ module jellyvl_etherneco_packet_rx #(
         .M_REGS    (M_REGS        ),
         .INIT_DATA ('x            )
     ) u_stream_ff (
-        .reset (reset),
-        .clk   (clk  ),
-        .cke   (1'b1 ),
+        .rst (rst ),
+        .clk (clk ),
+        .cke (1'b1),
         .
         s_data  ({tx_first, tx_last, tx_data}),
         .s_valid (tx_valid                  ),
@@ -410,7 +410,7 @@ module jellyvl_etherneco_packet_rx #(
     // 1サイクル溜める
     logic buf_enable;
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             buf_enable <= 1'b0;
         end else begin
             if (buf_valid) begin

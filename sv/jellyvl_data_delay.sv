@@ -3,9 +3,9 @@ module jellyvl_data_delay #(
     parameter int unsigned LATENCY   = 1            ,
     parameter t_data       INIT_DATA = 'x       
 ) (
-    input logic reset,
-    input logic clk  ,
-    input logic cke  ,
+    input logic rst,
+    input logic clk,
+    input logic cke,
 
     input  t_data s_data ,
     input  logic  s_valid,
@@ -27,7 +27,7 @@ module jellyvl_data_delay #(
         t_data buf_data  [0:LATENCY-1];
         logic  buf_valid [0:LATENCY-1];
         always_ff @ (posedge clk) begin
-            if (reset) begin
+            if (rst) begin
                 for (int unsigned i = 0; i < LATENCY; i++) begin
                     buf_data[i]  <= INIT_DATA;
                     buf_valid[i] <= 1'b0;

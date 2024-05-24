@@ -15,8 +15,8 @@ module etherneco_synctimer_slave_core #(
     param DEBUG          : bit = 1'b0                 ,
     param SIMULATION     : bit = 1'b0                 ,
 ) (
-    reset: input logic,
-    clk  : input logic,
+    rst: input reset,
+    clk: input clock,
 
     adj_enable: input logic,
 
@@ -97,8 +97,8 @@ module etherneco_synctimer_slave_core #(
         DEBUG          : DEBUG          ,
         SIMULATION     : SIMULATION     ,
     ) (
-        reset: reset,
-        clk  : clk  ,
+        rst: rst,
+        clk: clk,
 
         param_limit_min : param_limit_min ,
         param_limit_max : param_limit_max ,
@@ -124,8 +124,8 @@ module etherneco_synctimer_slave_core #(
         DENOMINATOR: DENOMINATOR,
         TIMER_WIDTH: TIMER_WIDTH,
     ) (
-        reset: reset,
-        clk  : clk  ,
+        rst: rst,
+        clk: clk,
 
         set_time : '0  ,
         set_valid: 1'b0,
@@ -160,8 +160,8 @@ module etherneco_synctimer_slave_core #(
 
     local t_position: type = logic<16>;
 
-    var up_reset: logic;
-    assign up_reset = reset || cmd_rx_error;
+    var up_reset: reset;
+    assign up_reset = rst || cmd_rx_error;
 
     var cmd_rx_cmd       : logic     <8>;
     var cmd_rx_time      : t_time       ;
@@ -219,8 +219,8 @@ module etherneco_synctimer_slave_core #(
     //  Downstream (send response)
     // ---------------------------------
 
-    var down_reset: logic;
-    assign down_reset = reset || res_rx_error;
+    var down_reset: reset;
+    assign down_reset = rst || res_rx_error;
 
     var res_pos: i32;
 

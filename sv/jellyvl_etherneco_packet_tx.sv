@@ -1,8 +1,8 @@
 module jellyvl_etherneco_packet_tx #(
     parameter int unsigned FIFO_PTR_WIDTH = 0
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     input logic start ,
     input logic cancel,
@@ -46,7 +46,7 @@ module jellyvl_etherneco_packet_tx #(
         .S_REGS     (0             ),
         .M_REGS     (0             )
     ) u_fifo_fwtf (
-        .reset        (reset                          ),
+        .rst          (rst                            ),
         .clk          (clk                            ),
         .cke          (1'b1                           ),
         .s_data       ({s_payload_last, s_payload_data}),
@@ -100,7 +100,7 @@ module jellyvl_etherneco_packet_tx #(
     always_comb st0_length_next = st0_length - 1'b1;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             st0_state  <= STATE_IDLE;
             st0_count  <= 'x;
             st0_length <= 'x;
@@ -244,7 +244,7 @@ module jellyvl_etherneco_packet_tx #(
     logic [8-1:0] st1_data ;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             st1_state <= STATE_IDLE;
             st1_first <= 'x;
             st1_last  <= 'x;
@@ -330,7 +330,7 @@ module jellyvl_etherneco_packet_tx #(
     logic [8-1:0]  st2_data ;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             st2_state <= STATE_IDLE;
             st2_first <= 1'bx;
             st2_last  <= 1'bx;
@@ -362,9 +362,9 @@ module jellyvl_etherneco_packet_tx #(
         .POLY_REPS  (32'h04C11DB7),
         .REVERSED   (0           )
     ) u_cacl_crc (
-        .reset (reset),
-        .clk   (clk  ),
-        .cke   (cke  ),
+        .rst (rst),
+        .clk (clk),
+        .cke (cke),
         .
         in_update (crc_update),
         .in_data   (crc_data  ),
@@ -391,7 +391,7 @@ module jellyvl_etherneco_packet_tx #(
     logic          st3_valid;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             st3_state <= STATE_IDLE;
             st3_first <= 1'bx;
             st3_last  <= 1'bx;

@@ -7,9 +7,9 @@ module stream_ff #(
     param M_REGS   : bit    = 1       ,
     param INIT_DATA: t_data = 'x      ,
 ) (
-    reset: input logic,
-    clk  : input logic,
-    cke  : input logic,
+    rst: input reset,
+    clk: input clock,
+    cke: input logic,
 
     s_data : input  t_data,
     s_valid: input  logic ,
@@ -54,7 +54,7 @@ module stream_ff #(
             }
         }
 
-        always_ff (clk, reset) {
+        always_ff (clk, rst) {
             if_reset {
                 reg_s_ready   = 1'b0;
                 reg_buf_valid = 1'b0;
@@ -88,7 +88,7 @@ module stream_ff #(
         var reg_m_data : t_data;
         var reg_m_valid: logic ;
 
-        always_ff (clk, reset) {
+        always_ff (clk, rst) {
             if_reset {
                 reg_m_data  = INIT_DATA;
                 reg_m_valid = 1'b0;

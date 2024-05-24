@@ -3,8 +3,8 @@ module jellyvl_periodic_trigger #(
     parameter int unsigned PERIOD_WIDTH   = 32  ,
     parameter bit          THRASHING_MASK = 1'b1
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     input logic                    enable,
     input logic [PERIOD_WIDTH-1:0] phase ,
@@ -24,7 +24,7 @@ module jellyvl_periodic_trigger #(
     always_comb elapsed_time = current_time[PERIOD_WIDTH - 1:0] - base_time;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             base_time     <= '0;
             trigger       <= 1'b0;
             trigger_valid <= 1'b0;

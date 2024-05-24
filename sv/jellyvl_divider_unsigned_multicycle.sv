@@ -7,9 +7,9 @@ module jellyvl_divider_unsigned_multicycle #(
     parameter int unsigned QUOTIENT_WIDTH  = DIVIDEND_WIDTH,
     parameter int unsigned REMAINDER_WIDTH = DIVISOR_WIDTH 
 ) (
-    input logic reset,
-    input logic clk  ,
-    input logic cke  ,
+    input logic rst,
+    input logic clk,
+    input logic cke,
 
     // input
     input  logic [DIVIDEND_WIDTH-1:0] s_dividend, // 被除数
@@ -70,7 +70,7 @@ module jellyvl_divider_unsigned_multicycle #(
     end
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             m_valid      <= 1'b0;
             busy         <= 1'b0;
             cycle        <= 'x;

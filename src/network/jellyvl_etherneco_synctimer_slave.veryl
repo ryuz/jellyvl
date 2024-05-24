@@ -32,8 +32,8 @@ module etherneco_synctimer_slave #(
     param DEBUG     : bit = 1'b0,
     param SIMULATION: bit = 1'b0,
 ) (
-    reset: input logic,
-    clk  : input logic,
+    rst: input reset,
+    clk: input clock,
 
     s_wb_adr_i: input  logic<WB_ADR_WIDTH>,
     s_wb_dat_o: output logic<WB_DAT_WIDTH>,
@@ -119,11 +119,17 @@ module etherneco_synctimer_slave #(
     var monitor_correct_renew: logic ;
     var monitor_correct_valid: logic ;
 
-    always_ff (clk, reset) {
+    always_ff (clk, rst) {
         if_reset {
             reg_recv_valid     = '0;
             reg_override_en    = '0;
             reg_override_value = '0;
+
+            reg_param_limit_min  = '0;
+            reg_param_limit_max  = '0;
+            reg_param_adjust_min = '0;
+            reg_param_adjust_max = '0;
+
         } else {
             if s_wb_stb_i && s_wb_we_i {
                 case s_wb_adr_i {
@@ -154,9 +160,6 @@ module etherneco_synctimer_slave #(
 
     // core
     inst u_etherneco_synctimer_slave_core: etherneco_synctimer_slave_core #(
-        WB_ADR_WIDTH   : WB_ADR_WIDTH   ,
-        WB_DAT_WIDTH   : WB_DAT_WIDTH   ,
-        WB_SEL_WIDTH   : WB_SEL_WIDTH   ,
         TIMER_WIDTH    : TIMER_WIDTH    ,
         NUMERATOR      : NUMERATOR      ,
         DENOMINATOR    : DENOMINATOR    ,
@@ -173,8 +176,8 @@ module etherneco_synctimer_slave #(
         DEBUG          : DEBUG          ,
         SIMULATION     : SIMULATION     ,
     ) (
-        reset: reset,
-        clk  : clk  ,
+        rst: rst,
+        clk: clk,
 
         adj_enable  : adj_enable  ,
         current_time: current_time,

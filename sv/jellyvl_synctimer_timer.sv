@@ -3,8 +3,8 @@ module jellyvl_synctimer_timer #(
     parameter int unsigned DENOMINATOR = 3 ,
     parameter int unsigned TIMER_WIDTH = 64
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     input logic [TIMER_WIDTH-1:0] set_time ,
     input logic                   set_valid,
@@ -32,7 +32,7 @@ module jellyvl_synctimer_timer #(
     if (COUNT_ERR == 0) begin :simple
         // 誤差なし
         always_ff @ (posedge clk) begin
-            if (reset) begin
+            if (rst) begin
                 add_value <= '0;
             end else begin
                 add_value <= t_count'(COUNT_NUM);
@@ -53,7 +53,7 @@ module jellyvl_synctimer_timer #(
         always_comb carry     = err_value >= t_count'((DENOMINATOR - COUNT_ERR));
 
         always_ff @ (posedge clk) begin
-            if (reset) begin
+            if (rst) begin
                 add_value <= '0;
                 err_value <= '0;
             end else begin
@@ -79,7 +79,7 @@ module jellyvl_synctimer_timer #(
 
     // timer counter
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             current_time <= '0;
         end else begin
             current_time <= current_time + t_time'(add_value);

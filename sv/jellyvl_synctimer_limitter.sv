@@ -7,8 +7,8 @@ module jellyvl_synctimer_limitter #(
     parameter bit          DEBUG         = 1'b0       ,
     parameter bit          SIMULATION    = 1'b0   
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     input logic signed [LIMIT_WIDTH-1:0] param_limit_min,
     input logic signed [LIMIT_WIDTH-1:0] param_limit_max,
@@ -27,7 +27,7 @@ module jellyvl_synctimer_limitter #(
     t_diff diff_time ;
     logic  diff_valid;
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             diff_time     <= 'x;
             diff_valid    <= 1'b0;
             request_renew <= INIT_OVERRIDE;

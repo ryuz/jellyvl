@@ -15,8 +15,8 @@ module jellyvl_etherneco_synctimer_slave_core #(
     parameter bit          DEBUG           = 1'b0                 ,
     parameter bit          SIMULATION      = 1'b0             
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     input logic adj_enable,
 
@@ -97,8 +97,8 @@ module jellyvl_etherneco_synctimer_slave_core #(
         .DEBUG           (DEBUG          ),
         .SIMULATION      (SIMULATION     )
     ) u_synctimer_core (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         param_limit_min  (param_limit_min ),
         .param_limit_max  (param_limit_max ),
@@ -124,8 +124,8 @@ module jellyvl_etherneco_synctimer_slave_core #(
         .DENOMINATOR (DENOMINATOR),
         .TIMER_WIDTH (TIMER_WIDTH)
     ) u_synctimer_timer_free_run (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         set_time  ('0  ),
         .set_valid (1'b0),
@@ -161,7 +161,7 @@ module jellyvl_etherneco_synctimer_slave_core #(
     localparam type t_position = logic [16-1:0];
 
     logic up_reset;
-    always_comb up_reset = reset || cmd_rx_error;
+    always_comb up_reset = rst || cmd_rx_error;
 
     logic      [8-1:0] cmd_rx_cmd       ;
     t_time             cmd_rx_time      ;
@@ -220,7 +220,7 @@ module jellyvl_etherneco_synctimer_slave_core #(
     // ---------------------------------
 
     logic down_reset;
-    always_comb down_reset = reset || res_rx_error;
+    always_comb down_reset = rst || res_rx_error;
 
     int signed res_pos;
 

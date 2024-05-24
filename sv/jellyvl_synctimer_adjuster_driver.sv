@@ -10,8 +10,8 @@ module jellyvl_synctimer_adjuster_driver #(
     parameter bit          DEBUG        = 1'b0                 ,
     parameter bit          SIMULATION   = 1'b0             
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     input logic signed [ERROR_WIDTH + ERROR_Q-1:0] request_value,
     input logic        [CYCLE_WIDTH + CYCLE_Q-1:0] request_cycle,
@@ -43,7 +43,7 @@ module jellyvl_synctimer_adjuster_driver #(
     logic     div_calc_valid ;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             div_calc_sign   <= 'x;
             div_calc_zero   <= 'x;
             div_calc_error  <= 'x;
@@ -90,9 +90,9 @@ module jellyvl_synctimer_adjuster_driver #(
         .DIVISOR_WIDTH  (ERROR_WIDTH + ERROR_Q           ),
         .QUOTIENT_WIDTH (ADJUST_WIDTH + ADJUST_Q         )
     ) i_divider_unsigned_multicycle (
-        .reset (reset),
-        .clk   (clk  ),
-        .cke   (1'b1 ),
+        .rst (rst ),
+        .clk (clk ),
+        .cke (1'b1),
         .
         s_dividend (CycleToError(div_calc_cycle)),
         .s_divisor  (div_calc_error              ),
@@ -116,7 +116,7 @@ module jellyvl_synctimer_adjuster_driver #(
     logic    adj_param_ready ;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             adj_param_zero   <= 1'b1;
             adj_param_sign   <= 1'bx;
             adj_param_period <= 'x;
@@ -151,7 +151,7 @@ module jellyvl_synctimer_adjuster_driver #(
     logic    adj_calc_valid ;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             adj_calc_zero   <= 1'b1;
             adj_calc_sign   <= 'x;
             adj_calc_period <= '0;
@@ -185,7 +185,7 @@ module jellyvl_synctimer_adjuster_driver #(
 
     // output
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             adjust_sign  <= 'x;
             adjust_valid <= 1'b0;
         end else begin
@@ -203,9 +203,11 @@ module jellyvl_synctimer_adjuster_driver #(
     if (DEBUG) begin :debug_monitor
         (* mark_debug="true" *)
         logic [32-1:0] dbg_counter;
-        (* mark_debug="true" *)
+        (* 
+        mark_debug="true" *)
         logic signed [16-1:0] dbg_adj_sum;
-        (* mark_debug="true" *)
+        (* 
+        mark_debug="true" *)
         logic dbg_adjust_sign;
         (* mark_debug="true" *)
         logic dbg_adjust_valid;

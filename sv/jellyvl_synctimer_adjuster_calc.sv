@@ -1,20 +1,21 @@
 
 // 調整用時刻誤差計算
 module jellyvl_synctimer_adjuster_calc #(
-    parameter int unsigned TIMER_WIDTH     = 32                   , // タイマのbit幅
-    parameter int unsigned CYCLE_WIDTH     = 32                   , // 自クロックサイクルカウンタのbit数
-    parameter int unsigned ERROR_WIDTH     = 32                   , // 誤差計算時のbit幅
-    parameter int unsigned ERROR_Q         = 8                    , // 誤差計算時に追加する固定小数点数bit数
-    parameter int unsigned ADJUST_WIDTH    = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
-    parameter int unsigned ADJUST_Q        = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
-    parameter int unsigned LPF_GAIN_CYCLE  = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
-    parameter int unsigned LPF_GAIN_PERIOD = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
-    parameter int unsigned LPF_GAIN_PHASE  = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
-    parameter bit          DEBUG           = 1'b0                 ,
-    parameter bit          SIMULATION      = 1'b0             
+    parameter  int unsigned TIMER_WIDTH     = 32                   , // タイマのbit幅
+    parameter  int unsigned CYCLE_WIDTH     = 32                   , // 自クロックサイクルカウンタのbit数
+    parameter  int unsigned ERROR_WIDTH     = 32                   , // 誤差計算時のbit幅
+    parameter  int unsigned ERROR_Q         = 8                    , // 誤差計算時に追加する固定小数点数bit数
+    parameter  int unsigned ADJUST_WIDTH    = CYCLE_WIDTH + ERROR_Q, // 補正周期のbit幅
+    parameter  int unsigned ADJUST_Q        = ERROR_Q              , // 補正周期に追加する固定小数点数bit数
+    parameter  int unsigned LPF_GAIN_CYCLE  = 6                    , // 自クロックサイクルカウントLPFの更新ゲイン(1/2^N)
+    parameter  int unsigned LPF_GAIN_PERIOD = 6                    , // 周期補正のLPFの更新ゲイン(1/2^N)
+    parameter  int unsigned LPF_GAIN_PHASE  = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
+    parameter  bit          DEBUG           = 1'b0                 ,
+    parameter  bit          SIMULATION      = 1'b0                 ,
+    localparam int unsigned CYCLE_Q         = LPF_GAIN_CYCLE   
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     input logic signed [ERROR_WIDTH-1:0] param_adjust_min,
     input logic signed [ERROR_WIDTH-1:0] param_adjust_max,
@@ -30,7 +31,6 @@ module jellyvl_synctimer_adjuster_calc #(
     output logic                                    request_valid
 );
 
-    localparam int unsigned CYCLE_Q = LPF_GAIN_CYCLE;
 
 
     // type
@@ -51,7 +51,7 @@ module jellyvl_synctimer_adjuster_calc #(
     logic   count_enable;
     logic   count_valid ;
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             count_cycle  <= 'x;
             count_enable <= 1'b0;
         end else begin
@@ -81,7 +81,7 @@ module jellyvl_synctimer_adjuster_calc #(
     always_comb cycle_predict_t_en = cycle_estimate_t0_en;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             cycle_observe_t         <= 'x;
             cycle_observe_t_en      <= 1'b0;
             cycle_predict_t_gain    <= 'x;
@@ -168,7 +168,7 @@ module jellyvl_synctimer_adjuster_calc #(
     always_comb current_error = correct_time - current_time;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             error_time_diff     <= 'x;
             error_time_diff_en  <= 1'b0;
             error_time_diff0    <= 'x;
@@ -344,7 +344,8 @@ module jellyvl_synctimer_adjuster_calc #(
     if (DEBUG) begin :debug_monitor
         (* mark_debug="true" *)
         logic [32-1:0] dbg_counter;
-        (* mark_debug="true" *)
+        (* 
+        mark_debug="true" *)
         logic [TIMER_WIDTH-1:0] dbg_current_time;
         (* mark_debug="true" *)
         logic dbg_correct_renew;
@@ -366,7 +367,8 @@ module jellyvl_synctimer_adjuster_calc #(
         t_error dbg_error_estimate_x0;
         (* mark_debug="true" *)
         t_error dbg_error_estimate_v0;
-        (* mark_debug="true" *)
+        (* 
+        mark_debug="true" *)
         t_cycle dbg_cycle_observe_t;
         (* mark_debug="true" *)
         t_cycle dbg_cycle_predict_t;

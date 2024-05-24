@@ -13,8 +13,8 @@ module jellyvl_synctimer_adjuster #(
     parameter bit          DEBUG           = 1'b0                 ,
     parameter bit          SIMULATION      = 1'b0             
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     input logic signed [ERROR_WIDTH-1:0] param_adjust_min,
     input logic signed [ERROR_WIDTH-1:0] param_adjust_max,
@@ -52,7 +52,7 @@ module jellyvl_synctimer_adjuster #(
         .DEBUG           (DEBUG          ),
         .SIMULATION      (SIMULATION     )
     ) u_synctimer_adjuster_calc (
-        .reset            (reset           ),
+        .rst              (rst             ),
         .clk              (clk             ),
         .param_adjust_min (param_adjust_min),
         .param_adjust_max (param_adjust_max),
@@ -77,7 +77,7 @@ module jellyvl_synctimer_adjuster #(
         .DEBUG        (DEBUG       ),
         .SIMULATION   (SIMULATION  )
     ) u_synctimer_adjuster_driver (
-        .reset         (reset        ),
+        .rst           (rst          ),
         .clk           (clk          ),
         .request_value (request_value),
         .request_cycle (request_cycle),

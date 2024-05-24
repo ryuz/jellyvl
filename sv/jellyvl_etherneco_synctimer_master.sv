@@ -8,8 +8,8 @@ module jellyvl_etherneco_synctimer_master #(
     parameter bit          DEBUG           = 1'b0,
     parameter bit          SIMULATION      = 1'b0
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     output logic [TIMER_WIDTH-1:0] current_time,
 
@@ -62,8 +62,8 @@ module jellyvl_etherneco_synctimer_master #(
         .DENOMINATOR (DENOMINATOR),
         .TIMER_WIDTH (TIMER_WIDTH)
     ) u_synctimer_timer (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         set_time  (set_time ),
         .set_valid (set_valid),
@@ -139,7 +139,7 @@ module jellyvl_etherneco_synctimer_master #(
     always_comb cmd_cke = !m_cmd_tx_valid || m_cmd_tx_ready;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             cmd_busy  <= 1'b0;
             cmd_count <= 'x;
             cmd_cmd   <= 'x;
@@ -167,7 +167,7 @@ module jellyvl_etherneco_synctimer_master #(
     end
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             m_cmd_tx_last  <= 'x;
             m_cmd_tx_data  <= 'x;
             m_cmd_tx_valid <= 1'b0;
@@ -214,7 +214,7 @@ module jellyvl_etherneco_synctimer_master #(
     logic [3-1:0] calc_wait   ;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             offset_first <= 1'b1;
             calc_wait    <= '0;
             for (int unsigned i = 0; i < MAX_NODES; i++) begin
@@ -270,7 +270,8 @@ module jellyvl_etherneco_synctimer_master #(
         t_offset dbg_rx_offset0;
         (* mark_debug="true" *)
         t_offset dbg_rx_offset1;
-        (* mark_debug="true" *)
+        (* 
+        mark_debug="true" *)
         logic dbg_res_payload_first;
         (* mark_debug="true" *)
         logic dbg_res_payload_last;
@@ -280,7 +281,8 @@ module jellyvl_etherneco_synctimer_master #(
         logic [8-1:0] dbg_res_payload_data;
         (* mark_debug="true" *)
         logic dbg_res_payload_valid;
-        (* mark_debug="true" *)
+        (* 
+        mark_debug="true" *)
         t_offset dbg_delay_time0;
         (* mark_debug="true" *)
         t_offset dbg_delay_time1;
@@ -288,7 +290,8 @@ module jellyvl_etherneco_synctimer_master #(
         t_offset dbg_measured_time0;
         (* mark_debug="true" *)
         t_offset dbg_measured_time1;
-        (* mark_debug="true" *)
+        (* 
+        mark_debug="true" *)
         t_offset dbg_response_time;
 
         always_ff @ (posedge clk) begin

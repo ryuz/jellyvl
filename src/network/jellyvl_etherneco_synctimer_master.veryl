@@ -8,8 +8,8 @@ module etherneco_synctimer_master #(
     param DEBUG          : bit = 1'b0,
     param SIMULATION     : bit = 1'b0,
 ) (
-    reset: input logic,
-    clk  : input logic,
+    rst: input reset,
+    clk: input clock,
 
     current_time: output logic<TIMER_WIDTH>,
 
@@ -62,8 +62,8 @@ module etherneco_synctimer_master #(
         DENOMINATOR: DENOMINATOR,
         TIMER_WIDTH: TIMER_WIDTH,
     ) (
-        reset: reset,
-        clk  : clk  ,
+        rst: rst,
+        clk: clk,
 
         set_time : set_time ,
         set_valid: set_valid,
@@ -138,7 +138,7 @@ module etherneco_synctimer_master #(
     var cmd_cke: logic;
     assign cmd_cke = !m_cmd_tx_valid || m_cmd_tx_ready;
 
-    always_ff (clk, reset) {
+    always_ff (clk, rst) {
         if_reset {
             cmd_busy  = 1'b0;
             cmd_count = 'x;
@@ -166,7 +166,7 @@ module etherneco_synctimer_master #(
         }
     }
 
-    always_ff (clk, reset) {
+    always_ff (clk, rst) {
         if_reset {
             m_cmd_tx_last  = 'x;
             m_cmd_tx_data  = 'x;
@@ -213,7 +213,7 @@ module etherneco_synctimer_master #(
     var offset_first: logic   ;
     var calc_wait   : logic<3>;
 
-    always_ff (clk, reset) {
+    always_ff (clk, rst) {
         if_reset {
             offset_first = 1'b1;
             calc_wait    = '0;

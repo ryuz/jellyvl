@@ -3,8 +3,8 @@ module periodic_trigger #(
     param PERIOD_WIDTH  : u32 = 32  ,
     param THRASHING_MASK: bit = 1'b1,
 ) (
-    reset: input logic,
-    clk  : input logic,
+    rst: input reset,
+    clk: input clock,
 
     enable: input logic              ,
     phase : input logic<PERIOD_WIDTH>,
@@ -23,7 +23,7 @@ module periodic_trigger #(
     var elapsed_time: t_period;
     assign elapsed_time = current_time[PERIOD_WIDTH - 1:0] - base_time;
 
-    always_ff (clk, reset) {
+    always_ff (clk, rst) {
         if_reset {
             base_time     = '0;
             trigger       = 1'b0;

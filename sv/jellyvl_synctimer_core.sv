@@ -15,8 +15,8 @@ module jellyvl_synctimer_core #(
     parameter bit          DEBUG           = 1'b0                 ,
     parameter bit          SIMULATION      = 1'b0             
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     input logic signed [LIMIT_WIDTH-1:0] param_limit_min ,
     input logic signed [LIMIT_WIDTH-1:0] param_limit_max ,
@@ -46,8 +46,8 @@ module jellyvl_synctimer_core #(
         .DENOMINATOR (DENOMINATOR),
         .TIMER_WIDTH (TIMER_WIDTH)
     ) u_synctimer_timer (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         set_time  (timer_set_time ),
         .set_valid (timer_set_valid),
@@ -68,8 +68,8 @@ module jellyvl_synctimer_core #(
         .DEBUG         (DEBUG      ),
         .SIMULATION    (SIMULATION )
     ) u_synctimer_limitter (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         param_limit_min (param_limit_min),
         .param_limit_max (param_limit_max),
@@ -100,8 +100,8 @@ module jellyvl_synctimer_core #(
         DEBUG      (DEBUG     ),
         .SIMULATION (SIMULATION)
     ) u_synctimer_adjuster (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         current_time (current_time[CALC_WIDTH - 1:0]),
         .

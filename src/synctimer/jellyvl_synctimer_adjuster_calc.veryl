@@ -12,9 +12,10 @@ module synctimer_adjuster_calc #(
     param LPF_GAIN_PHASE : u32 = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
     param DEBUG          : bit = 1'b0                 ,
     param SIMULATION     : bit = 1'b0                 ,
+    local CYCLE_Q        : u32 = LPF_GAIN_CYCLE       ,
 ) (
-    reset: input logic,
-    clk  : input logic,
+    rst: input reset,
+    clk: input clock,
 
     param_adjust_min: input signed logic<ERROR_WIDTH>,
     param_adjust_max: input signed logic<ERROR_WIDTH>,
@@ -30,7 +31,6 @@ module synctimer_adjuster_calc #(
     request_valid: output logic                              ,
 ) {
 
-    local CYCLE_Q: u32 = LPF_GAIN_CYCLE;
 
 
     // type
@@ -50,7 +50,7 @@ module synctimer_adjuster_calc #(
     var count_cycle : t_count;
     var count_enable: logic  ;
     var count_valid : logic  ;
-    always_ff (clk, reset) {
+    always_ff (clk, rst) {
         if_reset {
             count_cycle  = 'x;
             count_enable = 1'b0;
@@ -80,7 +80,7 @@ module synctimer_adjuster_calc #(
     assign cycle_predict_t    = cycle_estimate_t0;
     assign cycle_predict_t_en = cycle_estimate_t0_en;
 
-    always_ff (clk, reset) {
+    always_ff (clk, rst) {
         if_reset {
             cycle_observe_t         = 'x;
             cycle_observe_t_en      = 1'b0;
@@ -167,7 +167,7 @@ module synctimer_adjuster_calc #(
     var current_error: t_time;
     assign current_error = correct_time - current_time;
 
-    always_ff (clk, reset) {
+    always_ff (clk, rst) {
         if_reset {
             error_time_diff     = 'x;
             error_time_diff_en  = 1'b0;

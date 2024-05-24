@@ -32,8 +32,8 @@ module jellyvl_etherneco_synctimer_slave #(
     parameter bit DEBUG      = 1'b0,
     parameter bit SIMULATION = 1'b0
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     input  logic [WB_ADR_WIDTH-1:0] s_wb_adr_i,
     output logic [WB_DAT_WIDTH-1:0] s_wb_dat_o,
@@ -121,10 +121,16 @@ module jellyvl_etherneco_synctimer_slave #(
     logic  monitor_correct_valid;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             reg_recv_valid     <= '0;
             reg_override_en    <= '0;
             reg_override_value <= '0;
+
+            reg_param_limit_min  <= '0;
+            reg_param_limit_max  <= '0;
+            reg_param_adjust_min <= '0;
+            reg_param_adjust_max <= '0;
+
         end else begin
             if (s_wb_stb_i && s_wb_we_i) begin
                 case (s_wb_adr_i)
@@ -157,9 +163,6 @@ module jellyvl_etherneco_synctimer_slave #(
 
     // core
     jellyvl_etherneco_synctimer_slave_core #(
-        .WB_ADR_WIDTH    (WB_ADR_WIDTH   ),
-        .WB_DAT_WIDTH    (WB_DAT_WIDTH   ),
-        .WB_SEL_WIDTH    (WB_SEL_WIDTH   ),
         .TIMER_WIDTH     (TIMER_WIDTH    ),
         .NUMERATOR       (NUMERATOR      ),
         .DENOMINATOR     (DENOMINATOR    ),
@@ -176,8 +179,8 @@ module jellyvl_etherneco_synctimer_slave #(
         .DEBUG           (DEBUG          ),
         .SIMULATION      (SIMULATION     )
     ) u_etherneco_synctimer_slave_core (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         adj_enable   (adj_enable  ),
         .current_time (current_time),

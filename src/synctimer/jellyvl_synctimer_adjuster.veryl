@@ -13,8 +13,8 @@ module synctimer_adjuster #(
     param DEBUG          : bit = 1'b0                 ,
     param SIMULATION     : bit = 1'b0                 ,
 ) (
-    reset: input logic,
-    clk  : input logic,
+    rst: input reset,
+    clk: input clock,
 
     param_adjust_min: input signed logic<ERROR_WIDTH>,
     param_adjust_max: input signed logic<ERROR_WIDTH>,
@@ -52,7 +52,7 @@ module synctimer_adjuster #(
         DEBUG          : DEBUG          ,
         SIMULATION     : SIMULATION     ,
     ) (
-        reset           : reset           ,
+        rst             : rst             ,
         clk             : clk             ,
         param_adjust_min: param_adjust_min,
         param_adjust_max: param_adjust_max,
@@ -77,7 +77,7 @@ module synctimer_adjuster #(
         DEBUG       : DEBUG       ,
         SIMULATION  : SIMULATION  ,
     ) (
-        reset        : reset        ,
+        rst          : rst          ,
         clk          : clk          ,
         request_value: request_value,
         request_cycle: request_cycle,

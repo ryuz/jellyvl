@@ -15,8 +15,8 @@ module synctimer_core #(
     param DEBUG          : bit = 1'b0                 ,
     param SIMULATION     : bit = 1'b0                 ,
 ) (
-    reset: input logic,
-    clk  : input logic,
+    rst: input reset,
+    clk: input clock,
 
     param_limit_min : input signed logic<LIMIT_WIDTH>,
     param_limit_max : input signed logic<LIMIT_WIDTH>,
@@ -46,8 +46,8 @@ module synctimer_core #(
         DENOMINATOR: DENOMINATOR,
         TIMER_WIDTH: TIMER_WIDTH,
     ) (
-        reset: reset,
-        clk  : clk  ,
+        rst: rst,
+        clk: clk,
 
         set_time : timer_set_time ,
         set_valid: timer_set_valid,
@@ -68,8 +68,8 @@ module synctimer_core #(
         DEBUG        : DEBUG      ,
         SIMULATION   : SIMULATION ,
     ) (
-        reset: reset,
-        clk  : clk  ,
+        rst: rst,
+        clk: clk,
 
         param_limit_min: param_limit_min,
         param_limit_max: param_limit_max,
@@ -100,8 +100,8 @@ module synctimer_core #(
         DEBUG     : DEBUG     ,
         SIMULATION: SIMULATION,
     ) (
-        reset: reset,
-        clk  : clk  ,
+        rst: rst,
+        clk: clk,
 
         current_time: current_time[CALC_WIDTH - 1:0],
 

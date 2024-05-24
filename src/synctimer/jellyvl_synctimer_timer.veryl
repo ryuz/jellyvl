@@ -3,8 +3,8 @@ module synctimer_timer #(
     param DENOMINATOR: u32 = 3 ,
     param TIMER_WIDTH: u32 = 64,
 ) (
-    reset: input logic,
-    clk  : input logic,
+    rst: input reset,
+    clk: input clock,
 
     set_time : input logic<TIMER_WIDTH>,
     set_valid: input logic             ,
@@ -31,7 +31,7 @@ module synctimer_timer #(
 
     if COUNT_ERR == 0 :simple {
         // 誤差なし
-        always_ff (clk, reset) {
+        always_ff (clk, rst) {
             if_reset {
                 add_value = '0;
             } else {
@@ -52,7 +52,7 @@ module synctimer_timer #(
         var carry    : logic  ;
         assign carry     = err_value >= (DENOMINATOR - COUNT_ERR) as t_count;
 
-        always_ff (clk, reset) {
+        always_ff (clk, rst) {
             if_reset {
                 add_value = '0;
                 err_value = '0;
@@ -78,7 +78,7 @@ module synctimer_timer #(
     }
 
     // timer counter
-    always_ff (clk, reset) {
+    always_ff (clk, rst) {
         if_reset {
             current_time = '0;
         } else {

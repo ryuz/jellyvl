@@ -7,9 +7,9 @@ module jellyvl_stream_ff #(
     parameter bit    M_REGS    = 1            ,
     parameter t_data INIT_DATA = 'x       
 ) (
-    input logic reset,
-    input logic clk  ,
-    input logic cke  ,
+    input logic rst,
+    input logic clk,
+    input logic cke,
 
     input  t_data s_data ,
     input  logic  s_valid,
@@ -55,7 +55,7 @@ module jellyvl_stream_ff #(
         end
 
         always_ff @ (posedge clk) begin
-            if (reset) begin
+            if (rst) begin
                 reg_s_ready   <= 1'b0;
                 reg_buf_valid <= 1'b0;
                 reg_buf_data  <= INIT_DATA;
@@ -89,7 +89,7 @@ module jellyvl_stream_ff #(
         logic  reg_m_valid;
 
         always_ff @ (posedge clk) begin
-            if (reset) begin
+            if (rst) begin
                 reg_m_data  <= INIT_DATA;
                 reg_m_valid <= 1'b0;
             end else if (cke) begin

@@ -3,9 +3,9 @@ module data_delay #(
     param LATENCY  : u32    = 1       ,
     param INIT_DATA: t_data = 'x      ,
 ) (
-    reset: input logic,
-    clk  : input logic,
-    cke  : input logic,
+    rst: input reset,
+    clk: input clock,
+    cke: input logic,
 
     s_data : input  t_data,
     s_valid: input  logic ,
@@ -26,7 +26,7 @@ module data_delay #(
 
         var buf_data : t_data [LATENCY];
         var buf_valid: logic  [LATENCY];
-        always_ff (clk, reset) {
+        always_ff (clk, rst) {
             if_reset {
                 for i: u32 in 0..LATENCY {
                     buf_data[i]  = INIT_DATA;

@@ -7,8 +7,8 @@ module jellyvl_etherneco_master #(
     parameter bit          DEBUG                   = 1'b0,
     parameter bit          SIMULATION              = 1'b1
 ) (
-    input logic reset,
-    input logic clk  ,
+    input logic rst,
+    input logic clk,
 
     input logic synctim_force_renew,
 
@@ -47,7 +47,7 @@ module jellyvl_etherneco_master #(
     logic trig_enable;
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             set_time    <= 64'd0; // h0123456789abcdef;
             set_valid   <= 1'b1;
             set_valid2  <= 1'b1;
@@ -80,8 +80,8 @@ module jellyvl_etherneco_master #(
         .TIMER_WIDTH  (TIMER_WIDTH ),
         .PERIOD_WIDTH (PERIOD_WIDTH)
     ) u_periodic_trigger (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         enable (1'b1      ), //trig_enable ,
         .phase  ('0        ), //current_time as PERIOD_WIDTH,
@@ -93,7 +93,7 @@ module jellyvl_etherneco_master #(
     );
 
     always_ff @ (posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             synctim_renew   <= 1'b0;
             synctim_correct <= 1'b0;
         end else begin
@@ -118,8 +118,8 @@ module jellyvl_etherneco_master #(
     logic         outer_tx_payload_ready;
 
     jellyvl_etherneco_packet_tx u_etherneco_packet_tx_outer (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         start  (synctim_trigger),
         .cancel (1'b0           ),
@@ -163,8 +163,8 @@ module jellyvl_etherneco_master #(
         .DOWN_STREAM   (1'b1),
         .REPLACE_DELAY (0   )
     ) u_etherneco_packet_rx_outer (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         s_rx_first (s_up_rx_first),
         .s_rx_last  (s_up_rx_last ),
@@ -216,8 +216,8 @@ module jellyvl_etherneco_master #(
         .DOWN_STREAM   (1'b0),
         .REPLACE_DELAY (0   )
     ) u_etherneco_packet_rx_inner (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         s_rx_first (s_down_rx_first),
         .s_rx_last  (s_down_rx_last ),
@@ -263,8 +263,8 @@ module jellyvl_etherneco_master #(
         .SIMULATION      (SIMULATION             )
 
     ) u_etherneco_synctimer_master (
-        .reset (reset),
-        .clk   (clk  ),
+        .rst (rst),
+        .clk (clk),
         .
         current_time (current_time),
         .

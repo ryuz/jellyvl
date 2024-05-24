@@ -10,8 +10,8 @@ module synctimer_adjuster_driver #(
     param DEBUG       : bit = 1'b0                 ,
     param SIMULATION  : bit = 1'b0                 ,
 ) (
-    reset: input logic,
-    clk  : input logic,
+    rst: input reset,
+    clk: input clock,
 
     request_value: input signed logic<ERROR_WIDTH + ERROR_Q>,
     request_cycle: input logic       <CYCLE_WIDTH + CYCLE_Q>,
@@ -42,7 +42,7 @@ module synctimer_adjuster_driver #(
     var div_calc_enable: logic    ;
     var div_calc_valid : logic    ;
 
-    always_ff (clk, reset) {
+    always_ff (clk, rst) {
         if_reset {
             div_calc_sign   = 'x;
             div_calc_zero   = 'x;
@@ -90,9 +90,9 @@ module synctimer_adjuster_driver #(
         DIVISOR_WIDTH : ERROR_WIDTH + ERROR_Q           ,
         QUOTIENT_WIDTH: ADJUST_WIDTH + ADJUST_Q         ,
     ) (
-        reset: reset,
-        clk  : clk  ,
-        cke  : 1'b1 ,
+        rst: rst ,
+        clk: clk ,
+        cke: 1'b1,
 
         s_dividend: CycleToError(div_calc_cycle),
         s_divisor : div_calc_error              ,
@@ -115,7 +115,7 @@ module synctimer_adjuster_driver #(
     var adj_param_valid : logic   ;
     var adj_param_ready : logic   ;
 
-    always_ff (clk, reset) {
+    always_ff (clk, rst) {
         if_reset {
             adj_param_zero   = 1'b1;
             adj_param_sign   = 1'bx;
@@ -150,7 +150,7 @@ module synctimer_adjuster_driver #(
     var adj_calc_next  : t_adjust;
     var adj_calc_valid : logic   ;
 
-    always_ff (clk, reset) {
+    always_ff (clk, rst) {
         if_reset {
             adj_calc_zero   = 1'b1;
             adj_calc_sign   = 'x;
@@ -184,7 +184,7 @@ module synctimer_adjuster_driver #(
 
 
     // output
-    always_ff (clk, reset) {
+    always_ff (clk, rst) {
         if_reset {
             adjust_sign  = 'x;
             adjust_valid = 1'b0;
