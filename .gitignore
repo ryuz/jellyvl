@@ -6,6 +6,7 @@ _*
 !.gitignore
 
 dependencies/
+doc/
 #sv/
 
 
