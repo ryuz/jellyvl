@@ -46,17 +46,17 @@ module jellyvl_etherneco_packet_tx #(
         .S_REGS     (0             ),
         .M_REGS     (0             )
     ) u_fifo_fwtf (
-        .rst          (rst                            ),
-        .clk          (clk                            ),
-        .cke          (1'b1                           ),
+        .reset        (rst                             ),
+        .clk          (clk                             ),
+        .cke          (1'b1                            ),
         .s_data       ({s_payload_last, s_payload_data}),
-        .s_valid      (s_payload_valid                ),
-        .s_ready      (s_payload_ready                ),
-        .s_free_count (fifo_free_count                ),
+        .s_valid      (s_payload_valid                 ),
+        .s_ready      (s_payload_ready                 ),
+        .s_free_count (fifo_free_count                 ),
         .m_data       ({fifo_last, fifo_data}          ),
-        .m_valid      (fifo_valid                     ),
-        .m_ready      (fifo_ready                     ),
-        .m_data_count (fifo_data_count                )
+        .m_valid      (fifo_valid                      ),
+        .m_ready      (fifo_ready                      ),
+        .m_data_count (fifo_data_count                 )
     );
 
 
@@ -110,7 +110,7 @@ module jellyvl_etherneco_packet_tx #(
         end else if (cke) begin
 
             st0_count <= st0_count_next;
-            case (st0_state)
+            case (st0_state) inside
                 STATE_IDLE: begin
                                 st0_count  <= 'x;
                                 st0_length <= 'x;
@@ -257,10 +257,10 @@ module jellyvl_etherneco_packet_tx #(
             st1_last  <= st0_last;
             st1_data  <= 'x;
 
-            case (st0_state)
+            case (st0_state) inside
                 STATE_IDLE: begin
                                 // ここだけ追い越しして1cycle稼ぐ
-                                            if (tx_start) begin
+                                if (tx_start) begin
                                     st1_state <= STATE_PREAMBLE;
                                     st1_first <= 1'b1;
                                     st1_last  <= 1'b0;
@@ -269,19 +269,11 @@ module jellyvl_etherneco_packet_tx #(
                             end
 
                 STATE_PREAMBLE: begin
-                                    st1_data <= ((st0_last) ? (
-                                        8'hd5
-                                    ) : (
-                                        8'h55
-                                    ));
+                                    st1_data <= ((st0_last) ? ( 8'hd5 ) : ( 8'h55 ));
                                 end
 
                 STATE_LENGTH: begin
-                                  st1_data <= ((st0_count[0]) ? (
-                                      st0_length[15:8]
-                                  ) : (
-                                      st0_length[7:0]
-                                  ));
+                                  st1_data <= ((st0_count[0]) ? ( st0_length[15:8] ) : ( st0_length[7:0] ));
                               end
 
                 STATE_TYPE: begin
@@ -362,9 +354,9 @@ module jellyvl_etherneco_packet_tx #(
         .POLY_REPS  (32'h04C11DB7),
         .REVERSED   (0           )
     ) u_cacl_crc (
-        .rst (rst),
-        .clk (clk),
-        .cke (cke),
+        .reset (rst),
+        .clk   (clk),
+        .cke   (cke),
         .
         in_update (crc_update),
         .in_data   (crc_data  ),
@@ -429,3 +421,4 @@ module jellyvl_etherneco_packet_tx #(
     always_comb m_tx_valid = st3_valid;
 
 endmodule
+//# sourceMappingURL=jellyvl_etherneco_packet_tx.sv.map

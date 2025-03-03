@@ -24,11 +24,11 @@ module synctimer_adjuster_driver #(
 
 
     // type
-    local t_error  : type = signed logic<ERROR_WIDTH + ERROR_Q>;
-    local t_error_u: type = logic<ERROR_WIDTH + ERROR_Q>;
-    local t_count  : type = logic<CYCLE_WIDTH>;
-    local t_cycle  : type = logic<CYCLE_WIDTH + CYCLE_Q>;
-    local t_adjust : type = logic<ADJUST_WIDTH + ADJUST_Q>;
+    const t_error  : type = signed logic<ERROR_WIDTH + ERROR_Q>;
+    const t_error_u: type = logic<ERROR_WIDTH + ERROR_Q>;
+    const t_count  : type = logic<CYCLE_WIDTH>;
+    const t_cycle  : type = logic<CYCLE_WIDTH + CYCLE_Q>;
+    const t_adjust : type = logic<ADJUST_WIDTH + ADJUST_Q>;
 
 
     // -------------------------------------
@@ -52,13 +52,9 @@ module synctimer_adjuster_driver #(
             div_calc_valid  = 1'b0;
         } else {
             if request_valid {
-                div_calc_sign  = request_value <: 0;
-                div_calc_zero  = request_value == 0;
-                div_calc_error = if request_value <: 0 {
-                    (-request_value) as t_error_u
-                } else {
-                    request_value as t_error_u
-                };
+                div_calc_sign   = request_value <: 0;
+                div_calc_zero   = request_value == 0;
+                div_calc_error  = if request_value <: 0 { (-request_value) as t_error_u } else { request_value as t_error_u };
                 div_calc_cycle  = request_cycle;
                 div_calc_enable = 1'b1;
             }
@@ -68,10 +64,10 @@ module synctimer_adjuster_driver #(
 
 
     // divider
-    local t_cycle_q: type = logic<CYCLE_WIDTH + ERROR_Q + ADJUST_Q>;
+    const t_cycle_q: type = logic<CYCLE_WIDTH + ERROR_Q + ADJUST_Q>;
 
     function CycleToError (
-        cycle: input t_cycle  ,
+        cycle: input t_cycle,
     ) -> t_cycle_q {
         if ERROR_Q + ADJUST_Q >: CYCLE_Q {
             return cycle as t_cycle_q << (ERROR_Q + ADJUST_Q - CYCLE_Q);
@@ -107,7 +103,7 @@ module synctimer_adjuster_driver #(
 
 
     // adjust parameter
-    local ADJ_STEP: t_adjust = (1 << ADJUST_Q) as t_adjust;
+    const ADJ_STEP: t_adjust = (1 << ADJUST_Q) as t_adjust;
 
     var adj_param_zero  : logic   ;
     var adj_param_sign  : logic   ;

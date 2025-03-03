@@ -18,19 +18,17 @@ module jellyvl_synctimer_timer #(
 
     localparam int unsigned COUNT_NUM     = NUMERATOR / DENOMINATOR;
     localparam int unsigned COUNT_ERR     = NUMERATOR % DENOMINATOR;
-    localparam int unsigned COUNTER_WIDTH = (($clog2(COUNT_NUM + 2) > 0) ? (
-        $clog2(COUNT_NUM + 2)
-    ) : (
-        1
-    ));
+    localparam int unsigned COUNTER_WIDTH = (($clog2(COUNT_NUM + 2) > 0) ? ( $clog2(COUNT_NUM + 2) ) : ( 1 ));
 
     localparam type t_count = logic [COUNTER_WIDTH-1:0];
     localparam type t_time  = logic [TIMER_WIDTH-1:0];
 
     t_count add_value;
 
-    if (COUNT_ERR == 0) begin :simple
+    if (COUNT_ERR == 0) begin
         // 誤差なし
+     :simple
+
         always_ff @ (posedge clk) begin
             if (rst) begin
                 add_value <= '0;
@@ -89,3 +87,4 @@ module jellyvl_synctimer_timer #(
         end
     end
 endmodule
+//# sourceMappingURL=jellyvl_synctimer_timer.sv.map

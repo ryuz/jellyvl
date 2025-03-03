@@ -308,3 +308,4 @@ module jellyvl_etherneco_master #(
     );
 
 endmodule
+//# sourceMappingURL=jellyvl_etherneco_master.sv.map

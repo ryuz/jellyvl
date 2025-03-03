@@ -138,7 +138,7 @@ module jellyvl_etherneco_packet_rx #(
                 payload_last  <= 1'b0;
                 fcs_rx_last   <= 1'b0;
 
-                case (state)
+                case (state) inside
                     STATE_IDLE: begin
                                     if (s_rx_first) begin
                                         if (s_rx_data == 8'h55 && !s_rx_last) begin
@@ -147,7 +147,7 @@ module jellyvl_etherneco_packet_rx #(
                                             count    <= '0;
                                         end else begin
                                             // 送信開始前なので何も中継せずに止める
-                                                        state    <= STATE_ERROR;
+                                            state    <= STATE_ERROR;
                                             rx_error <= 1'b1;
                                             count    <= 'x;
                                             fw_first <= 'x;
@@ -267,9 +267,9 @@ module jellyvl_etherneco_packet_rx #(
         .POLY_REPS  (32'h04C11DB7),
         .REVERSED   (0           )
     ) u_cacl_crc_rx (
-        .rst (rst ),
-        .clk (clk ),
-        .cke (1'b1),
+        .reset (rst ),
+        .clk   (clk ),
+        .cke   (1'b1),
         .
         in_update (crc_update),
         .in_data   (s_rx_data ),
@@ -307,21 +307,17 @@ module jellyvl_etherneco_packet_rx #(
         .cke (1'b1),
         .
         s_data  ({fw_count, fw_crc_update, fw_fcs, fw_first, fw_last, fw_data}),
-        .s_valid (fw_valid                                                ),
-        .s_ready (fw_ready                                                ),
+        .s_valid (fw_valid                                                     ),
+        .s_ready (fw_ready                                                     ),
         .
         m_data  ({dly_count, dly_crc_update, dly_fcs, dly_first, dly_last, dly_data_tmp}),
-        .m_valid (dly_valid                                                         ),
-        .m_ready (1'b1                                                              )
+        .m_valid (dly_valid                                                              ),
+        .m_ready (1'b1                                                                   )
     );
 
 
     // replace & CRC
-    always_comb dly_data = ((replace_valid) ? (
-        replace_data
-    ) : (
-        dly_data_tmp
-    ));
+    always_comb dly_data = ((replace_valid) ? ( replace_data ) : ( dly_data_tmp ));
 
     logic [4-1:0][8-1:0] tx_crc_value;
     jelly2_calc_crc #(
@@ -330,9 +326,9 @@ module jellyvl_etherneco_packet_rx #(
         .POLY_REPS  (32'h04C11DB7),
         .REVERSED   (0           )
     ) u_cacl_crc_tx (
-        .rst (rst ),
-        .clk (clk ),
-        .cke (1'b1),
+        .reset (rst ),
+        .clk   (clk ),
+        .cke   (1'b1),
         .
         in_update (dly_crc_update      ),
         .in_data   (dly_data            ),
@@ -389,22 +385,22 @@ module jellyvl_etherneco_packet_rx #(
     logic         buf_ready;
 
     jellyvl_stream_ff #(
-        .t_data    (t_buf         ),
+        .t_data    (t_buf        ),
         .S_REGS    (BUFFERING > 0),
-        .M_REGS    (M_REGS        ),
-        .INIT_DATA ('x            )
+        .M_REGS    (M_REGS       ),
+        .INIT_DATA ('x           )
     ) u_stream_ff (
         .rst (rst ),
         .clk (clk ),
         .cke (1'b1),
         .
         s_data  ({tx_first, tx_last, tx_data}),
-        .s_valid (tx_valid                  ),
-        .s_ready (tx_ready                  ),
+        .s_valid (tx_valid                    ),
+        .s_ready (tx_ready                    ),
         .
         m_data  ({buf_first, buf_last, buf_data}),
-        .m_valid (buf_valid                    ),
-        .m_ready (buf_ready                    )
+        .m_valid (buf_valid                      ),
+        .m_ready (buf_ready                      )
     );
 
     // 1サイクル溜める
@@ -430,3 +426,4 @@ module jellyvl_etherneco_packet_rx #(
     always_comb m_tx_valid = buf_valid & buf_enable;
 
 endmodule
+//# sourceMappingURL=jellyvl_etherneco_packet_rx.sv.map

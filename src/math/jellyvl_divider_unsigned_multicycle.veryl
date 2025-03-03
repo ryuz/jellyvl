@@ -25,23 +25,19 @@ module divider_unsigned_multicycle #(
 ) {
 
     // param
-    local CYCLE      : u32 = QUOTIENT_WIDTH;
-    local CYCLE_WIDTH: u32 = if $clog2(CYCLE + 1) >: 0 {
-        $clog2(CYCLE + 1)
-    } else {
-        1
-    };
+    const CYCLE      : u32 = QUOTIENT_WIDTH;
+    const CYCLE_WIDTH: u32 = if $clog2(CYCLE + 1) >: 0 { $clog2(CYCLE + 1) } else { 1 };
 
     // type
-    local t_cycle    : type = logic<CYCLE_WIDTH>;
-    local t_dividend : type = logic<DIVIDEND_WIDTH>;
-    local t_divisor  : type = logic<DIVISOR_WIDTH>;
-    local t_quotient : type = logic<QUOTIENT_WIDTH>;
-    local t_remainder: type = logic<REMAINDER_WIDTH>;
-    local t_shiftreg : type = logic<DIVISOR_WIDTH + QUOTIENT_WIDTH>;
+    const t_cycle    : type = logic<CYCLE_WIDTH>;
+    const t_dividend : type = logic<DIVIDEND_WIDTH>;
+    const t_divisor  : type = logic<DIVISOR_WIDTH>;
+    const t_quotient : type = logic<QUOTIENT_WIDTH>;
+    const t_remainder: type = logic<REMAINDER_WIDTH>;
+    const t_shiftreg : type = logic<DIVISOR_WIDTH + QUOTIENT_WIDTH>;
 
     function MakeDivisor (
-        divisor: input t_divisor ,
+        divisor: input t_divisor,
     ) -> t_shiftreg {
         return divisor as t_shiftreg << (QUOTIENT_WIDTH - 1);
     }
@@ -59,11 +55,7 @@ module divider_unsigned_multicycle #(
     var shiftreg_cmp : t_shiftreg;
     var shiftreg_next: t_shiftreg;
     assign shiftreg_in   = s_dividend as t_shiftreg;
-    assign shiftreg_cmp  = if sub_sign {
-        shiftreg
-    } else {
-        shiftreg_sub
-    };
+    assign shiftreg_cmp  = if sub_sign { shiftreg } else { shiftreg_sub };
     always_comb {
         shiftreg_next    = shiftreg_cmp << 1;
         shiftreg_next[0] = ~sub_sign;

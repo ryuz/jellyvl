@@ -219,3 +219,4 @@ module jellyvl_etherneco_slave #(
     );
 
 endmodule
+//# sourceMappingURL=jellyvl_etherneco_slave.sv.map

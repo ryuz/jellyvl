@@ -22,7 +22,7 @@ module synctimer_limitter #(
     correct_valid: input logic             ,
 ) {
 
-    local t_diff: type = signed logic<TIMER_WIDTH>;
+    const t_diff: type = signed logic<TIMER_WIDTH>;
 
     var diff_time : t_diff;
     var diff_valid: logic ;

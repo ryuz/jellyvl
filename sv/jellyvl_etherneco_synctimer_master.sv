@@ -79,7 +79,7 @@ module jellyvl_etherneco_synctimer_master #(
     // 応答時間計測
     localparam type t_offset = logic [OFFSET_WIDTH-1:0];
 
-    function automatic t_offset     CycleToOffset(
+    function automatic t_offset CycleToOffset(
         input int unsigned cycle
     ) ;
         return t_offset'((NUMERATOR * cycle / DENOMINATOR));
@@ -344,3 +344,4 @@ module jellyvl_etherneco_synctimer_master #(
         end
     end
 endmodule
+//# sourceMappingURL=jellyvl_etherneco_synctimer_master.sv.map

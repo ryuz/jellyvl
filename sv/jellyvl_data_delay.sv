@@ -46,3 +46,4 @@ module jellyvl_data_delay #(
         always_comb m_data  = buf_data[LATENCY - 1];
     end
 endmodule
+//# sourceMappingURL=jellyvl_data_delay.sv.map

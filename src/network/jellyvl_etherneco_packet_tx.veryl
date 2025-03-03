@@ -1,8 +1,8 @@
 module etherneco_packet_tx #(
     param FIFO_PTR_WIDTH: u32 = 0,
 ) (
-    rst: input reset,
-    clk: input clock,
+    rst: input reset_sync_high,
+    clk: input clock          ,
 
     start : input logic,
     cancel: input logic,
@@ -46,17 +46,17 @@ module etherneco_packet_tx #(
         S_REGS    : 0             ,
         M_REGS    : 0             ,
     ) (
-        rst         : rst                            ,
-        clk         : clk                            ,
-        cke         : 1'b1                           ,
+        r#reset     : rst                             ,
+        clk         : clk                             ,
+        cke         : 1'b1                            ,
         s_data      : {s_payload_last, s_payload_data},
-        s_valid     : s_payload_valid                ,
-        s_ready     : s_payload_ready                ,
-        s_free_count: fifo_free_count                ,
+        s_valid     : s_payload_valid                 ,
+        s_ready     : s_payload_ready                 ,
+        s_free_count: fifo_free_count                 ,
         m_data      : {fifo_last, fifo_data}          ,
-        m_valid     : fifo_valid                     ,
-        m_ready     : fifo_ready                     ,
-        m_data_count: fifo_data_count                ,
+        m_valid     : fifo_valid                      ,
+        m_ready     : fifo_ready                      ,
+        m_data_count: fifo_data_count                 ,
     );
 
 
@@ -76,8 +76,8 @@ module etherneco_packet_tx #(
         ERROR = 8'b10000000,
     }
 
-    local t_length: type = logic<16>;
-    local t_count : type = logic<3>;
+    const t_length: type = logic<16>;
+    const t_count : type = logic<3>;
 
     var cke: logic;
     assign cke = !m_tx_valid || m_tx_ready;
@@ -260,7 +260,7 @@ module etherneco_packet_tx #(
             case st0_state {
                 STATE::IDLE: {
                                  // ここだけ追い越しして1cycle稼ぐ
-                                              if tx_start {
+                                 if tx_start {
                                      st1_state = STATE::PREAMBLE;
                                      st1_first = 1'b1;
                                      st1_last  = 1'b0;
@@ -269,19 +269,11 @@ module etherneco_packet_tx #(
                              }
 
                 STATE::PREAMBLE: {
-                                     st1_data = if st0_last {
-                                         8'hd5
-                                     } else {
-                                         8'h55
-                                     };
+                                     st1_data = if st0_last { 8'hd5 } else { 8'h55 };
                                  }
 
                 STATE::LENGTH: {
-                                   st1_data = if st0_count[0] {
-                                       st0_length[15:8]
-                                   } else {
-                                       st0_length[7:0]
-                                   };
+                                   st1_data = if st0_count[0] { st0_length[15:8] } else { st0_length[7:0] };
                                }
 
                 STATE::TYPE: {
@@ -361,9 +353,9 @@ module etherneco_packet_tx #(
         POLY_REPS : 32'h04C11DB7,
         REVERSED  : 0           ,
     ) (
-        rst: rst,
-        clk: clk,
-        cke: cke,
+        r#reset: rst,
+        clk    : clk,
+        cke    : cke,
 
         in_update: crc_update,
         in_data  : crc_data  ,

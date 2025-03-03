@@ -60,7 +60,7 @@ module etherneco_master #(
         }
     }
 
-    local PERIOD_WIDTH: u32 = 24;
+    const PERIOD_WIDTH: u32 = 24;
 
     var synctim_trigger: logic    ;
     var synctim_renew  : logic    ;

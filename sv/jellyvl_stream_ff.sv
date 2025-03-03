@@ -65,17 +65,9 @@ module jellyvl_stream_ff #(
                 reg_buf_valid <= next_buf_valid;
             end
         end
-        always_comb internal_data = ((reg_buf_valid) ? (
-            reg_buf_data
-        ) : (
-            s_data
-        ));
-        always_comb internal_valid = ((reg_buf_valid) ? (
-            1'b1
-        ) : (
-            s_valid & reg_s_ready
-        ));
-        always_comb s_ready = reg_s_ready;
+        always_comb internal_data  = ((reg_buf_valid) ? ( reg_buf_data ) : ( s_data ));
+        always_comb internal_valid = ((reg_buf_valid) ? ( 1'b1 ) : ( s_valid & reg_s_ready ));
+        always_comb s_ready        = reg_s_ready;
     end else begin :s_bypass
         always_comb internal_data  = s_data;
         always_comb internal_valid = s_valid;
@@ -109,3 +101,4 @@ module jellyvl_stream_ff #(
         always_comb m_valid        = internal_valid;
     end
 endmodule
+//# sourceMappingURL=jellyvl_stream_ff.sv.map

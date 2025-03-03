@@ -15,7 +15,7 @@ module periodic_trigger #(
     trigger: output logic,
 ) {
 
-    local t_period: type = logic<PERIOD_WIDTH>;
+    const t_period: type = logic<PERIOD_WIDTH>;
 
     var trigger_valid: logic   ;
     var base_time    : t_period;

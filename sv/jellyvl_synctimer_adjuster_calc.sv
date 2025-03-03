@@ -389,19 +389,15 @@ module jellyvl_synctimer_adjuster_calc #(
             dbg_correct_valid      <= correct_valid;
             dbg_error_adjust_value <= error_adjust_value;
             dbg_diff_time          <= dbg_diff_time_tmp;
-            dbg_diff_time_abs      <= ((dbg_diff_time_tmp >= 0) ? (
-                dbg_diff_time_tmp
-            ) : (
-                -dbg_diff_time_tmp
-            ));
-            dbg_error_estimate_x  <= error_estimate_x;
-            dbg_error_estimate_v  <= error_estimate_v;
-            dbg_error_estimate_x0 <= error_estimate_x0;
-            dbg_error_estimate_v0 <= error_estimate_v0;
-            dbg_cycle_observe_t   <= cycle_observe_t;
-            dbg_cycle_predict_t   <= cycle_predict_t;
-            dbg_cycle_estimate_t  <= cycle_estimate_t;
-            dbg_cycle_estimate_t0 <= cycle_estimate_t0;
+            dbg_diff_time_abs      <= ((dbg_diff_time_tmp >= 0) ? ( dbg_diff_time_tmp ) : ( -dbg_diff_time_tmp ));
+            dbg_error_estimate_x   <= error_estimate_x;
+            dbg_error_estimate_v   <= error_estimate_v;
+            dbg_error_estimate_x0  <= error_estimate_x0;
+            dbg_error_estimate_v0  <= error_estimate_v0;
+            dbg_cycle_observe_t    <= cycle_observe_t;
+            dbg_cycle_predict_t    <= cycle_predict_t;
+            dbg_cycle_estimate_t   <= cycle_estimate_t;
+            dbg_cycle_estimate_t0  <= cycle_estimate_t0;
         end
     end
 
@@ -433,3 +429,4 @@ module jellyvl_synctimer_adjuster_calc #(
         always_comb sim_monitor_error_adjust_value   = $itor(error_adjust_value) / $itor(2 ** ERROR_Q);
     end
 endmodule
+//# sourceMappingURL=jellyvl_synctimer_adjuster_calc.sv.map

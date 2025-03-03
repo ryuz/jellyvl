@@ -29,11 +29,11 @@ module synctimer_adjuster #(
     adjust_valid: output logic,
     adjust_ready: input  logic,
 ) {
-    local CYCLE_Q: u32 = LPF_GAIN_CYCLE;
+    const CYCLE_Q: u32 = LPF_GAIN_CYCLE;
 
     // type
-    local t_error: type = signed logic<ERROR_WIDTH + ERROR_Q>;
-    local t_cycle: type = logic<CYCLE_WIDTH + CYCLE_Q>;
+    const t_error: type = signed logic<ERROR_WIDTH + ERROR_Q>;
+    const t_cycle: type = logic<CYCLE_WIDTH + CYCLE_Q>;
 
     // 誤差計算
     var request_value: t_error;

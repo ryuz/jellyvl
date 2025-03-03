@@ -16,16 +16,12 @@ module synctimer_timer #(
     current_time: output logic<TIMER_WIDTH>,
 ) {
 
-    local COUNT_NUM    : u32 = NUMERATOR / DENOMINATOR;
-    local COUNT_ERR    : u32 = NUMERATOR % DENOMINATOR;
-    local COUNTER_WIDTH: u32 = if $clog2(COUNT_NUM + 2) >: 0 {
-        $clog2(COUNT_NUM + 2)
-    } else {
-        1
-    };
+    const COUNT_NUM    : u32 = NUMERATOR / DENOMINATOR;
+    const COUNT_ERR    : u32 = NUMERATOR % DENOMINATOR;
+    const COUNTER_WIDTH: u32 = if $clog2(COUNT_NUM + 2) >: 0 { $clog2(COUNT_NUM + 2) } else { 1 };
 
-    local t_count: type = logic<COUNTER_WIDTH>;
-    local t_time : type = logic<TIMER_WIDTH>;
+    const t_count: type = logic<COUNTER_WIDTH>;
+    const t_time : type = logic<TIMER_WIDTH>;
 
     var add_value: t_count;
 

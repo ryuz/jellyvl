@@ -12,7 +12,7 @@ module synctimer_adjuster_calc #(
     param LPF_GAIN_PHASE : u32 = 6                    , // 位相補正のLPFの更新ゲイン(1/2^N)
     param DEBUG          : bit = 1'b0                 ,
     param SIMULATION     : bit = 1'b0                 ,
-    local CYCLE_Q        : u32 = LPF_GAIN_CYCLE       ,
+    const CYCLE_Q        : u32 = LPF_GAIN_CYCLE       ,
 ) (
     rst: input reset,
     clk: input clock,
@@ -34,12 +34,12 @@ module synctimer_adjuster_calc #(
 
 
     // type
-    local t_time   : type = logic<TIMER_WIDTH>;
-    local t_count  : type = logic<CYCLE_WIDTH>;
-    local t_cycle  : type = logic<CYCLE_WIDTH + CYCLE_Q>;
-    local t_error  : type = signed logic<ERROR_WIDTH + ERROR_Q>;
-    local t_error_u: type = logic<ERROR_WIDTH + ERROR_Q>;
-    local t_adjust : type = logic<ADJUST_WIDTH + ADJUST_Q>;
+    const t_time   : type = logic<TIMER_WIDTH>;
+    const t_count  : type = logic<CYCLE_WIDTH>;
+    const t_cycle  : type = logic<CYCLE_WIDTH + CYCLE_Q>;
+    const t_error  : type = signed logic<ERROR_WIDTH + ERROR_Q>;
+    const t_error_u: type = logic<ERROR_WIDTH + ERROR_Q>;
+    const t_adjust : type = logic<ADJUST_WIDTH + ADJUST_Q>;
 
 
     // -------------------------------------
@@ -389,19 +389,15 @@ module synctimer_adjuster_calc #(
             dbg_correct_valid      = correct_valid;
             dbg_error_adjust_value = error_adjust_value;
             dbg_diff_time          = dbg_diff_time_tmp;
-            dbg_diff_time_abs      = if dbg_diff_time_tmp >= 0 {
-                dbg_diff_time_tmp
-            } else {
-                -dbg_diff_time_tmp
-            };
-            dbg_error_estimate_x  = error_estimate_x;
-            dbg_error_estimate_v  = error_estimate_v;
-            dbg_error_estimate_x0 = error_estimate_x0;
-            dbg_error_estimate_v0 = error_estimate_v0;
-            dbg_cycle_observe_t   = cycle_observe_t;
-            dbg_cycle_predict_t   = cycle_predict_t;
-            dbg_cycle_estimate_t  = cycle_estimate_t;
-            dbg_cycle_estimate_t0 = cycle_estimate_t0;
+            dbg_diff_time_abs      = if dbg_diff_time_tmp >= 0 { dbg_diff_time_tmp } else { -dbg_diff_time_tmp };
+            dbg_error_estimate_x   = error_estimate_x;
+            dbg_error_estimate_v   = error_estimate_v;
+            dbg_error_estimate_x0  = error_estimate_x0;
+            dbg_error_estimate_v0  = error_estimate_v0;
+            dbg_cycle_observe_t    = cycle_observe_t;
+            dbg_cycle_predict_t    = cycle_predict_t;
+            dbg_cycle_estimate_t   = cycle_estimate_t;
+            dbg_cycle_estimate_t0  = cycle_estimate_t0;
         }
     }
 

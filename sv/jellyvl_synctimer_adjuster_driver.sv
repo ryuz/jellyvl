@@ -52,13 +52,9 @@ module jellyvl_synctimer_adjuster_driver #(
             div_calc_valid  <= 1'b0;
         end else begin
             if (request_valid) begin
-                div_calc_sign  <= request_value < 0;
-                div_calc_zero  <= request_value == 0;
-                div_calc_error <= ((request_value < 0) ? (
-                    t_error_u'((-request_value))
-                ) : (
-                    t_error_u'(request_value)
-                ));
+                div_calc_sign   <= request_value < 0;
+                div_calc_zero   <= request_value == 0;
+                div_calc_error  <= ((request_value < 0) ? ( t_error_u'((-request_value)) ) : ( t_error_u'(request_value) ));
                 div_calc_cycle  <= request_cycle;
                 div_calc_enable <= 1'b1;
             end
@@ -71,7 +67,7 @@ module jellyvl_synctimer_adjuster_driver #(
     localparam type t_cycle_q = logic [CYCLE_WIDTH + ERROR_Q + ADJUST_Q-1:0];
 
     function automatic t_cycle_q CycleToError(
-        input t_cycle   cycle
+        input t_cycle cycle
     ) ;
         if (ERROR_Q + ADJUST_Q > CYCLE_Q) begin
             return t_cycle_q'(cycle) << (ERROR_Q + ADJUST_Q - CYCLE_Q);
@@ -162,8 +158,8 @@ module jellyvl_synctimer_adjuster_driver #(
 
             // adj_param_valid は連続で来ない、period は2以上の前提で事前計算
             adj_calc_count <= adj_calc_count + (t_adjust'((1 << ADJUST_Q)));
-            adj_calc_next  <=  adj_calc_count - adj_calc_period;
-            adj_calc_valid <=  adj_calc_count >= adj_calc_period || adj_calc_zero;
+            adj_calc_next  <= adj_calc_count - adj_calc_period;
+            adj_calc_valid <= adj_calc_count >= adj_calc_period || adj_calc_zero;
 
             if (adj_calc_valid) begin
                 adj_calc_count <= adj_calc_next;
@@ -243,3 +239,4 @@ module jellyvl_synctimer_adjuster_driver #(
         always_comb sim_monitor_request_cycle = $itor(request_cycle) / $itor(2 ** CYCLE_Q);
     end
 endmodule
+//# sourceMappingURL=jellyvl_synctimer_adjuster_driver.sv.map

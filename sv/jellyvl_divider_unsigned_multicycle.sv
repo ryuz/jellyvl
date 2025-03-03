@@ -26,11 +26,7 @@ module jellyvl_divider_unsigned_multicycle #(
 
     // param
     localparam int unsigned CYCLE       = QUOTIENT_WIDTH;
-    localparam int unsigned CYCLE_WIDTH = (($clog2(CYCLE + 1) > 0) ? (
-        $clog2(CYCLE + 1)
-    ) : (
-        1
-    ));
+    localparam int unsigned CYCLE_WIDTH = (($clog2(CYCLE + 1) > 0) ? ( $clog2(CYCLE + 1) ) : ( 1 ));
 
     // type
     localparam type t_cycle     = logic [CYCLE_WIDTH-1:0];
@@ -41,7 +37,7 @@ module jellyvl_divider_unsigned_multicycle #(
     localparam type t_shiftreg  = logic [DIVISOR_WIDTH + QUOTIENT_WIDTH-1:0];
 
     function automatic t_shiftreg MakeDivisor(
-        input t_divisor  divisor
+        input t_divisor divisor
     ) ;
         return t_shiftreg'(divisor) << (QUOTIENT_WIDTH - 1);
     endfunction
@@ -59,11 +55,7 @@ module jellyvl_divider_unsigned_multicycle #(
     t_shiftreg shiftreg_cmp ;
     t_shiftreg shiftreg_next;
     always_comb shiftreg_in   = t_shiftreg'(s_dividend);
-    always_comb shiftreg_cmp  = ((sub_sign) ? (
-        shiftreg
-    ) : (
-        shiftreg_sub
-    ));
+    always_comb shiftreg_cmp  = ((sub_sign) ? ( shiftreg ) : ( shiftreg_sub ));
     always_comb begin
         shiftreg_next    = shiftreg_cmp << 1;
         shiftreg_next[0] = ~sub_sign;
@@ -81,9 +73,9 @@ module jellyvl_divider_unsigned_multicycle #(
             if ((cke && (!m_valid || m_ready))) begin
                 if (busy) begin
                     cycle        <= cycle        - (1);
-                    m_valid      <=  (cycle == '0);
-                    shiftreg_sub <=  shiftreg_next - divisor;
-                    shiftreg     <=  shiftreg_next;
+                    m_valid      <= (cycle == '0);
+                    shiftreg_sub <= shiftreg_next - divisor;
+                    shiftreg     <= shiftreg_next;
                     if (m_valid) begin
                         busy <= 1'b0;
                     end
@@ -104,3 +96,4 @@ module jellyvl_divider_unsigned_multicycle #(
     always_comb m_quotient  = t_quotient'(shiftreg[0+:QUOTIENT_WIDTH]);
     always_comb m_remainder = t_remainder'(shiftreg[QUOTIENT_WIDTH+:DIVISOR_WIDTH]);
 endmodule
+//# sourceMappingURL=jellyvl_divider_unsigned_multicycle.sv.map
