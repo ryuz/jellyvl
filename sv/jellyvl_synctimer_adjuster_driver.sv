@@ -10,16 +10,16 @@ module jellyvl_synctimer_adjuster_driver #(
     parameter bit          DEBUG        = 1'b0                 ,
     parameter bit          SIMULATION   = 1'b0             
 ) (
-    input logic rst,
-    input logic clk,
+    input var logic rst,
+    input var logic clk,
 
-    input logic signed [ERROR_WIDTH + ERROR_Q-1:0] request_value,
-    input logic        [CYCLE_WIDTH + CYCLE_Q-1:0] request_cycle,
-    input logic                                    request_valid,
+    input var logic signed [ERROR_WIDTH + ERROR_Q-1:0] request_value,
+    input var logic        [CYCLE_WIDTH + CYCLE_Q-1:0] request_cycle,
+    input var logic                                    request_valid,
 
-    output logic adjust_sign ,
-    output logic adjust_valid,
-    input  logic adjust_ready
+    output var logic adjust_sign ,
+    output var logic adjust_valid,
+    input  var logic adjust_ready
 );
 
 
@@ -67,7 +67,7 @@ module jellyvl_synctimer_adjuster_driver #(
     localparam type t_cycle_q = logic [CYCLE_WIDTH + ERROR_Q + ADJUST_Q-1:0];
 
     function automatic t_cycle_q CycleToError(
-        input t_cycle cycle
+        input var t_cycle cycle
     ) ;
         if (ERROR_Q + ADJUST_Q > CYCLE_Q) begin
             return t_cycle_q'(cycle) << (ERROR_Q + ADJUST_Q - CYCLE_Q);

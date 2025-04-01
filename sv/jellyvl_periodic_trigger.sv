@@ -3,16 +3,16 @@ module jellyvl_periodic_trigger #(
     parameter int unsigned PERIOD_WIDTH   = 32  ,
     parameter bit          THRASHING_MASK = 1'b1
 ) (
-    input logic rst,
-    input logic clk,
+    input var logic rst,
+    input var logic clk,
 
-    input logic                    enable,
-    input logic [PERIOD_WIDTH-1:0] phase ,
-    input logic [PERIOD_WIDTH-1:0] period,
+    input var logic                    enable,
+    input var logic [PERIOD_WIDTH-1:0] phase ,
+    input var logic [PERIOD_WIDTH-1:0] period,
 
-    input logic [TIMER_WIDTH-1:0] current_time,
+    input var logic [TIMER_WIDTH-1:0] current_time,
 
-    output logic trigger
+    output var logic trigger
 );
 
     localparam type t_period = logic [PERIOD_WIDTH-1:0];

@@ -7,17 +7,17 @@ module jellyvl_stream_ff #(
     parameter bit    M_REGS    = 1            ,
     parameter t_data INIT_DATA = 'x       
 ) (
-    input logic rst,
-    input logic clk,
-    input logic cke,
+    input var logic rst,
+    input var logic clk,
+    input var logic cke,
 
-    input  t_data s_data ,
-    input  logic  s_valid,
-    output logic  s_ready,
+    input  var t_data s_data ,
+    input  var logic  s_valid,
+    output var logic  s_ready,
 
-    output t_data m_data ,
-    output logic  m_valid,
-    input  logic  m_ready
+    output var t_data m_data ,
+    output var logic  m_valid,
+    input  var logic  m_ready
 );
 
     // internal signal

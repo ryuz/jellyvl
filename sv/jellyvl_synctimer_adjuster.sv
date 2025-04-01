@@ -13,21 +13,21 @@ module jellyvl_synctimer_adjuster #(
     parameter bit          DEBUG           = 1'b0                 ,
     parameter bit          SIMULATION      = 1'b0             
 ) (
-    input logic rst,
-    input logic clk,
+    input var logic rst,
+    input var logic clk,
 
-    input logic signed [ERROR_WIDTH-1:0] param_adjust_min,
-    input logic signed [ERROR_WIDTH-1:0] param_adjust_max,
+    input var logic signed [ERROR_WIDTH-1:0] param_adjust_min,
+    input var logic signed [ERROR_WIDTH-1:0] param_adjust_max,
 
-    input logic [TIMER_WIDTH-1:0] current_time,
+    input var logic [TIMER_WIDTH-1:0] current_time,
 
-    input logic                   correct_renew,
-    input logic [TIMER_WIDTH-1:0] correct_time ,
-    input logic                   correct_valid,
+    input var logic                   correct_renew,
+    input var logic [TIMER_WIDTH-1:0] correct_time ,
+    input var logic                   correct_valid,
 
-    output logic adjust_sign ,
-    output logic adjust_valid,
-    input  logic adjust_ready
+    output var logic adjust_sign ,
+    output var logic adjust_valid,
+    input  var logic adjust_ready
 );
     localparam int unsigned CYCLE_Q = LPF_GAIN_CYCLE;
 

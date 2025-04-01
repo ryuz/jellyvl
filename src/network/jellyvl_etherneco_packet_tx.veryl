@@ -269,11 +269,11 @@ module etherneco_packet_tx #(
                              }
 
                 STATE::PREAMBLE: {
-                                     st1_data = if st0_last { 8'hd5 } else { 8'h55 };
+                                     st1_data = if st0_last ? 8'hd5 : 8'h55;
                                  }
 
                 STATE::LENGTH: {
-                                   st1_data = if st0_count[0] { st0_length[15:8] } else { st0_length[7:0] };
+                                   st1_data = if st0_count[0] ? st0_length[15:8] : st0_length[7:0];
                                }
 
                 STATE::TYPE: {

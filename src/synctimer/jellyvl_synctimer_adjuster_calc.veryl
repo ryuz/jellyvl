@@ -389,7 +389,7 @@ module synctimer_adjuster_calc #(
             dbg_correct_valid      = correct_valid;
             dbg_error_adjust_value = error_adjust_value;
             dbg_diff_time          = dbg_diff_time_tmp;
-            dbg_diff_time_abs      = if dbg_diff_time_tmp >= 0 { dbg_diff_time_tmp } else { -dbg_diff_time_tmp };
+            dbg_diff_time_abs      = if dbg_diff_time_tmp >= 0 ? dbg_diff_time_tmp : -dbg_diff_time_tmp;
             dbg_error_estimate_x   = error_estimate_x;
             dbg_error_estimate_v   = error_estimate_v;
             dbg_error_estimate_x0  = error_estimate_x0;

@@ -65,8 +65,8 @@ module stream_ff #(
                 reg_buf_valid = next_buf_valid;
             }
         }
-        assign internal_data  = if reg_buf_valid { reg_buf_data } else { s_data };
-        assign internal_valid = if reg_buf_valid { 1'b1 } else { s_valid & reg_s_ready };
+        assign internal_data  = if reg_buf_valid ? reg_buf_data : s_data;
+        assign internal_valid = if reg_buf_valid ? 1'b1 : s_valid & reg_s_ready;
         assign s_ready        = reg_s_ready;
     } else :s_bypass {
         assign internal_data  = s_data;

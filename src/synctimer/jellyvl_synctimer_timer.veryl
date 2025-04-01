@@ -18,7 +18,7 @@ module synctimer_timer #(
 
     const COUNT_NUM    : u32 = NUMERATOR / DENOMINATOR;
     const COUNT_ERR    : u32 = NUMERATOR % DENOMINATOR;
-    const COUNTER_WIDTH: u32 = if $clog2(COUNT_NUM + 2) >: 0 { $clog2(COUNT_NUM + 2) } else { 1 };
+    const COUNTER_WIDTH: u32 = if $clog2(COUNT_NUM + 2) >: 0 ? $clog2(COUNT_NUM + 2) : 1;
 
     const t_count: type = logic<COUNTER_WIDTH>;
     const t_time : type = logic<TIMER_WIDTH>;

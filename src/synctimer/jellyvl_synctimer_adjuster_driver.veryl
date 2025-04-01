@@ -54,7 +54,7 @@ module synctimer_adjuster_driver #(
             if request_valid {
                 div_calc_sign   = request_value <: 0;
                 div_calc_zero   = request_value == 0;
-                div_calc_error  = if request_value <: 0 { (-request_value) as t_error_u } else { request_value as t_error_u };
+                div_calc_error  = if request_value <: 0 ? (-request_value) as t_error_u : request_value as t_error_u;
                 div_calc_cycle  = request_cycle;
                 div_calc_enable = 1'b1;
             }

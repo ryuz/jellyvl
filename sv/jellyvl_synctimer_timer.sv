@@ -3,17 +3,17 @@ module jellyvl_synctimer_timer #(
     parameter int unsigned DENOMINATOR = 3 ,
     parameter int unsigned TIMER_WIDTH = 64
 ) (
-    input logic rst,
-    input logic clk,
+    input var logic rst,
+    input var logic clk,
 
-    input logic [TIMER_WIDTH-1:0] set_time ,
-    input logic                   set_valid,
+    input var logic [TIMER_WIDTH-1:0] set_time ,
+    input var logic                   set_valid,
 
-    input  logic adjust_sign ,
-    input  logic adjust_valid,
-    output logic adjust_ready,
+    input  var logic adjust_sign ,
+    input  var logic adjust_valid,
+    output var logic adjust_ready,
 
-    output logic [TIMER_WIDTH-1:0] current_time
+    output var logic [TIMER_WIDTH-1:0] current_time
 );
 
     localparam int unsigned COUNT_NUM     = NUMERATOR / DENOMINATOR;

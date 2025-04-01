@@ -1,28 +1,28 @@
 module jellyvl_etherneco_packet_tx #(
     parameter int unsigned FIFO_PTR_WIDTH = 0
 ) (
-    input logic rst,
-    input logic clk,
+    input var logic rst,
+    input var logic clk,
 
-    input logic start ,
-    input logic cancel,
+    input var logic start ,
+    input var logic cancel,
 
-    input logic [16-1:0] param_length, // 転送サイズより1小さい値を指定(AXI方式)
-    input logic [8-1:0]  param_type  ,
-    input logic [8-1:0]  param_node  ,
+    input var logic [16-1:0] param_length, // 転送サイズより1小さい値を指定(AXI方式)
+    input var logic [8-1:0]  param_type  ,
+    input var logic [8-1:0]  param_node  ,
 
-    output logic tx_start,
+    output var logic tx_start,
 
-    input  logic         s_payload_last ,
-    input  logic [8-1:0] s_payload_data ,
-    input  logic         s_payload_valid,
-    output logic         s_payload_ready,
+    input  var logic         s_payload_last ,
+    input  var logic [8-1:0] s_payload_data ,
+    input  var logic         s_payload_valid,
+    output var logic         s_payload_ready,
 
-    output logic         m_tx_first,
-    output logic         m_tx_last ,
-    output logic [8-1:0] m_tx_data ,
-    output logic         m_tx_valid,
-    input  logic         m_tx_ready
+    output var logic         m_tx_first,
+    output var logic         m_tx_last ,
+    output var logic [8-1:0] m_tx_data ,
+    output var logic         m_tx_valid,
+    input  var logic         m_tx_ready
 );
 
 

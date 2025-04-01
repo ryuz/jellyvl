@@ -8,48 +8,48 @@ module jellyvl_etherneco_synctimer_master #(
     parameter bit          DEBUG           = 1'b0,
     parameter bit          SIMULATION      = 1'b0
 ) (
-    input logic rst,
-    input logic clk,
+    input var logic rst,
+    input var logic clk,
 
-    output logic [TIMER_WIDTH-1:0] current_time,
+    output var logic [TIMER_WIDTH-1:0] current_time,
 
-    input logic [TIMER_WIDTH-1:0] set_time ,
-    input logic                   set_valid,
+    input var logic [TIMER_WIDTH-1:0] set_time ,
+    input var logic                   set_valid,
 
-    input  logic          cmd_tx_start  ,
-    input  logic          cmd_tx_renew  ,
-    input  logic          cmd_tx_correct,
-    output logic [16-1:0] cmt_tx_length ,
-    output logic          m_cmd_tx_last ,
-    output logic [8-1:0]  m_cmd_tx_data ,
-    output logic          m_cmd_tx_valid,
-    input  logic          m_cmd_tx_ready,
+    input  var logic          cmd_tx_start  ,
+    input  var logic          cmd_tx_renew  ,
+    input  var logic          cmd_tx_correct,
+    output var logic [16-1:0] cmt_tx_length ,
+    output var logic          m_cmd_tx_last ,
+    output var logic [8-1:0]  m_cmd_tx_data ,
+    output var logic          m_cmd_tx_valid,
+    input  var logic          m_cmd_tx_ready,
 
-    input  logic          ret_rx_start     ,
-    input  logic          ret_rx_end       ,
-    input  logic          ret_rx_error     ,
-    input  logic [16-1:0] ret_rx_length    ,
-    input  logic [8-1:0]  ret_rx_type      ,
-    input  logic [8-1:0]  ret_rx_node      ,
-    input  logic          ret_payload_first,
-    input  logic          ret_payload_last ,
-    input  logic [16-1:0] ret_payload_pos  ,
-    input  logic [8-1:0]  ret_payload_data ,
-    input  logic          ret_payload_valid,
-    output logic [8-1:0]  ret_replace_data ,
-    output logic          ret_replace_valid,
+    input  var logic          ret_rx_start     ,
+    input  var logic          ret_rx_end       ,
+    input  var logic          ret_rx_error     ,
+    input  var logic [16-1:0] ret_rx_length    ,
+    input  var logic [8-1:0]  ret_rx_type      ,
+    input  var logic [8-1:0]  ret_rx_node      ,
+    input  var logic          ret_payload_first,
+    input  var logic          ret_payload_last ,
+    input  var logic [16-1:0] ret_payload_pos  ,
+    input  var logic [8-1:0]  ret_payload_data ,
+    input  var logic          ret_payload_valid,
+    output var logic [8-1:0]  ret_replace_data ,
+    output var logic          ret_replace_valid,
 
-    input logic          res_rx_start     ,
-    input logic          res_rx_end       ,
-    input logic          res_rx_error     ,
-    input logic [16-1:0] res_rx_length    ,
-    input logic [8-1:0]  res_rx_type      ,
-    input logic [8-1:0]  res_rx_node      ,
-    input logic          res_payload_first,
-    input logic          res_payload_last ,
-    input logic [16-1:0] res_payload_pos  ,
-    input logic [8-1:0]  res_payload_data ,
-    input logic          res_payload_valid
+    input var logic          res_rx_start     ,
+    input var logic          res_rx_end       ,
+    input var logic          res_rx_error     ,
+    input var logic [16-1:0] res_rx_length    ,
+    input var logic [8-1:0]  res_rx_type      ,
+    input var logic [8-1:0]  res_rx_node      ,
+    input var logic          res_payload_first,
+    input var logic          res_payload_last ,
+    input var logic [16-1:0] res_payload_pos  ,
+    input var logic [8-1:0]  res_payload_data ,
+    input var logic          res_payload_valid
 );
 
 
@@ -80,7 +80,7 @@ module jellyvl_etherneco_synctimer_master #(
     localparam type t_offset = logic [OFFSET_WIDTH-1:0];
 
     function automatic t_offset CycleToOffset(
-        input int unsigned cycle
+        input var int unsigned cycle
     ) ;
         return t_offset'((NUMERATOR * cycle / DENOMINATOR));
     endfunction

@@ -7,21 +7,21 @@ module jellyvl_divider_unsigned_multicycle #(
     parameter int unsigned QUOTIENT_WIDTH  = DIVIDEND_WIDTH,
     parameter int unsigned REMAINDER_WIDTH = DIVISOR_WIDTH 
 ) (
-    input logic rst,
-    input logic clk,
-    input logic cke,
+    input var logic rst,
+    input var logic clk,
+    input var logic cke,
 
     // input
-    input  logic [DIVIDEND_WIDTH-1:0] s_dividend, // 被除数
-    input  logic [DIVISOR_WIDTH-1:0]  s_divisor , // 除数
-    input  logic                      s_valid   ,
-    output logic                      s_ready   ,
+    input  var logic [DIVIDEND_WIDTH-1:0] s_dividend, // 被除数
+    input  var logic [DIVISOR_WIDTH-1:0]  s_divisor , // 除数
+    input  var logic                      s_valid   ,
+    output var logic                      s_ready   ,
 
     // output
-    output logic [QUOTIENT_WIDTH-1:0]  m_quotient ,
-    output logic [REMAINDER_WIDTH-1:0] m_remainder,
-    output logic                       m_valid    ,
-    input  logic                       m_ready
+    output var logic [QUOTIENT_WIDTH-1:0]  m_quotient ,
+    output var logic [REMAINDER_WIDTH-1:0] m_remainder,
+    output var logic                       m_valid    ,
+    input  var logic                       m_ready
 );
 
     // param
@@ -37,7 +37,7 @@ module jellyvl_divider_unsigned_multicycle #(
     localparam type t_shiftreg  = logic [DIVISOR_WIDTH + QUOTIENT_WIDTH-1:0];
 
     function automatic t_shiftreg MakeDivisor(
-        input t_divisor divisor
+        input var t_divisor divisor
     ) ;
         return t_shiftreg'(divisor) << (QUOTIENT_WIDTH - 1);
     endfunction

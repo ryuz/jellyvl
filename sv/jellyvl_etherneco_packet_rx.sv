@@ -4,35 +4,35 @@ module jellyvl_etherneco_packet_rx #(
     parameter int unsigned BUFFERING     = 1   ,
     parameter bit          M_REGS        = 1'b1
 ) (
-    input logic rst,
-    input logic clk,
+    input var logic rst,
+    input var logic clk,
 
-    input logic         s_rx_first,
-    input logic         s_rx_last ,
-    input logic [8-1:0] s_rx_data ,
-    input logic         s_rx_valid,
+    input var logic         s_rx_first,
+    input var logic         s_rx_last ,
+    input var logic [8-1:0] s_rx_data ,
+    input var logic         s_rx_valid,
 
-    output logic         m_tx_first,
-    output logic         m_tx_last ,
-    output logic [8-1:0] m_tx_data ,
-    output logic         m_tx_valid,
+    output var logic         m_tx_first,
+    output var logic         m_tx_last ,
+    output var logic [8-1:0] m_tx_data ,
+    output var logic         m_tx_valid,
 
-    output logic rx_start,
-    output logic rx_end  ,
-    output logic rx_error,
+    output var logic rx_start,
+    output var logic rx_end  ,
+    output var logic rx_error,
 
-    output logic [16-1:0] rx_length,
-    output logic [8-1:0]  rx_type  ,
-    output logic [8-1:0]  rx_node  ,
+    output var logic [16-1:0] rx_length,
+    output var logic [8-1:0]  rx_type  ,
+    output var logic [8-1:0]  rx_node  ,
 
-    output logic          payload_first,
-    output logic          payload_last ,
-    output logic [16-1:0] payload_pos  ,
-    output logic [8-1:0]  payload_data ,
-    output logic          payload_valid,
+    output var logic          payload_first,
+    output var logic          payload_last ,
+    output var logic [16-1:0] payload_pos  ,
+    output var logic [8-1:0]  payload_data ,
+    output var logic          payload_valid,
 
-    input logic [8-1:0] replace_data ,
-    input logic         replace_valid
+    input var logic [8-1:0] replace_data ,
+    input var logic         replace_valid
 );
 
     localparam int unsigned BIT_PREAMBLE = 0;

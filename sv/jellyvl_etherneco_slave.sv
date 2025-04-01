@@ -15,32 +15,32 @@ module jellyvl_etherneco_slave #(
     parameter bit          DEBUG                   = 1'b0                                 ,
     parameter bit          SIMULATION              = 1'b0                             
 ) (
-    input logic rst,
-    input logic clk,
+    input var logic rst,
+    input var logic clk,
 
-    output logic [TIMER_WIDTH-1:0] current_time,
+    output var logic [TIMER_WIDTH-1:0] current_time,
 
-    input logic timsync_adj_enable,
+    input var logic timsync_adj_enable,
 
-    input  logic         s_up_rx_first,
-    input  logic         s_up_rx_last ,
-    input  logic [8-1:0] s_up_rx_data ,
-    input  logic         s_up_rx_valid,
-    output logic         m_up_tx_first,
-    output logic         m_up_tx_last ,
-    output logic [8-1:0] m_up_tx_data ,
-    output logic         m_up_tx_valid,
-    input  logic         m_up_tx_ready,
+    input  var logic         s_up_rx_first,
+    input  var logic         s_up_rx_last ,
+    input  var logic [8-1:0] s_up_rx_data ,
+    input  var logic         s_up_rx_valid,
+    output var logic         m_up_tx_first,
+    output var logic         m_up_tx_last ,
+    output var logic [8-1:0] m_up_tx_data ,
+    output var logic         m_up_tx_valid,
+    input  var logic         m_up_tx_ready,
 
-    input  logic         s_down_rx_first,
-    input  logic         s_down_rx_last ,
-    input  logic [8-1:0] s_down_rx_data ,
-    input  logic         s_down_rx_valid,
-    output logic         m_down_tx_first,
-    output logic         m_down_tx_last ,
-    output logic [8-1:0] m_down_tx_data ,
-    output logic         m_down_tx_valid,
-    input  logic         m_down_tx_ready
+    input  var logic         s_down_rx_first,
+    input  var logic         s_down_rx_last ,
+    input  var logic [8-1:0] s_down_rx_data ,
+    input  var logic         s_down_rx_valid,
+    output var logic         m_down_tx_first,
+    output var logic         m_down_tx_last ,
+    output var logic [8-1:0] m_down_tx_data ,
+    output var logic         m_down_tx_valid,
+    input  var logic         m_down_tx_ready
 );
 
 

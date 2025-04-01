@@ -87,7 +87,7 @@ module etherneco_synctimer_slave #(
     ) -> t_wb_dat {
         var result: t_wb_dat;
         for i: u32      in 0..WB_DAT_WIDTH {
-            result[i] = if sel[i / 8] { dat[i] } else { regs[i] };
+            result[i] = if sel[i / 8] ? dat[i] : regs[i];
         }
         return result;
     }

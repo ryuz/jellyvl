@@ -26,7 +26,7 @@ module divider_unsigned_multicycle #(
 
     // param
     const CYCLE      : u32 = QUOTIENT_WIDTH;
-    const CYCLE_WIDTH: u32 = if $clog2(CYCLE + 1) >: 0 { $clog2(CYCLE + 1) } else { 1 };
+    const CYCLE_WIDTH: u32 = if $clog2(CYCLE + 1) >: 0 ? $clog2(CYCLE + 1) : 1;
 
     // type
     const t_cycle    : type = logic<CYCLE_WIDTH>;
@@ -55,7 +55,7 @@ module divider_unsigned_multicycle #(
     var shiftreg_cmp : t_shiftreg;
     var shiftreg_next: t_shiftreg;
     assign shiftreg_in   = s_dividend as t_shiftreg;
-    assign shiftreg_cmp  = if sub_sign { shiftreg } else { shiftreg_sub };
+    assign shiftreg_cmp  = if sub_sign ? shiftreg : shiftreg_sub;
     always_comb {
         shiftreg_next    = shiftreg_cmp << 1;
         shiftreg_next[0] = ~sub_sign;

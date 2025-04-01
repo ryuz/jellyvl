@@ -32,58 +32,58 @@ module jellyvl_etherneco_synctimer_slave #(
     parameter bit DEBUG      = 1'b0,
     parameter bit SIMULATION = 1'b0
 ) (
-    input logic rst,
-    input logic clk,
+    input var logic rst,
+    input var logic clk,
 
-    input  logic [WB_ADR_WIDTH-1:0] s_wb_adr_i,
-    output logic [WB_DAT_WIDTH-1:0] s_wb_dat_o,
-    input  logic [WB_DAT_WIDTH-1:0] s_wb_dat_i,
-    input  logic [WB_SEL_WIDTH-1:0] s_wb_sel_i,
-    input  logic                    s_wb_we_i ,
-    input  logic                    s_wb_stb_i,
-    output logic                    s_wb_ack_o,
+    input  var logic [WB_ADR_WIDTH-1:0] s_wb_adr_i,
+    output var logic [WB_DAT_WIDTH-1:0] s_wb_dat_o,
+    input  var logic [WB_DAT_WIDTH-1:0] s_wb_dat_i,
+    input  var logic [WB_SEL_WIDTH-1:0] s_wb_sel_i,
+    input  var logic                    s_wb_we_i ,
+    input  var logic                    s_wb_stb_i,
+    output var logic                    s_wb_ack_o,
 
-    input logic adj_enable,
+    input var logic adj_enable,
 
-    output logic [TIMER_WIDTH-1:0] current_time,
+    output var logic [TIMER_WIDTH-1:0] current_time,
 
     // command
-    input logic          cmd_rx_start ,
-    input logic          cmd_rx_end   ,
-    input logic          cmd_rx_error ,
-    input logic [16-1:0] cmd_rx_length,
-    input logic [8-1:0]  cmd_rx_type  ,
-    input logic [8-1:0]  cmd_rx_node  ,
+    input var logic          cmd_rx_start ,
+    input var logic          cmd_rx_end   ,
+    input var logic          cmd_rx_error ,
+    input var logic [16-1:0] cmd_rx_length,
+    input var logic [8-1:0]  cmd_rx_type  ,
+    input var logic [8-1:0]  cmd_rx_node  ,
 
-    input  logic          s_cmd_first,
-    input  logic          s_cmd_last ,
-    input  logic [16-1:0] s_cmd_pos  ,
-    input  logic [8-1:0]  s_cmd_data ,
-    input  logic          s_cmd_valid,
-    output logic [8-1:0]  m_cmd_data ,
-    output logic          m_cmd_valid,
+    input  var logic          s_cmd_first,
+    input  var logic          s_cmd_last ,
+    input  var logic [16-1:0] s_cmd_pos  ,
+    input  var logic [8-1:0]  s_cmd_data ,
+    input  var logic          s_cmd_valid,
+    output var logic [8-1:0]  m_cmd_data ,
+    output var logic          m_cmd_valid,
 
     // downstream
-    input logic          res_rx_start ,
-    input logic          res_rx_end   ,
-    input logic          res_rx_error ,
-    input logic [16-1:0] res_rx_length,
-    input logic [8-1:0]  res_rx_type  ,
-    input logic [8-1:0]  res_rx_node  ,
+    input var logic          res_rx_start ,
+    input var logic          res_rx_end   ,
+    input var logic          res_rx_error ,
+    input var logic [16-1:0] res_rx_length,
+    input var logic [8-1:0]  res_rx_type  ,
+    input var logic [8-1:0]  res_rx_node  ,
 
-    input  logic          s_res_first,
-    input  logic          s_res_last ,
-    input  logic [16-1:0] s_res_pos  ,
-    input  logic [8-1:0]  s_res_data ,
-    input  logic          s_res_valid,
-    output logic [8-1:0]  m_res_data ,
-    output logic          m_res_valid
+    input  var logic          s_res_first,
+    input  var logic          s_res_last ,
+    input  var logic [16-1:0] s_res_pos  ,
+    input  var logic [8-1:0]  s_res_data ,
+    input  var logic          s_res_valid,
+    output var logic [8-1:0]  m_res_data ,
+    output var logic          m_res_valid
 );
 
     function automatic t_wb_dat WriteMask(
-        input t_wb_dat regs,
-        input t_wb_dat dat ,
-        input t_wb_sel sel 
+        input var t_wb_dat regs,
+        input var t_wb_dat dat ,
+        input var t_wb_sel sel 
     ) ;
         t_wb_dat     result;
         for (int unsigned i = 0; i < WB_DAT_WIDTH; i++) begin

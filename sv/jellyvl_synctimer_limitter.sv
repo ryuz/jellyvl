@@ -7,19 +7,19 @@ module jellyvl_synctimer_limitter #(
     parameter bit          DEBUG         = 1'b0       ,
     parameter bit          SIMULATION    = 1'b0   
 ) (
-    input logic rst,
-    input logic clk,
+    input var logic rst,
+    input var logic clk,
 
-    input logic signed [LIMIT_WIDTH-1:0] param_limit_min,
-    input logic signed [LIMIT_WIDTH-1:0] param_limit_max,
+    input var logic signed [LIMIT_WIDTH-1:0] param_limit_min,
+    input var logic signed [LIMIT_WIDTH-1:0] param_limit_max,
 
-    input logic [TIMER_WIDTH-1:0] current_time,
+    input var logic [TIMER_WIDTH-1:0] current_time,
 
-    output logic request_renew,
+    output var logic request_renew,
 
-    input logic [TIMER_WIDTH-1:0] correct_time ,
-    input logic                   correct_renew,
-    input logic                   correct_valid
+    input var logic [TIMER_WIDTH-1:0] correct_time ,
+    input var logic                   correct_renew,
+    input var logic                   correct_valid
 );
 
     localparam type t_diff = logic signed [TIMER_WIDTH-1:0];

@@ -317,7 +317,7 @@ module etherneco_packet_rx #(
 
 
     // replace & CRC
-    assign dly_data = if replace_valid { replace_data } else { dly_data_tmp };
+    assign dly_data = if replace_valid ? replace_data : dly_data_tmp;
 
     var tx_crc_value: logic<4, 8>;
     inst u_cacl_crc_tx: $sv::jelly2_calc_crc #(
