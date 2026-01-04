@@ -222,7 +222,7 @@ module jellyvl_etherneco_synctimer_slave_core #(
     logic down_reset;
     always_comb down_reset = rst || res_rx_error;
 
-    int signed res_pos;
+    logic signed [32-1:0] res_pos;
 
     always_ff @ (posedge clk) begin
         if (up_reset) begin

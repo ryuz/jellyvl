@@ -140,87 +140,87 @@ module etherneco_packet_rx #(
 
                 case state {
                     STATE::IDLE: {
-                                     if s_rx_first {
-                                         if s_rx_data == 8'h55 && !s_rx_last {
-                                             state    = STATE::PREAMBLE;
-                                             rx_start = 1'b1;
-                                             count    = '0;
-                                         } else {
-                                             // 送信開始前なので何も中継せずに止める
-                                             state    = STATE::ERROR;
-                                             rx_error = 1'b1;
-                                             count    = 'x;
-                                             fw_first = 'x;
-                                             fw_last  = 'x;
-                                             fw_data  = 'x;
-                                             fw_valid = 1'b0;
-                                         }
-                                         crc_update = 'x;
-                                     }
-                                 }
+                        if s_rx_first {
+                            if s_rx_data == 8'h55 && !s_rx_last {
+                                state    = STATE::PREAMBLE;
+                                rx_start = 1'b1;
+                                count    = '0;
+                            } else {
+                                // 送信開始前なので何も中継せずに止める
+                                state    = STATE::ERROR;
+                                rx_error = 1'b1;
+                                count    = 'x;
+                                fw_first = 'x;
+                                fw_last  = 'x;
+                                fw_data  = 'x;
+                                fw_valid = 1'b0;
+                            }
+                            crc_update = 'x;
+                        }
+                    }
 
                     STATE::PREAMBLE: {
-                                         if count == 6 as t_count {
-                                             state      = STATE::LENGTH;
-                                             count      = '0;
-                                             crc_update = 1'b0;
-                                         }
-                                     }
+                        if count == 6 as t_count {
+                            state      = STATE::LENGTH;
+                            count      = '0;
+                            crc_update = 1'b0;
+                        }
+                    }
 
                     STATE::LENGTH: {
-                                       if count[0:0] == 1'b1 {
-                                           rx_length[15:8] = s_rx_data;
-                                           crc_update      = 1'b1;
-                                           state           = STATE::TYPE;
-                                           count           = 'x;
-                                       } else {
-                                           rx_length[7:0] = s_rx_data;
-                                           crc_update     = 1'b1;
-                                       }
-                                   }
+                        if count[0:0] == 1'b1 {
+                            rx_length[15:8] = s_rx_data;
+                            crc_update      = 1'b1;
+                            state           = STATE::TYPE;
+                            count           = 'x;
+                        } else {
+                            rx_length[7:0] = s_rx_data;
+                            crc_update     = 1'b1;
+                        }
+                    }
 
                     STATE::TYPE: {
-                                     rx_type = s_rx_data;
-                                     state   = STATE::NODE;
-                                     count   = 'x;
-                                 }
+                        rx_type = s_rx_data;
+                        state   = STATE::NODE;
+                        count   = 'x;
+                    }
 
                     STATE::NODE: {
-                                     rx_node       = s_rx_data;
-                                     state         = STATE::PAYLOAD;
-                                     payload_first = 1'b1;
-                                     payload_last  = (rx_length == '0);
-                                     payload_pos   = '0;
-                                     if DOWN_STREAM {
-                                         fw_data = s_rx_data - 8'd1;
-                                     } else {
-                                         fw_data = s_rx_data + 8'd1;
-                                     }
-                                 }
+                        rx_node       = s_rx_data;
+                        state         = STATE::PAYLOAD;
+                        payload_first = 1'b1;
+                        payload_last  = (rx_length == '0);
+                        payload_pos   = '0;
+                        if DOWN_STREAM {
+                            fw_data = s_rx_data - 8'd1;
+                        } else {
+                            fw_data = s_rx_data + 8'd1;
+                        }
+                    }
 
                     STATE::PAYLOAD: {
-                                        payload_first = 1'b0;
-                                        payload_last  = (payload_pos_next == rx_length);
-                                        payload_pos   = payload_pos_next;
-                                        if payload_last {
-                                            state       = STATE::FCS;
-                                            fcs_rx_last = 1'b0;
-                                            count       = '0;
-                                            rx_length   = 'x;
-                                        }
-                                    }
+                        payload_first = 1'b0;
+                        payload_last  = (payload_pos_next == rx_length);
+                        payload_pos   = payload_pos_next;
+                        if payload_last {
+                            state       = STATE::FCS;
+                            fcs_rx_last = 1'b0;
+                            count       = '0;
+                            rx_length   = 'x;
+                        }
+                    }
 
                     STATE::FCS: {
-                                    fcs_rx_last = (count[1:0] == 2'd2);
-                                    if fcs_rx_last {
-                                        state     = STATE::IDLE;
-                                        crc_check = 1'b1;
-                                    }
-                                }
+                        fcs_rx_last = (count[1:0] == 2'd2);
+                        if fcs_rx_last {
+                            state     = STATE::IDLE;
+                            crc_check = 1'b1;
+                        }
+                    }
 
                     default: {
-                                 state = STATE::IDLE;
-                             }
+                        state = STATE::IDLE;
+                    }
                 }
 
                 // 不正状態検知

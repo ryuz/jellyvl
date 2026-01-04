@@ -222,7 +222,7 @@ module etherneco_synctimer_slave_core #(
     var down_reset: reset;
     assign down_reset = rst || res_rx_error;
 
-    var res_pos: i32;
+    var res_pos: signed logic<32>;
 
     always_ff (clk, up_reset) {
         if_reset {
