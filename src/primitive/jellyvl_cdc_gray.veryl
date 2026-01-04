@@ -1,0 +1,79 @@
+module cdc_gray #(
+    param DEST_SYNC_FF         : i32    = 4      ,
+    param SIM_ASSERT_CHK       : i32    = 0      ,
+    param SIM_LOSSLESS_GRAY_CHK: i32    = 0      ,
+    param WIDTH                : i32    = 2      ,
+    param DEVICE               : string = "RTL"  ,
+    param SIMULATION           : string = "false",
+    param DEBUG                : string = "false",
+) (
+    src_clk     : input  'src clock       ,
+    src_in_bin  : input  'src logic<WIDTH>,
+    dest_clk    : input  'dst clock       ,
+    dest_out_bin: output 'dst logic<WIDTH>,
+) {
+
+    function binary_to_graycode (
+        binary: input logic<WIDTH>,
+    ) -> logic<WIDTH> {
+        var graycode     : logic<WIDTH>;
+        graycode[msb] = binary[msb];
+        for i: i32 in rev 0..(WIDTH - 1) {
+            if i != (WIDTH - 1) as i32 {
+                graycode[i as u32] = binary[(i + 1) as u32] ^ binary[i as u32];
+            }
+        }
+        return graycode;
+    }
+
+    function graycode_to_binary (
+        graycode: input logic<WIDTH>,
+    ) -> logic<WIDTH> {
+        var binary     : logic<WIDTH>;
+        binary[msb] = graycode[msb];
+        for i: i32 in rev 0..(WIDTH - 1) {
+            if i != (WIDTH - 1) as i32 {
+                binary[i as u32] = binary[(i + 1) as u32] ^ graycode[i as u32];
+            }
+        }
+        return binary;
+    }
+
+    if (DEVICE == "SPARTAN6" || DEVICE == "VIRTEX6" || DEVICE == "7SERIES" || DEVICE == "ULTRASCALE" || DEVICE == "ULTRASCALE_PLUS" || DEVICE == "ULTRASCALE_PLUS_ES1" || DEVICE == "ULTRASCALE_PLUS_ES2" || DEVICE == "VERSAL_AI_CORE" || DEVICE == "VERSAL_AI_CORE_ES1" || DEVICE == "VERSAL_AI_CORE_ES2" || DEVICE == "VERSAL_PRIME" || DEVICE == "VERSAL_PRIME_ES1" || DEVICE == "VERSAL_PRIME_ES2") :xilinx {
+        unsafe (cdc) {
+            inst u_xpm_cdc_gray: $sv::xpm_cdc_gray #(
+                DEST_SYNC_FF         : DEST_SYNC_FF         ,
+                SIM_ASSERT_CHK       : SIM_ASSERT_CHK       ,
+                SIM_LOSSLESS_GRAY_CHK: SIM_LOSSLESS_GRAY_CHK,
+                WIDTH                : WIDTH                ,
+            ) (
+                src_clk       ,
+                src_in_bin    ,
+                dest_clk      ,
+                dest_out_bin  ,
+            );
+        }
+    } else :rtl {
+        var src_graycode : 'src logic<WIDTH>;
+        var dest_graycode: 'dst logic<WIDTH>;
+
+        assign src_graycode = binary_to_graycode(src_in_bin);
+
+        inst u_cdc_array_single: cdc_array_single #(
+            DEST_SYNC_FF  : DEST_SYNC_FF  ,
+            SIM_ASSERT_CHK: SIM_ASSERT_CHK,
+            SRC_INPUT_REG : 1             ,
+            WIDTH         : WIDTH         ,
+            DEVICE        : DEVICE        ,
+            SIMULATION    : SIMULATION    ,
+            DEBUG         : DEBUG         ,
+        ) (
+            src_clk : src_clk      ,
+            src_in  : src_graycode ,
+            dest_clk: dest_clk     ,
+            dest_out: dest_graycode,
+        );
+
+        assign dest_out_bin = graycode_to_binary(dest_graycode);
+    }
+}

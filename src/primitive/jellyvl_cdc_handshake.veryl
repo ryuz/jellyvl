@@ -1,0 +1,105 @@
+module cdc_handshake #(
+    param DEST_EXT_HSK  : bit    = 1      ,
+    param DEST_SYNC_FF  : i32    = 4      ,
+    param SIM_ASSERT_CHK: i32    = 0      ,
+    param SRC_SYNC_FF   : i32    = 4      ,
+    param WIDTH         : i32    = 4      ,
+    param DEVICE        : string = "RTL"  ,
+    param SIMULATION    : string = "false",
+    param DEBUG         : string = "false",
+) (
+    src_clk : input  'src clock       ,
+    src_in  : input  'src logic<WIDTH>,
+    src_send: input  'src logic       ,
+    src_rcv : output 'src logic       ,
+
+    dest_clk: input  'dst clock       ,
+    dest_req: output 'dst logic       ,
+    dest_ack: input  'dst logic       ,
+    dest_out: output 'dst logic<WIDTH>,
+) {
+
+    if (DEVICE == "SPARTAN6" || DEVICE == "VIRTEX6" || DEVICE == "7SERIES" || DEVICE == "ULTRASCALE" || DEVICE == "ULTRASCALE_PLUS" || DEVICE == "ULTRASCALE_PLUS_ES1" || DEVICE == "ULTRASCALE_PLUS_ES2" || DEVICE == "VERSAL_AI_CORE" || DEVICE == "VERSAL_AI_CORE_ES1" || DEVICE == "VERSAL_AI_CORE_ES2" || DEVICE == "VERSAL_PRIME" || DEVICE == "VERSAL_PRIME_ES1" || DEVICE == "VERSAL_PRIME_ES2") :xilinx {
+        unsafe (cdc) {
+            inst u_xpm_cdc_handshake: $sv::xpm_cdc_handshake #(
+                DEST_EXT_HSK  : DEST_EXT_HSK  ,
+                DEST_SYNC_FF  : DEST_SYNC_FF  ,
+                SIM_ASSERT_CHK: SIM_ASSERT_CHK,
+                SRC_SYNC_FF   : SRC_SYNC_FF   ,
+                WIDTH         : WIDTH         ,
+            ) (
+                src_clk   ,
+                src_in    ,
+                src_send  ,
+                src_rcv   ,
+                dest_clk  ,
+                dest_req  ,
+                dest_ack  ,
+                dest_out  ,
+            );
+        }
+    } else :rtl {
+        // source
+        var src_send_reg: 'src logic       ;
+        var src_in_reg  : 'src logic<WIDTH>;
+
+        always_ff (src_clk) {
+            src_send_reg = src_send;
+            if !src_send_reg {
+                src_in_reg = src_in;
+            }
+        }
+
+        var dest_send: 'dst logic;
+        inst u_cdc_single_send: cdc_single #(
+            DEST_SYNC_FF  : DEST_SYNC_FF  ,
+            SIM_ASSERT_CHK: SIM_ASSERT_CHK,
+            SRC_INPUT_REG : 0             ,
+            DEVICE        : DEVICE        ,
+            SIMULATION    : SIMULATION    ,
+            DEBUG         : DEBUG         ,
+        ) (
+            src_clk : src_clk     ,
+            src_in  : src_send_reg,
+            dest_clk: dest_clk    ,
+            dest_out: dest_send   ,
+        );
+
+        #[sv("ASYNC_REG = \"TRUE\"")]
+        var dest_out_reg: 'dst logic<WIDTH>;
+
+        unsafe (cdc) {
+            always_ff (dest_clk) {
+                dest_req = dest_send;
+                if {dest_req, dest_send} == 2'b01 {
+                    dest_out_reg = src_in_reg;
+                }
+            }
+        }
+
+        assign dest_out = dest_out_reg;
+
+        var dest_ack_reg: 'dst logic;
+        if !DEST_EXT_HSK :internal_hsk {
+            always_ff (dest_clk) {
+                dest_ack_reg = dest_send;
+            }
+        } else :external_hsk {
+            assign dest_ack_reg = dest_ack;
+        }
+
+        inst u_cdc_single_ack: cdc_single #(
+            DEST_SYNC_FF  : SRC_SYNC_FF   ,
+            SIM_ASSERT_CHK: SIM_ASSERT_CHK,
+            SRC_INPUT_REG : 0             ,
+            DEVICE        : DEVICE        ,
+            SIMULATION    : SIMULATION    ,
+            DEBUG         : DEBUG         ,
+        ) (
+            src_clk : dest_clk    ,
+            src_in  : dest_ack_reg,
+            dest_clk: src_clk     ,
+            dest_out: src_rcv     ,
+        );
+    }
+}

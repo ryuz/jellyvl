@@ -1,0 +1,79 @@
+module cdc_pulse #(
+    param DEST_SYNC_FF  : i32    = 4      ,
+    param INIT_SYNC_FF  : i32    = 0      ,
+    param REG_OUTPUT    : i32    = 0      ,
+    param RST_USED      : bit    = 1      ,
+    param SIM_ASSERT_CHK: i32    = 0      ,
+    param DEVICE        : string = "RTL"  ,
+    param SIMULATION    : string = "false",
+    param DEBUG         : string = "false",
+) (
+    dest_pulse: output 'dst logic,
+    dest_clk  : input  'dst clock,
+    dest_rst  : input  'dst logic,
+    src_clk   : input  'src clock,
+    src_pulse : input  'src logic,
+    src_rst   : input  'src logic,
+) {
+
+    if (DEVICE == "SPARTAN6" || DEVICE == "VIRTEX6" || DEVICE == "7SERIES" || DEVICE == "ULTRASCALE" || DEVICE == "ULTRASCALE_PLUS" || DEVICE == "ULTRASCALE_PLUS_ES1" || DEVICE == "ULTRASCALE_PLUS_ES2" || DEVICE == "VERSAL_AI_CORE" || DEVICE == "VERSAL_AI_CORE_ES1" || DEVICE == "VERSAL_AI_CORE_ES2" || DEVICE == "VERSAL_PRIME" || DEVICE == "VERSAL_PRIME_ES1" || DEVICE == "VERSAL_PRIME_ES2") :xilinx {
+        unsafe (cdc) {
+            inst u_xpm_cdc_pulse: $sv::xpm_cdc_pulse #(
+                DEST_SYNC_FF  : DEST_SYNC_FF  ,
+                INIT_SYNC_FF  : INIT_SYNC_FF  ,
+                REG_OUTPUT    : REG_OUTPUT    ,
+                RST_USED      : RST_USED      ,
+                SIM_ASSERT_CHK: SIM_ASSERT_CHK,
+            ) (
+                dest_pulse  ,
+                dest_clk    ,
+                dest_rst    ,
+                src_clk     ,
+                src_pulse   ,
+                src_rst     ,
+            );
+        }
+    } else :rtl {
+        // source domain
+        var src_pulse_reg : 'src logic;
+        var src_toggle_reg: 'src logic;
+        always_ff (src_clk) {
+            if RST_USED && src_rst {
+                src_pulse_reg  = 1'b0;
+                src_toggle_reg = 1'b0;
+            } else {
+                if !src_pulse_reg && src_pulse {
+                    src_toggle_reg = ~src_toggle_reg;
+                }
+                src_pulse_reg = src_pulse;
+            }
+        }
+
+        var dest_toggle: 'dst logic;
+        inst u_cdc_single: cdc_single #(
+            DEST_SYNC_FF  : DEST_SYNC_FF  ,
+            SIM_ASSERT_CHK: SIM_ASSERT_CHK,
+            SRC_INPUT_REG : 0             ,
+            DEVICE        : DEVICE        ,
+            SIMULATION    : SIMULATION    ,
+            DEBUG         : DEBUG         ,
+        ) (
+            src_clk : src_clk       ,
+            src_in  : src_toggle_reg,
+            dest_clk: dest_clk      ,
+            dest_out: dest_toggle   ,
+        );
+
+        // destination domain
+        var dest_toggle_reg: 'dst logic;
+        always_ff (dest_clk) {
+            if RST_USED && dest_rst {
+                dest_toggle_reg = 1'b0;
+            } else {
+                dest_toggle_reg = dest_toggle;
+            }
+        }
+
+        assign dest_pulse = (dest_toggle != dest_toggle_reg);
+    }
+}
